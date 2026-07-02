@@ -36,7 +36,6 @@
 │   ├── logo.svg
 │   ├── tteok-hero.png
 │   └── products/       # 상품 이미지
-├── docs/               # 기술 문서·발표 자료
 └── server/
     ├── index.js        # 서버 진입점 (Express)
     ├── db.js           # SQLite 스키마 초기화
@@ -79,7 +78,7 @@ npm install
 
 ```env
 # 관리자 접근 코드
-ADMIN_CODE=4525
+ADMIN_CODE=your-admin-code-here
 
 # JWT 서명 시크릿 (운영 환경에서는 반드시 변경)
 JWT_SECRET=your-secret-here
@@ -140,7 +139,7 @@ npm run dev
 ## 관리자 접근
 
 1. `admin.html` 접속
-2. 확인 코드 **`4525`** 입력 (`.env`의 `ADMIN_CODE` 값)
+2. `.env`의 `ADMIN_CODE` 값 입력
 3. 우측 상단 **관리 잠금** 버튼으로 잠금 가능
 
 > 테스트용 데모 데이터 버튼은 `admin.html?dev=1`로 접속 시에만 표시됩니다.
@@ -238,16 +237,3 @@ PWA Service Worker(`sw.js`)로 정적 파일을 캐시해 오프라인에서도 
 - **전화**: 031-374-4525
 - **영업시간**: ~19:00
 
----
-
-## 문서
-
-`docs/` 디렉토리에 추가 문서가 있습니다.
-
-| 파일 | 내용 |
-|------|------|
-| `TECHNICAL_OVERVIEW.md` | 아키텍처·파일 구조·데이터 흐름 |
-| `PROJECT_SUMMARY.md` | 구현 기능 요약 및 시연 가이드 |
-| `PRESENTATION_GUIDE.md` | 발표 순서·예상 질문 답변 |
-| `DEMO_SCENARIO.md` | 데모 시나리오 |
-| `QA_CHECKLIST.md` | 배포 전 QA 체크리스트 |
