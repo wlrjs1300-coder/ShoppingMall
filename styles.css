@@ -4056,23 +4056,23 @@ body:not(.home-page) main {
 }
 
 .image-watermelon-seolgi {
-  background-image: url("assets/products/menu-watermelon-seolgi.png"), url("assets/products/assorted-tteok.jpg");
+  background-image: url("assets/products/menu-watermelon-seolgi.png"), url("assets/products/menu-baekil.png");
 }
 
 .image-mugwort-seolgi {
-  background-image: url("assets/products/menu-mugwort-seolgi.png"), url("assets/products/menu-songpyeon.png");
+  background-image: url("assets/products/menu-mugwort-seolgi.png"), url("assets/products/menu-baekil.png");
 }
 
 .image-blackrice-pumpkin-sand {
-  background-image: url("assets/products/menu-blackrice-pumpkin-sand.png"), url("assets/products/assorted-tteok.jpg");
+  background-image: url("assets/products/menu-blackrice-pumpkin-sand.png"), url("assets/products/menu-baekil.png");
 }
 
 .image-assorted-seolgi {
-  background-image: url("assets/products/menu-assorted-seolgi.png"), url("assets/products/assorted-tteok.jpg");
+  background-image: url("assets/products/menu-assorted-seolgi.png"), url("assets/products/menu-baekil.png");
 }
 
 .image-mugwort-injeolmi {
-  background-image: url("assets/products/menu-mugwort-injeolmi.png"), url("assets/products/menu-songpyeon.png");
+  background-image: url("assets/products/menu-mugwort-injeolmi.png"), url("assets/products/injeolmi.jpg");
 }
 
 .image-castella-injeolmi {
