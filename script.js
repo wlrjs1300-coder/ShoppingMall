@@ -35,6 +35,20 @@ function setApiToken(token) {
   } catch {}
 }
 
+function showSessionExpiredToast() {
+  if (document.getElementById("session-expired-toast")) return;
+  const toast = document.createElement("div");
+  toast.id = "session-expired-toast";
+  toast.style.cssText =
+    "position:fixed;top:20px;left:50%;transform:translateX(-50%);" +
+    "background:#fff0f3;color:#c0445e;border:1px solid rgba(218,135,155,.5);" +
+    "padding:12px 24px;border-radius:10px;font-size:0.9rem;font-weight:600;" +
+    "z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.12);white-space:nowrap;";
+  toast.textContent = "로그인 세션이 만료됐습니다. 다시 로그인해 주세요.";
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
 async function apiFetch(path, { method = "GET", body } = {}) {
   const token = getApiToken();
   const headers = { "Content-Type": "application/json" };
@@ -45,6 +59,11 @@ async function apiFetch(path, { method = "GET", body } = {}) {
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 401) {
+      setApiToken(null);
+      showSessionExpiredToast();
+      return null;
+    }
     if (!res.ok) return null;
     return res.json();
   } catch {

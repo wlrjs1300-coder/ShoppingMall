@@ -1,4 +1,9 @@
 require("dotenv").config();
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "tteokjip-secret-change-in-production") {
+  console.warn("⚠️  [보안] JWT_SECRET이 기본값입니다. 배포 전 반드시 강한 값으로 교체하세요 (server/.env)");
+}
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
