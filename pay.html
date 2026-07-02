@@ -25,7 +25,7 @@
       overflow: hidden;
     }
     .pay-header {
-      background: #3d2c1e;
+      background: linear-gradient(135deg, #f78fa3 0%, #df4f6d 100%);
       color: #fff;
       padding: 24px;
       text-align: center;
@@ -42,23 +42,23 @@
     .order-summary h2 { font-size: 0.8rem; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .05em; }
     .order-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; }
     .order-row:last-child { margin-bottom: 0; border-top: 1px solid #e8e0d6; padding-top: 10px; margin-top: 6px; }
-    .order-row:last-child strong { font-size: 1.05rem; color: #3d2c1e; }
+    .order-row:last-child strong { font-size: 1.05rem; color: #df4f6d; }
     .order-label { color: #666; }
     #payment-method { margin-bottom: 8px; }
     #agreement { margin-bottom: 20px; }
     #pay-btn {
       width: 100%;
       padding: 15px;
-      background: #3d2c1e;
+      background: linear-gradient(145deg, #f78fa3, #df4f6d);
       color: #fff;
       border: none;
       border-radius: 10px;
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
-      transition: background .15s;
+      transition: opacity .15s;
     }
-    #pay-btn:hover { background: #5a3e28; }
+    #pay-btn:hover { opacity: .88; }
     #pay-btn:disabled { background: #bbb; cursor: not-allowed; }
     .result-box { padding: 32px 24px; text-align: center; }
     .result-icon { font-size: 3rem; margin-bottom: 16px; }

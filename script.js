@@ -3,7 +3,7 @@ const siteInfo = {
   hours: "영업 중 · 19:00에 영업 종료",
   address: "경기 화성시 동탄구 동탄대로 198 드림타워 1층 116호",
   parking: "레이크 꼬모 맞은편 건물 1층 주차장 옆 위치",
-  storeUrl: "https://smartstore.naver.com/",
+  storeUrl: "https://smartstore.naver.com/", // TODO: 실제 스토어 URL로 교체 (예: /yourstore)
 };
 
 const phoneHref = `tel:${siteInfo.phone.replaceAll("-", "")}`;
@@ -52,20 +52,38 @@ async function apiFetch(path, { method = "GET", body } = {}) {
   }
 }
 
+function showApiErrorToast() {
+  if (document.getElementById("api-error-toast")) return;
+  const toast = document.createElement("div");
+  toast.id = "api-error-toast";
+  toast.style.cssText =
+    "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);" +
+    "background:#fff0f3;color:#c0445e;border:1px solid rgba(218,135,155,.5);" +
+    "padding:10px 20px;border-radius:10px;font-size:0.84rem;z-index:99999;" +
+    "box-shadow:0 2px 12px rgba(0,0,0,.12);white-space:nowrap;";
+  toast.textContent = "서버 연결 실패 — 변경 사항이 로컬에만 저장됩니다";
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4500);
+}
+
 async function syncArrayToApi(path, oldItems, newItems) {
   if (!getApiToken()) return;
   const oldMap = new Map(oldItems.map((item) => [item.id, item]));
   const newMap = new Map(newItems.map((item) => [item.id, item]));
+  const promises = [];
   for (const id of oldMap.keys()) {
-    if (!newMap.has(id)) apiFetch(`${path}/${id}`, { method: "DELETE" });
+    if (!newMap.has(id)) promises.push(apiFetch(`${path}/${id}`, { method: "DELETE" }));
   }
   for (const [id, newItem] of newMap) {
     if (!oldMap.has(id)) {
-      apiFetch(path, { method: "POST", body: newItem });
+      promises.push(apiFetch(path, { method: "POST", body: newItem }));
     } else if (JSON.stringify(oldMap.get(id)) !== JSON.stringify(newItem)) {
-      apiFetch(`${path}/${id}`, { method: "PUT", body: newItem });
+      promises.push(apiFetch(`${path}/${id}`, { method: "PUT", body: newItem }));
     }
   }
+  if (promises.length === 0) return;
+  const results = await Promise.all(promises);
+  if (results.some((r) => r === null)) showApiErrorToast();
 }
 
 async function loadFromApi() {

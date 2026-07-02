@@ -8,7 +8,9 @@ const { notifyPickupReminders } = require("./services/notify");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || true,
+}));
 app.use(express.json());
 // 배포 환경에서 프론트엔드 정적 파일 서빙 (API와 같은 origin 유지)
 app.use(express.static(path.join(__dirname, "..")));
