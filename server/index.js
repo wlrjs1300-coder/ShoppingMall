@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const db = require("./db");
 const { notifyPickupReminders } = require("./services/notify");
 
@@ -9,6 +10,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+// 배포 환경에서 프론트엔드 정적 파일 서빙 (API와 같은 origin 유지)
+app.use(express.static(path.join(__dirname, "..")));
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/orders", require("./routes/orders"));

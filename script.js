@@ -20,7 +20,9 @@ const activityStorageKey = "tteokActivityLogs";
 const notifiedOrdersStorageKey = "tteokNotifiedOrders";
 const notifiedLowStockKey = "tteokNotifiedLowStock";
 const apiTokenKey = "tteokApiToken";
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = window.location.protocol === "file:"
+  ? "http://localhost:3000/api"
+  : `${window.location.origin}/api`;
 
 function getApiToken() {
   try { return sessionStorage.getItem(apiTokenKey); } catch { return null; }
@@ -83,7 +85,21 @@ async function loadFromApi() {
   if (Array.isArray(customers)) localStorage.setItem(customerStorageKey, JSON.stringify(customers));
   if (notes && typeof notes === "object") localStorage.setItem(customerNoteStorageKey, JSON.stringify(notes));
   if (Array.isArray(inventory)) localStorage.setItem(inventoryStorageKey, JSON.stringify(inventory));
-  if (Array.isArray(recipes) && recipes.length) localStorage.setItem(recipeStorageKey, JSON.stringify(recipes));
+  if (Array.isArray(recipes) && recipes.length) {
+    // 서버에서 받은 평탄 구조 {product, ingredient, amount, unit}를
+    // 클라이언트 키워드 그룹 구조 {keywords, materials}로 변환
+    if ("product" in (recipes[0] || {})) {
+      const grouped = {};
+      for (const row of recipes) {
+        if (!grouped[row.product]) grouped[row.product] = [];
+        grouped[row.product].push({ name: row.ingredient, amount: row.amount, unit: row.unit });
+      }
+      const converted = Object.entries(grouped).map(([kw, mats]) => ({ keywords: [kw], materials: mats }));
+      localStorage.setItem(recipeStorageKey, JSON.stringify(converted));
+    } else {
+      localStorage.setItem(recipeStorageKey, JSON.stringify(recipes));
+    }
+  }
   if (Array.isArray(purchaseOrders)) localStorage.setItem(purchaseOrderStorageKey, JSON.stringify(purchaseOrders));
   if (Array.isArray(suppliers)) localStorage.setItem(supplierStorageKey, JSON.stringify(suppliers));
   if (Array.isArray(activityLogs)) localStorage.setItem(activityStorageKey, JSON.stringify(activityLogs));
@@ -170,7 +186,17 @@ function readRecipes() {
 
 function writeRecipes(recipes) {
   localStorage.setItem(recipeStorageKey, JSON.stringify(recipes));
-  apiFetch("/recipes", { method: "PUT", body: recipes });
+  // 서버는 {product, ingredient, amount, unit} 평탄 구조를 사용
+  // 클라이언트의 {keywords, materials} 그룹 구조를 평탄화해서 전송
+  const flat = [];
+  for (const rule of recipes) {
+    for (const keyword of (rule.keywords || [])) {
+      for (const mat of (rule.materials || [])) {
+        flat.push({ product: keyword, ingredient: mat.name, amount: mat.amount, unit: mat.unit });
+      }
+    }
+  }
+  if (flat.length) apiFetch("/recipes", { method: "PUT", body: flat });
 }
 
 function readInventoryLogs() {

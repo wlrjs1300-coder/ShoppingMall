@@ -4012,12 +4012,104 @@ body:not(.home-page) main {
   background-image: url("assets/products/injeolmi.jpg");
 }
 
+.image-garaetteok {
+  background-image: url("assets/products/menu-garaetteok.png"), url("assets/products/injeolmi.jpg");
+}
+
+.image-white-jeolpyeon {
+  background-image: url("assets/products/menu-white-jeolpyeon.png"), url("assets/products/injeolmi.jpg");
+}
+
+.image-mugwort-jeolpyeon {
+  background-image: url("assets/products/menu-mugwort-jeolpyeon.png"), url("assets/products/menu-songpyeon.png");
+}
+
+.image-mugwort-gaetteok {
+  background-image: url("assets/products/menu-mugwort-gaetteok.png"), url("assets/products/menu-songpyeon.png");
+}
+
+.image-kongpyeon {
+  background-image: url("assets/products/menu-kongpyeon.png"), url("assets/products/injeolmi.jpg");
+}
+
+.image-chapssaltteok {
+  background-image: url("assets/products/menu-chapssaltteok.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-yaksik {
+  background-image: url("assets/products/menu-yaksik.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-honey-tteok {
+  background-image: url("assets/products/menu-honey-tteok.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-fruit-gyeongdan {
+  background-image: url("assets/products/menu-fruit-gyeongdan.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-honey-seolgi {
+  background-image: url("assets/products/menu-honey-seolgi.png"), url("assets/products/menu-baekil.png");
+}
+
+.image-watermelon-seolgi {
+  background-image: url("assets/products/menu-watermelon-seolgi.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-mugwort-seolgi {
+  background-image: url("assets/products/menu-mugwort-seolgi.png"), url("assets/products/menu-songpyeon.png");
+}
+
+.image-blackrice-pumpkin-sand {
+  background-image: url("assets/products/menu-blackrice-pumpkin-sand.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-assorted-seolgi {
+  background-image: url("assets/products/menu-assorted-seolgi.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-mugwort-injeolmi {
+  background-image: url("assets/products/menu-mugwort-injeolmi.png"), url("assets/products/menu-songpyeon.png");
+}
+
+.image-castella-injeolmi {
+  background-image: url("assets/products/menu-castella-injeolmi.png"), url("assets/products/injeolmi.jpg");
+}
+
+.image-black-sesame-injeolmi {
+  background-image: url("assets/products/menu-black-sesame-injeolmi.png"), url("assets/products/black-sesame-injeolmi.jpg");
+}
+
 .image-redbean {
   background-image: url("assets/products/menu-susupat.png");
 }
 
 .image-black {
   background-image: url("assets/products/black-sesame-injeolmi.jpg");
+}
+
+.image-chal-sirutteok {
+  background-image: url("assets/products/menu-chal-sirutteok.png"), url("assets/products/menu-susupat.png");
+}
+
+.image-pea-chaltteok {
+  background-image: url("assets/products/menu-pea-chaltteok.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-bean-chaltteok {
+  background-image: url("assets/products/menu-bean-chaltteok.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-pumpkin-chaltteok {
+  background-image: url("assets/products/menu-pumpkin-chaltteok.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-nut-chaltteok {
+  background-image: url("assets/products/menu-nut-chaltteok.png"), url("assets/products/assorted-tteok.jpg");
+}
+
+.image-assorted-chaltteok {
+  background-image: url("assets/products/menu-assorted-chaltteok.png"), url("assets/products/assorted-tteok.jpg");
 }
 
 .image-gift-box {
