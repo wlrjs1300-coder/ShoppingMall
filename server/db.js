@@ -1,7 +1,9 @@
 const { DatabaseSync } = require("node:sqlite");
 const path = require("path");
 
-const db = new DatabaseSync(path.join(__dirname, "tteokjip.db"));
+// DB_PATH 환경변수로 경로 지정 가능 — 클라우드 영구 볼륨 마운트 시 활용
+const dbPath = process.env.DB_PATH || path.join(__dirname, "tteokjip.db");
+const db = new DatabaseSync(dbPath);
 
 db.exec("PRAGMA journal_mode = WAL");
 db.exec("PRAGMA foreign_keys = ON");

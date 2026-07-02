@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: tteokjip
+    runtime: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PORT
+        value: "3000"
+      - key: ADMIN_CODE
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NOTIFICATION_MODE
+        value: none

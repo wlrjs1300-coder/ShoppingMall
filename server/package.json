@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "따뜻한 떡집 API 서버",
   "main": "index.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js"
