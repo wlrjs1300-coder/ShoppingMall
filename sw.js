@@ -18,7 +18,6 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   if (!event.request.url.startsWith("http")) return;
-  // API 응답은 캐시하지 않음 — 항상 최신 데이터 사용
   if (event.request.url.includes("/api/")) return;
 
   event.respondWith(

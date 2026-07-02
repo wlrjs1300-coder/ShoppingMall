@@ -17,7 +17,6 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || true,
 }));
 app.use(express.json());
-// 배포 환경에서 프론트엔드 정적 파일 서빙 (API와 같은 origin 유지)
 app.use(express.static(path.join(__dirname, "..")));
 
 app.use("/api/auth", require("./routes/auth"));
@@ -33,7 +32,6 @@ app.use("/api/payments", require("./routes/payments"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-// 404: API 경로는 JSON, 그 외는 홈으로 리다이렉트
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ error: "존재하지 않는 API 엔드포인트입니다." });
@@ -46,7 +44,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "서버 오류가 발생했습니다." });
 });
 
-// D-1 픽업 리마인더: 매일 오전 9시 실행
 function schedulePickupReminders() {
   function msUntil9am() {
     const now = new Date();

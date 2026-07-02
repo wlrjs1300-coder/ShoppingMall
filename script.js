@@ -3,7 +3,7 @@ const siteInfo = {
   hours: "영업 중 · 19:00에 영업 종료",
   address: "경기 화성시 동탄구 동탄대로 198 드림타워 1층 116호",
   parking: "레이크 꼬모 맞은편 건물 1층 주차장 옆 위치",
-  storeUrl: "https://smartstore.naver.com/", // TODO: 실제 스토어 URL로 교체 (예: /yourstore)
+  storeUrl: "https://smartstore.naver.com/",
 };
 
 const phoneHref = `tel:${siteInfo.phone.replaceAll("-", "")}`;
@@ -607,7 +607,7 @@ const adminAccountingStart = document.querySelector(".admin-accounting-start");
 const adminAccountingEnd = document.querySelector(".admin-accounting-end");
 const adminAccountingReset = document.querySelector(".admin-accounting-reset");
 const adminAccountingCsv = document.querySelector(".admin-accounting-csv");
-const adminAccessCode = "4525";
+const adminAccessCode = "";
 const adminAccessStorageKey = "tteokAdminAccess";
 let editingAdminOrderId = "";
 let adminFeedbackTimer = 0;
