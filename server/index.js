@@ -33,6 +33,14 @@ app.use("/api/payments", require("./routes/payments"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
+// 404: API 경로는 JSON, 그 외는 홈으로 리다이렉트
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "존재하지 않는 API 엔드포인트입니다." });
+  }
+  res.redirect("/");
+});
+
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: "서버 오류가 발생했습니다." });
@@ -56,9 +64,14 @@ function schedulePickupReminders() {
   console.log(`[알림] D-1 리마인더 스케줄러 등록 (${Math.round((ms / 3600000) * 10) / 10}시간 후 첫 실행)`);
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`따뜻한 떡집 서버 실행 중 → http://localhost:${PORT}`);
   if ((process.env.NOTIFICATION_MODE || "none") !== "none") {
     schedulePickupReminders();
   }
+});
+
+process.on("SIGTERM", () => {
+  console.log("[서버] 종료 신호 수신. 정상 종료 중…");
+  server.close(() => process.exit(0));
 });
