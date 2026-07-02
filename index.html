@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>따뜻한 떡집 | 동탄 수제 떡집</title>
+    <meta name="description" content="동탄 따뜻한 떡집. 송편 예약, 답례떡, 단체주문, 기본 떡 메뉴를 정성껏 준비합니다." />
+    <link rel="preload" as="image" href="assets/tteok-hero.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body class="home-page">
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="따뜻한 떡집 홈">
+        <img class="brand-logo" src="assets/logo.svg" alt="따뜻한 떡집" />
+      </a>
+      <nav class="main-nav" aria-label="주요 메뉴">
+        <a class="is-current" href="index.html">홈</a>
+        <a href="menu.html">메뉴</a>
+        <a href="faq.html">자주 묻는 질문</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="home-hero">
+        <img class="home-hero-image" src="assets/tteok-hero.png" alt="접시와 나무 트레이에 담긴 여러 종류의 떡" />
+        <div class="home-hero-content">
+          <div class="hero-brand-lockup">
+            <p class="eyebrow">DONGTAN RICE CAKE SHOP</p>
+            <span>예약 · 답례 · 단체</span>
+          </div>
+          <h1>오늘 빚은 떡을 따뜻하게 전합니다</h1>
+          <p class="hero-subcopy">송편 예약부터 답례·단체주문까지 차분히 준비합니다.</p>
+          <div class="home-quick-info" aria-label="따뜻한 떡집 주요 안내">
+            <span><strong>백일떡</strong></span>
+            <span><strong>수수팥떡</strong></span>
+            <span><strong>답례떡</strong></span>
+            <span><strong>단체주문</strong></span>
+            <span><strong>기본떡</strong></span>
+            <span><strong>송편 예약</strong></span>
+          </div>
+          <div class="hero-actions">
+            <a class="primary-button" href="menu.html">메뉴와 가격 보기</a>
+            <a class="secondary-button js-phone-link" href="tel:0313744525">전화 상담</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-mini-guide" aria-label="따뜻한 떡집 이용 안내">
+        <a href="menu.html">
+          <span>01</span>
+          <strong>메뉴·가격</strong>
+        </a>
+        <a href="menu.html">
+          <span>02</span>
+          <strong>단체주문</strong>
+        </a>
+        <a class="js-phone-link" href="tel:0313744525">
+          <span>03</span>
+          <strong>전화 상담</strong>
+        </a>
+        <a href="menu.html">
+          <span>04</span>
+          <strong>행사떡</strong>
+        </a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>따뜻한 떡집</strong>
+        <span>동탄 드림타워 1층 116호</span>
+      </div>
+      <div>
+        <span class="js-phone-text">031-374-4525</span>
+        <span class="js-hours-text">영업 중 · 19:00에 영업 종료</span>
+        <span class="footer-actions">
+          <a class="js-phone-link" href="tel:0313744525">전화 상담</a>
+          <a class="js-map-link" href="#" target="_blank" rel="noreferrer">지도 보기</a>
+        </span>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js");
+      }
+    </script>
+  </body>
+</html>

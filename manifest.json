@@ -1,0 +1,20 @@
+{
+  "name": "따뜻한 떡집",
+  "short_name": "따뜻한 떡집",
+  "description": "따뜻한 인정이 담긴 떡집 주문 페이지",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "lang": "ko-KR",
+  "icons": [
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

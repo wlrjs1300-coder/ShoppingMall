@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>결제 - 따뜻한 떡집</title>
+  <script src="https://js.tosspayments.com/v2/standard"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #faf8f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .pay-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+    }
+    .pay-header {
+      background: #3d2c1e;
+      color: #fff;
+      padding: 24px;
+      text-align: center;
+    }
+    .pay-header h1 { font-size: 1.2rem; font-weight: 700; }
+    .pay-header p { font-size: 0.85rem; opacity: .7; margin-top: 4px; }
+    .pay-body { padding: 24px; }
+    .order-summary {
+      background: #faf8f5;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .order-summary h2 { font-size: 0.8rem; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .05em; }
+    .order-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; }
+    .order-row:last-child { margin-bottom: 0; border-top: 1px solid #e8e0d6; padding-top: 10px; margin-top: 6px; }
+    .order-row:last-child strong { font-size: 1.05rem; color: #3d2c1e; }
+    .order-label { color: #666; }
+    #payment-method { margin-bottom: 8px; }
+    #agreement { margin-bottom: 20px; }
+    #pay-btn {
+      width: 100%;
+      padding: 15px;
+      background: #3d2c1e;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #pay-btn:hover { background: #5a3e28; }
+    #pay-btn:disabled { background: #bbb; cursor: not-allowed; }
+    .result-box { padding: 32px 24px; text-align: center; }
+    .result-icon { font-size: 3rem; margin-bottom: 16px; }
+    .result-box h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+    .result-box p { color: #666; font-size: 0.9rem; line-height: 1.6; }
+    .result-box.success h2 { color: #2d6a4f; }
+    .result-box.fail h2 { color: #c0392b; }
+    #loading { padding: 40px; text-align: center; color: #888; }
+    .error-box { padding: 32px 24px; text-align: center; color: #c0392b; }
+  </style>
+</head>
+<body>
+<div class="pay-card">
+  <div class="pay-header">
+    <h1>따뜻한 떡집</h1>
+    <p>안전한 결제를 진행합니다</p>
+  </div>
+
+  <div id="loading">결제 정보를 불러오는 중…</div>
+
+  <!-- 결제 위젯 영역 -->
+  <div id="step-payment" class="pay-body" hidden>
+    <div class="order-summary">
+      <h2>주문 내역</h2>
+      <div class="order-row"><span class="order-label">상품명</span><span id="info-name">-</span></div>
+      <div class="order-row"><span class="order-label">주문자</span><span id="info-customer">-</span></div>
+      <div class="order-row"><span class="order-label">결제 금액</span><strong id="info-amount">-</strong></div>
+    </div>
+    <div id="payment-method"></div>
+    <div id="agreement"></div>
+    <button id="pay-btn" disabled>결제하기</button>
+  </div>
+
+  <!-- 결제 완료 -->
+  <div id="step-success" class="result-box success" hidden>
+    <div class="result-icon">✅</div>
+    <h2>결제 완료!</h2>
+    <p>주문해 주셔서 감사합니다.<br />따뜻한 떡집에서 정성껏 준비하겠습니다.</p>
+  </div>
+
+  <!-- 결제 실패 -->
+  <div id="step-fail" class="result-box fail" hidden>
+    <div class="result-icon">❌</div>
+    <h2>결제 실패</h2>
+    <p id="fail-message">결제에 실패했습니다. 다시 시도해 주세요.</p>
+  </div>
+</div>
+
+<script>
+  const API_BASE = "http://localhost:3000/api";
+  const params = new URLSearchParams(location.search);
+  const orderId = params.get("orderId");
+  const step = params.get("step");
+
+  function show(id) {
+    ["loading", "step-payment", "step-success", "step-fail"].forEach((s) => {
+      const el = document.getElementById(s);
+      if (el) el.hidden = s !== id;
+    });
+  }
+
+  function formatWon(n) {
+    return Number(n).toLocaleString("ko-KR") + "원";
+  }
+
+  async function init() {
+    if (!orderId) {
+      show("step-fail");
+      document.getElementById("fail-message").textContent = "잘못된 결제 링크입니다.";
+      return;
+    }
+
+    // 결제 완료 리다이렉트 처리
+    if (step === "success") {
+      await handleSuccess();
+      return;
+    }
+    if (step === "fail") {
+      show("step-fail");
+      document.getElementById("fail-message").textContent =
+        params.get("message") || "결제에 실패했습니다. 다시 시도해 주세요.";
+      return;
+    }
+
+    // 결제 정보 + 클라이언트 키 병렬 로드
+    const [infoRes, configRes] = await Promise.all([
+      fetch(`${API_BASE}/payments/info/${encodeURIComponent(orderId)}`).catch(() => null),
+      fetch(`${API_BASE}/payments/config`).catch(() => null),
+    ]);
+
+    if (!infoRes || !infoRes.ok) {
+      show("step-fail");
+      document.getElementById("fail-message").textContent = "결제 정보를 찾을 수 없습니다.";
+      return;
+    }
+
+    const info = await infoRes.json();
+    const config = configRes ? await configRes.json() : {};
+
+    if (info.status === "DONE") {
+      show("step-success");
+      return;
+    }
+
+    if (!config.clientKey) {
+      show("step-fail");
+      document.getElementById("fail-message").textContent = "결제 서비스가 아직 설정되지 않았습니다.";
+      return;
+    }
+
+    // 주문 정보 표시
+    document.getElementById("info-name").textContent = info.orderName || "따뜻한 떡집 주문";
+    document.getElementById("info-customer").textContent = info.customerName || "-";
+    document.getElementById("info-amount").textContent = formatWon(info.amount);
+
+    show("step-payment");
+    await initWidget(config.clientKey, info);
+  }
+
+  async function initWidget(clientKey, info) {
+    const tossPayments = TossPayments(clientKey);
+    const widgets = tossPayments.widgets({ customerKey: orderId });
+
+    await widgets.setAmount({ currency: "KRW", value: info.amount });
+
+    await Promise.all([
+      widgets.renderPaymentMethods({ selector: "#payment-method", variantKey: "DEFAULT" }),
+      widgets.renderAgreement({ selector: "#agreement", variantKey: "AGREEMENT" }),
+    ]);
+
+    const payBtn = document.getElementById("pay-btn");
+    payBtn.disabled = false;
+
+    const baseUrl = location.href.split("?")[0];
+    payBtn.addEventListener("click", async () => {
+      payBtn.disabled = true;
+      payBtn.textContent = "결제 진행 중…";
+      try {
+        await widgets.requestPayment({
+          orderId,
+          orderName: info.orderName || "따뜻한 떡집 주문",
+          customerName: info.customerName || undefined,
+          customerMobilePhone: info.customerPhone ? info.customerPhone.replace(/-/g, "") : undefined,
+          successUrl: `${baseUrl}?step=success&orderId=${encodeURIComponent(orderId)}`,
+          failUrl: `${baseUrl}?step=fail&orderId=${encodeURIComponent(orderId)}`,
+        });
+      } catch (err) {
+        payBtn.disabled = false;
+        payBtn.textContent = "결제하기";
+        if (err.code !== "USER_CANCEL") {
+          alert(err.message || "결제 중 오류가 발생했습니다.");
+        }
+      }
+    });
+  }
+
+  async function handleSuccess() {
+    const paymentKey = params.get("paymentKey");
+    const amount = Number(params.get("amount"));
+
+    if (!paymentKey || !amount) {
+      show("step-fail");
+      document.getElementById("fail-message").textContent = "결제 확인에 필요한 정보가 없습니다.";
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/payments/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentKey, orderId, amount }),
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data.ok) { show("step-success"); return; }
+    }
+
+    show("step-fail");
+    document.getElementById("fail-message").textContent = "결제 승인 처리 중 오류가 발생했습니다.";
+  }
+
+  init().catch((err) => {
+    console.error(err);
+    show("step-fail");
+    document.getElementById("fail-message").textContent = "오류가 발생했습니다.";
+  });
+</script>
+</body>
+</html>

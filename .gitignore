@@ -1,0 +1,15 @@
+# 의존성
+node_modules/
+server/node_modules/
+
+# 환경변수 (JWT 시크릿, API 키 등)
+server/.env
+
+# SQLite 데이터베이스 (고객·주문 데이터)
+server/*.db
+server/*.db-shm
+server/*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
