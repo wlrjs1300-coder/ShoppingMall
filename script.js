@@ -21,7 +21,7 @@ const notifiedOrdersStorageKey = "tteokNotifiedOrders";
 const notifiedLowStockKey = "tteokNotifiedLowStock";
 const apiTokenKey = "tteokApiToken";
 const API_BASE = window.location.protocol === "file:"
-  ? "http://localhost:3000/api"
+  ? "http://localhost:3001/api"
   : `${window.location.origin}/api`;
 
 function getApiToken() {
