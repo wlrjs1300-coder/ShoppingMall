@@ -91,6 +91,21 @@ a {
   color: var(--pink-deep);
 }
 
+.admin-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--muted);
+  transition: color 160ms, background 160ms;
+}
+.admin-entry-btn:hover {
+  color: var(--pink-deep);
+  background: rgba(245, 107, 133, 0.08);
+}
+
 .header-action,
 .primary-button,
 .secondary-button {
