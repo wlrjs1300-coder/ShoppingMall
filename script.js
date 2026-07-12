@@ -1,8 +1,9 @@
+// 포트폴리오 시연용 예시 정보이며 실제 매장 상세 주소가 아닙니다.
 const siteInfo = {
-  phone: "031-374-4525",
+  phone: "031-000-0000",
   hours: "영업 중 · 19:00에 영업 종료",
-  address: "경기 화성시 동탄구 동탄대로 198 드림타워 1층 116호",
-  parking: "레이크 꼬모 맞은편 건물 1층 주차장 옆 위치",
+  address: "경기도 화성시 소재",
+  parking: "건물 내 주차 공간 이용 가능",
   storeUrl: "https://smartstore.naver.com/",
 };
 
@@ -2437,6 +2438,7 @@ function updateAdminOrder(id, patch) {
   setAdminFeedback("주문 정보가 저장되었습니다.");
 }
 
+// 아래 고객명·연락처·주문 내역은 포트폴리오 시연용 가상 데이터이며 실제 고객 정보가 아닙니다.
 function createDemoOrders() {
   if (!confirm("테스트용 주문 6건을 추가할까요? 기존 주문은 유지됩니다.")) return;
 
@@ -2519,7 +2521,7 @@ function createDemoOrders() {
       quantity: 120,
       pickupDate: dateAfter(5),
       pickupTime: "08:30",
-      customer: "드림타워 입주사",
+      customer: "인근 사무실",
       phone: "010-1234-1006",
       memo: "회사 행사, 오전 배송 문의",
       status: "접수대기",
@@ -2531,7 +2533,7 @@ function createDemoOrders() {
     createdAt: new Date(today.getTime() - index * 3600000).toISOString(),
     ...order,
     fulfillmentType: order.fulfillmentType || (index === 5 ? "delivery" : "pickup"),
-    deliveryAddress: order.deliveryAddress || (index === 5 ? "동탄 드림타워 인근 배송 상담" : ""),
+    deliveryAddress: order.deliveryAddress || (index === 5 ? "매장 인근 배송 상담" : ""),
     logisticsStatus: order.logisticsStatus || (index === 5 ? "배송대기" : getDefaultLogisticsStatus(order.fulfillmentType)),
   }));
 

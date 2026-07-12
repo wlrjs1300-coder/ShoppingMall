@@ -10,6 +10,16 @@ server/*.db
 server/*.db-shm
 server/*.db-wal
 
+# 로그/백업/빌드 산출물
+*.log
+nohup.out
+backup/
+backups/
+uploads/
+dist/
+build/
+.cache/
+
 # OS
 .DS_Store
 Thumbs.db
