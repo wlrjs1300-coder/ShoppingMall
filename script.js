@@ -1038,30 +1038,27 @@ function renderAdminOrders() {
   const empty = document.querySelector(".admin-empty");
   const totalInfo = document.querySelector("[data-admin-total]");
   const tabCount = document.querySelector('[data-admin-tab-count="orders"]');
-  const stats = {
-    orders: document.querySelector('[data-admin-stat="orders"]'),
-    quantity: document.querySelector('[data-admin-stat="quantity"]'),
-    revenue: document.querySelector('[data-admin-stat="revenue"]'),
-    profit: document.querySelector('[data-admin-stat="profit"]'),
-  };
 
   const totalQuantity = orders.reduce((sum, order) => sum + Number(order.quantity || 0), 0);
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.revenue || 0), 0);
   const totalCost = orders.reduce((sum, order) => sum + Number(order.cost || 0), 0);
 
-  if (stats.orders) stats.orders.textContent = String(orders.length);
-  if (stats.quantity) stats.quantity.textContent = String(totalQuantity);
-  if (stats.revenue) stats.revenue.textContent = formatWon(totalRevenue);
-  if (stats.profit) stats.profit.textContent = formatWon(totalRevenue - totalCost);
+  document.querySelectorAll('[data-admin-stat="orders"]').forEach(el => { el.textContent = String(orders.length); });
+  document.querySelectorAll('[data-admin-stat="quantity"]').forEach(el => { el.textContent = String(totalQuantity); });
+  document.querySelectorAll('[data-admin-stat="revenue"]').forEach(el => { el.textContent = formatWon(totalRevenue); });
+  document.querySelectorAll('[data-admin-stat="profit"]').forEach(el => { el.textContent = formatWon(totalRevenue - totalCost); });
 
   const filteredOrders = getFilteredAdminOrders(orders);
 
   if (totalInfo) totalInfo.textContent = String(filteredOrders.length);
   if (tabCount) tabCount.textContent = String(orders.length);
   if (empty) {
-    empty.textContent = orders.length
-      ? "검색 조건에 맞는 주문이 없습니다."
-      : "접수된 주문이 없습니다. 메뉴 페이지에서 주문 요청을 먼저 등록해 주세요.";
+    const isFiltered = orders.length > 0;
+    const title = isFiltered ? "검색 조건에 맞는 주문이 없습니다." : "접수된 주문이 없습니다.";
+    const desc = isFiltered
+      ? "검색어나 상태 필터를 변경해 보세요."
+      : "메뉴 페이지에서 주문 요청이 접수되면 여기에 표시됩니다.";
+    empty.innerHTML = `<span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></span><strong class="admin-empty-title">${title}</strong><span class="admin-empty-desc">${desc}</span>`;
     empty.hidden = filteredOrders.length > 0;
   }
 
@@ -1079,7 +1076,7 @@ function renderAdminOrders() {
           <td>${order.quantity || 1}</td>
           <td><strong>${escapeHtml(pickup || "-")}</strong><span>${fulfillment}</span></td>
           <td>
-            <select class="admin-status">
+            <select class="admin-status" data-status-value="${escapeHtml(order.status || "접수대기")}">
               ${(() => { const opts = ["접수대기", "준비중", "준비완료", getTerminalStatus(order.fulfillmentType)]; if (order.status && !opts.includes(order.status)) opts.push(order.status); return opts; })().map((status) => `<option value="${status}" ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}
             </select>
           </td>
@@ -2014,7 +2011,7 @@ function renderAdminLogistics() {
           <td><span class="admin-status-pill">${getFulfillmentLabel(type)}</span></td>
           <td><span class="admin-memo">${escapeHtml(address)}</span>${mapLink}</td>
           <td>
-            <select class="admin-logistics-status">
+            <select class="admin-logistics-status" data-status-value="${escapeHtml(currentStatus)}">
               ${statusOptions.map((status) => `<option value="${status}" ${currentStatus === status ? "selected" : ""}>${status}</option>`).join("")}
             </select>
           </td>
@@ -2354,7 +2351,7 @@ function renderActivityLogs() {
 function setAdminAlert(type, count, detail) {
   const countElement = document.querySelector(`[data-admin-alert-count="${type}"]`);
   const detailElement = document.querySelector(`[data-admin-alert-detail="${type}"]`);
-  const button = document.querySelector(`.admin-alert-center [data-alert-type="${type}"]`);
+  const button = document.querySelector(`[data-alert-type="${type}"]`);
   if (countElement) countElement.textContent = String(count);
   if (detailElement) detailElement.textContent = detail;
   button?.classList.toggle("is-clear", count === 0);
@@ -2416,14 +2413,22 @@ function setAdminTab(tabName) {
 
   if (!panels[tabName]) return;
 
-  document.querySelectorAll(".admin-tabs button").forEach((tab) => {
+  document.querySelectorAll("[data-admin-tab]").forEach((tab) => {
     const isActive = tab.dataset.adminTab === tabName;
     tab.classList.toggle("is-active", isActive);
     tab.setAttribute("aria-selected", String(isActive));
   });
 
   Object.entries(panels).forEach(([name, panel]) => {
-    if (panel) panel.hidden = name !== tabName;
+    if (!panel) return;
+    if (name !== tabName) {
+      panel.hidden = true;
+      panel.classList.remove("is-entering");
+    } else {
+      panel.hidden = false;
+      panel.classList.remove("is-entering");
+      requestAnimationFrame(() => panel.classList.add("is-entering"));
+    }
   });
 }
 
@@ -2927,7 +2932,6 @@ document.querySelector(".admin-customer-list")?.addEventListener("click", (event
     if (searchInput) searchInput.value = query;
     setAdminTab("orders");
     renderAdminOrders();
-    document.querySelector(".admin-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
 
@@ -3077,45 +3081,24 @@ document.querySelector(".admin-recipe-list")?.addEventListener("click", (event) 
   }
 });
 
-document.querySelector(".admin-tabs")?.addEventListener("click", (event) => {
+document.querySelector(".admin-sidebar-nav")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-tab]");
   if (!button) return;
   setAdminTab(button.dataset.adminTab);
 });
 
-document.querySelector(".admin-flow")?.addEventListener("click", (event) => {
+document.querySelector(".admin-sidebar-alerts")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-flow-tab]");
   if (!button) return;
   setAdminTab(button.dataset.adminFlowTab);
-  document.querySelector(".admin-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-document.querySelector(".admin-erp-map")?.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-admin-flow-tab]");
-  if (!button) return;
-  setAdminTab(button.dataset.adminFlowTab);
-  document.querySelector(".admin-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
-document.querySelector(".admin-alert-center")?.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-admin-flow-tab]");
-  if (!button) return;
-  setAdminTab(button.dataset.adminFlowTab);
-  document.querySelector(".admin-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
-document.querySelector(".admin-activity-list")?.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-admin-activity-tab]");
-  if (!button) return;
-  setAdminTab(button.dataset.adminActivityTab);
-  document.querySelector(".admin-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
-document.querySelector(".admin-activity-clear")?.addEventListener("click", () => {
-  if (!confirm("최근 활동 기록을 모두 비울까요?")) return;
-  writeActivityLogs([]);
-  renderActivityLogs();
-  setAdminFeedback("최근 활동 기록을 비웠습니다.");
+document.querySelector(".admin-overflow-menu")?.addEventListener("click", (event) => {
+  const details = event.target.closest(".admin-overflow-menu");
+  const clickedBtn = event.target.closest("button");
+  if (details && clickedBtn && !clickedBtn.closest("summary")) {
+    setTimeout(() => { details.open = false; }, 120);
+  }
 });
 
 document.addEventListener("keydown", (event) => {
@@ -3130,7 +3113,7 @@ updateMenuList();
 renderAdminDashboard();
 setAdminTab("orders");
 
-if (document.querySelector(".admin-tabs")) {
+if (document.querySelector(".admin-sidebar-nav")) {
   // 이미 로그인된 상태라면 API에서 최신 데이터를 불러와 갱신
   if (hasAdminAccess() && getApiToken()) {
     loadFromApi().then(() => renderAdminDashboard());

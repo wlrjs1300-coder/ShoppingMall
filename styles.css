@@ -38,6 +38,10 @@ body.faq-page {
     linear-gradient(180deg, #fffaf6 0%, #fff 48%, #fffaf6 100%);
 }
 
+body.admin-page {
+  background: #f2f3f5;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -1554,6 +1558,528 @@ h3 {
   color: #b23b4f !important;
 }
 
+/* ═══════════════════════════════════════
+   관리자 앱 레이아웃 (사이드바 구조)
+═══════════════════════════════════════ */
+
+.admin-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 58px;
+  padding: 0 20px;
+  background: rgba(255, 250, 244, 0.97);
+  border-bottom: 1px solid rgba(241, 215, 220, 0.75);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 2px 12px rgba(109, 65, 72, 0.06);
+}
+
+.admin-brand .brand-logo {
+  width: 110px;
+}
+
+.admin-app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  background: #fff1f5;
+  border: 1px solid rgba(241, 215, 220, 0.95);
+  border-radius: 999px;
+  color: var(--pink-deep);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.admin-header-kpis {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-header-kpis strong {
+  color: var(--pink-deep);
+  font-weight: 900;
+}
+
+.admin-header-kpi-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(241, 215, 220, 0.9);
+}
+
+.admin-lockout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid rgba(241, 215, 220, 0.95);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms;
+}
+
+.admin-lockout:hover {
+  color: var(--pink-deep);
+  border-color: var(--pink-deep);
+}
+
+/* 레이아웃 그리드 */
+.admin-layout {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  min-height: calc(100vh - 58px);
+  align-items: start;
+}
+
+/* ─── 사이드바 ─── */
+.admin-sidebar {
+  position: sticky;
+  top: 58px;
+  height: calc(100vh - 58px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 14px 10px 20px;
+  background: #fff;
+  border-right: 1px solid rgba(241, 215, 220, 0.72);
+}
+
+.admin-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-sidebar-btn {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: background 130ms, color 130ms;
+}
+
+.admin-sidebar-btn:hover {
+  background: #fff8fa;
+  color: var(--ink);
+}
+
+.admin-sidebar-btn.is-active {
+  background: #fff1f5;
+  color: var(--pink-deep);
+  font-weight: 900;
+}
+
+.admin-sidebar-btn svg {
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.admin-sidebar-btn.is-active svg {
+  opacity: 1;
+}
+
+.admin-sidebar-btn em {
+  min-width: 20px;
+  padding: 1px 6px;
+  background: rgba(241, 215, 220, 0.55);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.admin-sidebar-btn.is-active em {
+  background: rgba(223, 79, 109, 0.13);
+  color: var(--pink-deep);
+}
+
+/* 사이드바 알림 영역 */
+.admin-sidebar-alerts {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(241, 215, 220, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-sidebar-section-label {
+  margin: 0 0 6px;
+  padding-left: 10px;
+  color: var(--pink-deep);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.admin-sidebar-alert-btn {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 1px 8px;
+  width: 100%;
+  padding: 7px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 130ms;
+}
+
+.admin-sidebar-alert-btn:hover {
+  background: #fff8fa;
+}
+
+.admin-sidebar-alert-btn > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.admin-sidebar-alert-btn > strong {
+  grid-row: span 2;
+  align-self: center;
+  color: var(--pink-deep);
+  font-size: 19px;
+  line-height: 1;
+}
+
+.admin-sidebar-alert-btn > em {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.admin-sidebar-alert-btn.is-clear > strong {
+  color: var(--green);
+}
+
+/* ─── 메인 콘텐츠 ─── */
+body.admin-page .admin-main {
+  min-width: 0;
+  padding: 20px 22px 48px;
+}
+
+/* KPI 카드 */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-stats article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 3px 14px;
+  align-items: center;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid rgba(241, 215, 220, 0.86);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(118, 77, 87, 0.05);
+}
+
+.admin-stat-icon {
+  grid-row: span 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+[data-stat-type="orders"] .admin-stat-icon {
+  background: #fff1f5;
+  color: var(--pink-deep);
+}
+
+[data-stat-type="quantity"] .admin-stat-icon {
+  background: #fff7eb;
+  color: #b07830;
+}
+
+[data-stat-type="revenue"] .admin-stat-icon {
+  background: #eef7f3;
+  color: #3d8a6e;
+}
+
+[data-stat-type="profit"] .admin-stat-icon {
+  background: #eef4f7;
+  color: #3d7a8a;
+}
+
+.admin-stats span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.admin-stats strong {
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+[data-stat-type="orders"] strong   { color: var(--pink-deep); }
+[data-stat-type="quantity"] strong { color: #b07830; }
+[data-stat-type="revenue"] strong  { color: #3d8a6e; }
+[data-stat-type="profit"] strong   { color: #3d7a8a; }
+
+/* 오버플로우 메뉴 (... 버튼) */
+.admin-overflow-menu {
+  position: relative;
+}
+
+.admin-overflow-menu summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.admin-overflow-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-overflow-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 0 10px;
+}
+
+.admin-overflow-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 156px;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid rgba(241, 215, 220, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(54, 39, 42, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.admin-overflow-list button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: background 110ms;
+}
+
+.admin-overflow-list button:hover {
+  background: #fff8fa;
+}
+
+.admin-overflow-list button.is-danger,
+.admin-overflow-list .admin-clear-orders {
+  color: #b23b4f;
+}
+
+.admin-overflow-list button.is-danger:hover,
+.admin-overflow-list .admin-clear-orders:hover {
+  background: #fff0f2;
+}
+
+.admin-overflow-divider {
+  margin: 3px 0;
+  border: 0;
+  border-top: 1px solid rgba(241, 215, 220, 0.8);
+}
+
+/* 모바일: 사이드바 → 하단 탭바 */
+@media (max-width: 800px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0;
+    border-right: 0;
+    border-top: 1px solid rgba(241, 215, 220, 0.72);
+    box-shadow: 0 -4px 20px rgba(54, 39, 42, 0.08);
+    z-index: 28;
+  }
+
+  .admin-sidebar-nav {
+    flex-direction: row;
+    flex: 1;
+  }
+
+  .admin-sidebar-alerts {
+    display: none;
+  }
+
+  .admin-sidebar-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    flex: 1;
+    min-height: 54px;
+    min-width: 56px;
+    padding: 6px 4px;
+    border-radius: 0;
+    font-size: 10px;
+    font-weight: 900;
+  }
+
+  .admin-sidebar-btn em {
+    display: none;
+  }
+
+  .admin-sidebar-btn.is-active {
+    background: #fff1f5;
+  }
+
+  body.admin-page .admin-main {
+    padding: 16px 16px 72px;
+  }
+
+  .admin-header-kpis {
+    display: none;
+  }
+
+  .admin-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-app-header {
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  /* ── 주문 테이블: 날짜·수량·메모·금액 숨김 ── */
+  .admin-order-panel .admin-table th:nth-child(1),
+  .admin-order-panel .admin-table td:nth-child(1),
+  .admin-order-panel .admin-table th:nth-child(4),
+  .admin-order-panel .admin-table td:nth-child(4),
+  .admin-order-panel .admin-table th:nth-child(7),
+  .admin-order-panel .admin-table td:nth-child(7),
+  .admin-order-panel .admin-table th:nth-child(8),
+  .admin-order-panel .admin-table td:nth-child(8),
+  .admin-order-panel .admin-table th:nth-child(9),
+  .admin-order-panel .admin-table td:nth-child(9),
+  .admin-order-panel .admin-table th:nth-child(10),
+  .admin-order-panel .admin-table td:nth-child(10) {
+    display: none;
+  }
+
+  /* ── 고객 테이블: 메모·최근주문 숨김 ── */
+  .admin-customer-panel .admin-table th:nth-child(4),
+  .admin-customer-panel .admin-table td:nth-child(4),
+  .admin-customer-panel .admin-table th:nth-child(5),
+  .admin-customer-panel .admin-table td:nth-child(5) {
+    display: none;
+  }
+
+  /* ── 물류 테이블: 주소 숨김 ── */
+  .admin-logistics-panel .admin-table th:nth-child(5),
+  .admin-logistics-panel .admin-table td:nth-child(5) {
+    display: none;
+  }
+
+  /* ── 관리 열: 버튼 세로 배치 ── */
+  .admin-order-panel .admin-row-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .admin-order-panel .admin-reorder,
+  .admin-order-panel .admin-print,
+  .admin-order-panel .admin-pay {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-brand .brand-logo {
+    width: 90px;
+  }
+
+  .admin-app-badge {
+    display: none;
+  }
+
+  .admin-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .admin-stats strong {
+    font-size: 18px;
+  }
+}
+
 .admin-shell {
   width: min(1560px, calc(100% - clamp(28px, 4vw, 64px)));
   margin: 0 auto;
@@ -1610,35 +2136,9 @@ h3 {
   line-height: 1.45;
 }
 
-.admin-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.admin-stats article {
-  min-height: 82px;
-  padding: 16px 18px;
-  background: #fff;
-  border: 1px solid rgba(241, 215, 220, 0.86);
-  border-radius: 8px;
-  box-shadow: 0 16px 38px rgba(118, 77, 87, 0.05);
-}
-
-.admin-stats span {
-  display: block;
-  margin-bottom: 10px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.admin-stats strong {
-  color: var(--pink-deep);
-  font-size: 26px;
-  line-height: 1;
-}
+/* admin-stats: .admin-main 위의 새 버전이 우선 적용됨 — 여기는 폴백만 */
+.admin-stats article span { display: block; }
+.admin-stats article strong { display: block; }
 
 .admin-flow {
   display: grid;
@@ -2034,6 +2534,14 @@ h3 {
   border-radius: 8px;
   box-shadow: 0 20px 60px rgba(118, 77, 87, 0.06);
   overflow: hidden;
+}
+
+@keyframes adminPanelIn {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.admin-panel.is-entering {
+  animation: adminPanelIn 0.18s ease both;
 }
 
 .admin-toolbar {
@@ -2912,11 +3420,37 @@ h3 {
 }
 
 .admin-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   margin: 0;
-  padding: 30px;
+  padding: 40px 30px;
   color: var(--muted);
   text-align: center;
+}
+.admin-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+  background: rgba(241, 215, 220, 0.28);
+  border-radius: 50%;
+  color: var(--pink-mid, #e07090);
+  opacity: 0.75;
+}
+.admin-empty-title {
+  font-size: 14px;
   font-weight: 800;
+  color: var(--text);
+}
+.admin-empty-desc {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  max-width: 300px;
 }
 
 .location-actions .secondary-button {
@@ -4659,25 +5193,39 @@ body:not(.home-page) main {
 .admin-table tbody tr:hover { background: rgba(255, 232, 242, 0.55); }
 
 /* ── 주문 상태 선택박스 — 색상 구분 ── */
-.admin-table tr[data-status="접수대기"] .admin-status {
+.admin-status[data-status-value="접수대기"] {
   color: var(--pink-deep); background: #fff5f7;
-  border-color: rgba(245, 107, 133, 0.42); font-weight: 900;
+  border-color: rgba(245, 107, 133, 0.42); font-weight: 700;
 }
-.admin-table tr[data-status="준비중"] .admin-status {
+.admin-status[data-status-value="준비중"] {
   color: #8a6220; background: #fffbef;
-  border-color: rgba(214, 156, 63, 0.42); font-weight: 900;
+  border-color: rgba(214, 156, 63, 0.42); font-weight: 700;
 }
-.admin-table tr[data-status="준비완료"] .admin-status {
+.admin-status[data-status-value="준비완료"] {
   color: #2c6628; background: #f0f9ee;
-  border-color: rgba(100, 160, 95, 0.42); font-weight: 900;
+  border-color: rgba(100, 160, 95, 0.42); font-weight: 700;
 }
-.admin-table tr[data-status="픽업완료"] .admin-status,
-.admin-table tr[data-status="배송완료"] .admin-status {
+.admin-status[data-status-value="픽업완료"],
+.admin-status[data-status-value="배송완료"] {
   color: #7a6a6e; background: #f5f3f4; border-color: rgba(180, 165, 170, 0.5);
 }
-.admin-table tr[data-status="결제완료"] .admin-status {
+.admin-status[data-status-value="결제완료"] {
   color: #2558a7; background: #eef4ff;
-  border-color: rgba(100, 150, 220, 0.42); font-weight: 900;
+  border-color: rgba(100, 150, 220, 0.42); font-weight: 700;
+}
+
+/* ── 물류 상태 선택박스 — 색상 구분 ── */
+.admin-logistics-status[data-status-value="픽업대기"],
+.admin-logistics-status[data-status-value="배송대기"] {
+  color: var(--pink-deep); background: #fff5f7;
+  border-color: rgba(245, 107, 133, 0.42); font-weight: 700;
+}
+.admin-logistics-status[data-status-value="이동중"] {
+  color: #2558a7; background: #eef4ff;
+  border-color: rgba(100, 150, 220, 0.42); font-weight: 700;
+}
+.admin-logistics-status[data-status-value="완료"] {
+  color: #7a6a6e; background: #f5f3f4; border-color: rgba(180, 165, 170, 0.5);
 }
 
 /* ── 미니 테이블 행 호버 ── */
