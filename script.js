@@ -2443,109 +2443,244 @@ function updateAdminOrder(id, patch) {
   setAdminFeedback("주문 정보가 저장되었습니다.");
 }
 
-// 아래 고객명·연락처·주문 내역은 포트폴리오 시연용 가상 데이터이며 실제 고객 정보가 아닙니다.
+// 포트폴리오 화면 캡처용 데모 데이터입니다. 아래 이름·연락처·주소·매출·재고 수치는
+// 모두 가상값이며 실제 고객·매장·거래 정보가 아닙니다. admin.html?dev=1에서만 노출되는
+// "데모 생성" 버튼으로만 실행되며, 이미 생성된 경우 중복 삽입되지 않도록 id 접두사로 확인합니다.
+const DEMO_SEED_ID_PREFIX = "demo-seed";
+
 function createDemoOrders() {
-  if (!confirm("테스트용 주문 6건을 추가할까요? 기존 주문은 유지됩니다.")) return;
+  if (readOrders().some((order) => String(order.id).startsWith(DEMO_SEED_ID_PREFIX))) {
+    alert("포트폴리오용 데모 데이터가 이미 생성되어 있습니다. 다시 만들려면 먼저 운영 데이터를 초기화해 주세요.");
+    return;
+  }
+  if (!confirm("포트폴리오 캡처용 주문·재고·발주 데모 데이터를 대량으로 추가할까요? 기존 데이터는 유지됩니다.")) return;
 
   const today = new Date();
-  const dateAfter = (days) => {
-    const next = new Date(today);
-    next.setDate(today.getDate() + days);
-    return next.toISOString().slice(0, 10);
-  };
-  const idPrefix = `demo-${Date.now()}`;
-  const demoOrders = [
-    {
-      product: "송편 예약",
-      priceText: "4,000원",
-      quantity: 12,
-      pickupDate: dateAfter(1),
-      pickupTime: "10:30",
-      customer: "김민지",
-      phone: "010-1234-1001",
-      memo: "선물 포장 2세트",
-      status: "접수대기",
-      revenue: 48000,
-      cost: 28000,
-    },
-    {
-      product: "백일떡",
-      priceText: "상담 후 안내",
-      quantity: 30,
-      pickupDate: dateAfter(2),
-      pickupTime: "13:00",
-      customer: "박서준",
-      phone: "010-1234-1002",
-      memo: "백일 스티커 필요",
-      status: "준비중",
-      revenue: 150000,
-      cost: 90000,
-    },
-    {
-      product: "답례떡",
-      priceText: "상담 후 안내",
-      quantity: 80,
-      pickupDate: dateAfter(3),
-      pickupTime: "09:00",
-      customer: "동탄맘 모임",
-      phone: "010-1234-1003",
-      memo: "개별 포장",
-      status: "준비중",
-      revenue: 320000,
-      cost: 210000,
-    },
-    {
-      product: "수수팥떡",
-      priceText: "상담 후 안내",
-      quantity: 20,
-      pickupDate: dateAfter(2),
-      pickupTime: "16:30",
-      customer: "이하늘",
-      phone: "010-1234-1004",
-      memo: "당일 픽업",
-      status: "준비완료",
-      revenue: 90000,
-      cost: 52000,
-    },
-    {
-      product: "꿀떡",
-      priceText: "3,500원",
-      quantity: 10,
-      pickupDate: dateAfter(-1),
-      pickupTime: "12:00",
-      customer: "정우진",
-      phone: "010-1234-1005",
-      memo: "",
-      status: "픽업완료",
-      revenue: 35000,
-      cost: 19000,
-    },
-    {
-      product: "단체주문",
-      priceText: "상담 후 안내",
-      quantity: 120,
-      pickupDate: dateAfter(5),
-      pickupTime: "08:30",
-      customer: "인근 사무실",
-      phone: "010-1234-1006",
-      memo: "회사 행사, 오전 배송 문의",
-      status: "접수대기",
-      revenue: 480000,
-      cost: 310000,
-    },
-  ].map((order, index) => ({
-    id: `${idPrefix}-${index + 1}`,
-    createdAt: new Date(today.getTime() - index * 3600000).toISOString(),
-    ...order,
-    fulfillmentType: order.fulfillmentType || (index === 5 ? "delivery" : "pickup"),
-    deliveryAddress: order.deliveryAddress || (index === 5 ? "매장 인근 배송 상담" : ""),
-    logisticsStatus: order.logisticsStatus || (index === 5 ? "배송대기" : getDefaultLogisticsStatus(order.fulfillmentType)),
-  }));
 
+  const demoCustomers = [
+    { name: "김하늘", phone: "010-0000-0001" },
+    { name: "이서준", phone: "010-0000-0002" },
+    { name: "박지우", phone: "010-0000-0003" },
+    { name: "최유진", phone: "010-0000-0004" },
+    { name: "정민서", phone: "010-0000-0005" },
+    { name: "한도윤", phone: "010-0000-0006" },
+  ];
+  const demoGroupCustomers = [
+    { name: "인근 사무실", phone: "010-0000-0007" },
+    { name: "지역 행사장", phone: "010-0000-0008" },
+  ];
+  const demoProducts = [
+    { product: "백설기", unitPrice: 2500 },
+    { product: "꿀설기", unitPrice: 3000 },
+    { product: "무지개떡", unitPrice: 2800 },
+    { product: "인절미", unitPrice: 3500 },
+    { product: "쑥인절미", unitPrice: 3800 },
+    { product: "찹쌀떡", unitPrice: 1800 },
+    { product: "약식", unitPrice: 4000 },
+    { product: "송편", unitPrice: 4000 },
+    { product: "영양떡", unitPrice: 3300 },
+  ];
+  const demoGroupProducts = ["답례떡 세트", "단체주문"];
+  const deliveryAddresses = ["인근 사무실 배송", "지역 행사장 배송", "경기도 화성시 소재"];
+
+  let seq = 0;
+  let groupSeq = 0;
+  let individualSeq = 0;
+  const demoOrders = [];
+
+  // status 배열에 "TERMINAL"을 넣으면 주문의 실제 수령방식(픽업/배송)에 맞는
+  // 종료 상태(픽업완료/배송완료)로 자동 치환됩니다. "배송중"은 기존 주문 상태 select의
+  // 유연한 처리(목록에 없는 값도 추가 옵션으로 표시)를 그대로 활용한 값입니다.
+  // customer·product는 groupSeq/individualSeq로 별도 관리해 6분주기(isGroup 판정)와
+  // 어긋나지 않도록 하여 가상 고객·상품 목록 전체가 고르게 돌아가며 쓰이게 합니다.
+  const pushOrder = (daysAgo, statusPool) => {
+    const createdAtDate = new Date(today.getTime() - daysAgo * 86400000);
+    const isGroup = seq % 6 === 5;
+    const customerPool = isGroup ? demoGroupCustomers : demoCustomers;
+    const customer = isGroup ? customerPool[groupSeq % customerPool.length] : customerPool[individualSeq % customerPool.length];
+    let status = statusPool[seq % statusPool.length];
+    const fulfillmentType = status === "배송중" ? "delivery" : seq % 4 === 0 ? "delivery" : "pickup";
+    if (status === "TERMINAL") status = getTerminalStatus(fulfillmentType);
+    const isCancelled = status === "취소";
+
+    let product;
+    let unitPrice;
+    let quantity;
+    let priceText;
+    if (isGroup) {
+      product = demoGroupProducts[groupSeq % demoGroupProducts.length];
+      quantity = 40 + ((seq * 7) % 80);
+      unitPrice = 0;
+      priceText = "상담 후 안내";
+      groupSeq += 1;
+    } else {
+      const pick = demoProducts[individualSeq % demoProducts.length];
+      product = pick.product;
+      unitPrice = pick.unitPrice;
+      quantity = 8 + ((seq * 3) % 22);
+      priceText = `${unitPrice.toLocaleString("ko-KR")}원`;
+      individualSeq += 1;
+    }
+
+    const baseRevenue = isGroup ? 90000 + ((seq * 12500) % 260000) : unitPrice * quantity;
+    const revenue = isCancelled ? 0 : baseRevenue;
+    const cost = isCancelled ? 0 : Math.round(baseRevenue * (0.55 + (seq % 5) * 0.02));
+    const deliveryAddress = fulfillmentType === "delivery" ? deliveryAddresses[seq % deliveryAddresses.length] : "매장 방문 수령";
+    const logisticsStatus = status === "배송중"
+      ? "이동중"
+      : status === getTerminalStatus(fulfillmentType)
+        ? "완료"
+        : getDefaultLogisticsStatus(fulfillmentType);
+
+    demoOrders.push({
+      id: `${DEMO_SEED_ID_PREFIX}-order-${seq + 1}`,
+      createdAt: createdAtDate.toISOString(),
+      product,
+      priceText,
+      quantity,
+      pickupDate: new Date(createdAtDate.getTime() + 86400000 * (1 + (seq % 4))).toISOString().slice(0, 10),
+      pickupTime: ["09:00", "10:30", "13:00", "16:30"][seq % 4],
+      customer: customer.name,
+      phone: customer.phone,
+      memo: isGroup ? "단체·행사 주문, 사전 협의 필요" : "",
+      status,
+      revenue,
+      cost,
+      unitPrice,
+      fulfillmentType,
+      deliveryAddress,
+      logisticsStatus,
+    });
+    seq += 1;
+  };
+
+  // 이번 달(최근 7일 위주)은 접수부터 완료·취소까지 7개 상태가 고르게 섞이도록 배치합니다.
+  const currentStatusPool = [
+    "접수대기", "결제완료", "준비중", "준비완료", "배송중", "TERMINAL", "취소",
+    "접수대기", "결제완료", "준비중", "준비완료", "배송중", "TERMINAL", "취소",
+    "접수대기",
+  ];
+  [6, 6, 5, 4, 3, 2, 1, 1, 0, 0, 9, 8, 10, 11, 12].forEach((daysAgo) => pushOrder(daysAgo, currentStatusPool));
+
+  // 지난달 이전은 완료 이력 비중이 높지만, 7개 상태가 한쪽으로 치우치지 않도록
+  // 완료(TERMINAL) 외 6개 상태도 고르게 섞어 배치합니다. 명절(추석·설) 전후 달은
+  // 주문 건수를 소폭 늘려 매출관리 12개월 차트가 성수기 흐름과 함께 채워지도록 구성합니다.
+  const historyStatusPool = [
+    "TERMINAL", "접수대기", "TERMINAL", "결제완료", "TERMINAL", "준비중",
+    "TERMINAL", "준비완료", "TERMINAL", "배송중", "TERMINAL", "취소", "TERMINAL",
+  ];
+  const monthPlan = [
+    { monthsAgo: 1, count: 3 },
+    { monthsAgo: 2, count: 2 },
+    { monthsAgo: 3, count: 2 },
+    { monthsAgo: 4, count: 2 },
+    { monthsAgo: 5, count: 6 }, // 설 연휴 성수기
+    { monthsAgo: 6, count: 5 }, // 설 연휴 준비
+    { monthsAgo: 7, count: 3 },
+    { monthsAgo: 8, count: 3 },
+    { monthsAgo: 9, count: 6 }, // 추석 연휴 성수기
+    { monthsAgo: 10, count: 5 }, // 추석 연휴 준비
+    { monthsAgo: 11, count: 2 },
+  ];
+  monthPlan.forEach(({ monthsAgo, count }) => {
+    for (let i = 0; i < count; i += 1) {
+      const spread = Math.round((i + 1) * (26 / (count + 1)));
+      pushOrder(monthsAgo * 30 + spread, historyStatusPool);
+    }
+  });
+
+  // 재고관리 화면에 정상·주의·부족 상태가 모두 보이도록 구성한 원재료 목록입니다.
+  // 상태(정상/주의/부족)는 하드코딩하지 않고 stock·safeStock 값으로 getInventoryStatus()가 계산합니다.
+  const now = new Date().toISOString();
+  const existingInventory = readInventory();
+  const existingInventoryNames = new Set(existingInventory.map((item) => item.name));
+  const inventorySamples = [
+    { name: "멥쌀가루", stock: 45, unit: "kg", safeStock: 15, memo: "기본 떡류 공통 원재료" },
+    { name: "찹쌀가루", stock: 28, unit: "kg", safeStock: 12, memo: "찰떡·인절미용" },
+    { name: "쑥가루", stock: 4, unit: "kg", safeStock: 3, memo: "쑥인절미·쑥절편용" },
+    { name: "팥앙금", stock: 7, unit: "kg", safeStock: 5, memo: "백일떡·수수팥떡용" },
+    { name: "콩가루", stock: 2, unit: "kg", safeStock: 4, memo: "인절미 고물용" },
+    { name: "흑임자", stock: 1.5, unit: "kg", safeStock: 3, memo: "약식·고물용" },
+    { name: "설탕", stock: 20, unit: "kg", safeStock: 8, memo: "기본 감미료" },
+    { name: "소금", stock: 10, unit: "kg", safeStock: 4, memo: "기본 부재료" },
+    { name: "대추", stock: 3, unit: "kg", safeStock: 2.5, memo: "고명용" },
+    { name: "견과류", stock: 2, unit: "kg", safeStock: 3, memo: "약식·모듬떡용" },
+    { name: "포장용기", stock: 300, unit: "개", safeStock: 100, memo: "낱개 포장용" },
+    { name: "보자기", stock: 150, unit: "장", safeStock: 60, memo: "선물·답례용 포장" },
+    { name: "스티커", stock: 80, unit: "장", safeStock: 60, memo: "브랜드 라벨용" },
+  ]
+    .filter((item) => !existingInventoryNames.has(item.name))
+    .map((item, index) => ({
+      id: `${DEMO_SEED_ID_PREFIX}-inventory-${index}`,
+      ...item,
+      createdAt: now,
+      updatedAt: now,
+    }));
+  const mergedInventory = [...inventorySamples, ...existingInventory];
+
+  // 공급처 관리 화면용 가상 거래처입니다.
+  const existingSuppliers = readSuppliers();
+  const existingSupplierNames = new Set(existingSuppliers.map((supplier) => supplier.name));
+  const supplierSamples = [
+    { name: "화성곡물상회", phone: "031-000-0101", items: "멥쌀가루, 찹쌀가루, 설탕", memo: "쌀가루류 정기 납품" },
+    { name: "동탄제과원료", phone: "031-000-0102", items: "팥앙금, 콩가루, 흑임자", memo: "앙금·고물류 전담" },
+    { name: "우리포장산업", phone: "031-000-0103", items: "포장용기, 보자기, 스티커", memo: "포장재 전담" },
+    { name: "경기농산물유통", phone: "031-000-0104", items: "대추, 견과류, 쑥가루", memo: "부재료·건과 공급" },
+  ]
+    .filter((supplier) => !existingSupplierNames.has(supplier.name))
+    .map((supplier) => ({
+      id: `${DEMO_SEED_ID_PREFIX}-supplier-${supplier.name}`,
+      ...supplier,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+  // 발주 진행 현황에 완료 이력과 진행 중 발주가 함께 보이도록 구성합니다.
+  // (부족 상태인 견과류는 일부러 발주를 만들지 않아 "발주 후보"로 남겨둡니다.)
+  const purchasePlan = [
+    { name: "멥쌀가루", supplier: "화성곡물상회", amount: 30, unitCost: 2200, status: "입고완료", daysAgo: 55 },
+    { name: "찹쌀가루", supplier: "화성곡물상회", amount: 20, unitCost: 2800, status: "입고완료", daysAgo: 30 },
+    { name: "설탕", supplier: "화성곡물상회", amount: 15, unitCost: 1800, status: "입고완료", daysAgo: 10 },
+    { name: "포장용기", supplier: "우리포장산업", amount: 200, unitCost: 150, status: "입고완료", daysAgo: 80 },
+    { name: "보자기", supplier: "우리포장산업", amount: 100, unitCost: 400, status: "입고완료", daysAgo: 14 },
+    { name: "콩가루", supplier: "동탄제과원료", amount: 6, unitCost: 3200, status: "발주요청", daysAgo: 1 },
+    { name: "흑임자", supplier: "동탄제과원료", amount: 5, unitCost: 5000, status: "발주중", daysAgo: 3 },
+  ];
+  const purchaseOrderSamples = purchasePlan
+    .map((plan, index) => {
+      const item = mergedInventory.find((inv) => inv.name === plan.name);
+      if (!item) return null;
+      const createdAtDate = new Date(today.getTime() - plan.daysAgo * 86400000);
+      const isReceived = plan.status === "입고완료";
+      return {
+        id: `${DEMO_SEED_ID_PREFIX}-purchase-${index}`,
+        inventoryId: item.id,
+        name: plan.name,
+        amount: plan.amount,
+        unit: item.unit,
+        supplier: plan.supplier,
+        unitCost: plan.unitCost,
+        status: plan.status,
+        createdAt: createdAtDate.toISOString(),
+        ...(isReceived ? { receivedAt: createdAtDate.toISOString() } : {}),
+      };
+    })
+    .filter(Boolean);
+
+  writeInventory([...inventorySamples, ...existingInventory]);
+  writeSuppliers([...supplierSamples, ...existingSuppliers]);
+  writePurchaseOrders([...purchaseOrderSamples, ...readPurchaseOrders()]);
   writeOrders([...demoOrders, ...readOrders()]);
+  addActivityLog(
+    "데모",
+    `포트폴리오 캡처용 주문 ${demoOrders.length}건, 재고 ${inventorySamples.length}건, 발주 ${purchaseOrderSamples.length}건을 추가했습니다.`,
+    "orders",
+  );
   renderAdminDashboard();
   setAdminTab("orders");
-  setAdminFeedback("테스트용 주문 6건을 추가했습니다.");
+  setAdminFeedback(
+    `포트폴리오용 데모 데이터를 추가했습니다. (주문 ${demoOrders.length}건 · 재고 ${inventorySamples.length}건 · 발주 ${purchaseOrderSamples.length}건)`,
+  );
 }
 
 function exportAdminData() {
