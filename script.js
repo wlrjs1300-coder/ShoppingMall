@@ -489,6 +489,12 @@ const menuItems = [...document.querySelectorAll(".menu-item")];
 const menuButtons = [...document.querySelectorAll(".menu-filters button, .menu-category-bar button")];
 const menuEmpty = document.querySelector(".menu-empty");
 const menuPagination = document.querySelector(".menu-pagination");
+const menuResultCount = document.querySelector("[data-menu-result-count]");
+const featuredGrid = document.querySelector(".featured-food-grid");
+const featuredCards = [...document.querySelectorAll(".featured-food-grid > .food-card")];
+const featuredPrev = document.querySelector("[data-featured-prev]");
+const featuredNext = document.querySelector("[data-featured-next]");
+const featuredPosition = document.querySelector("[data-featured-position]");
 let activeMenuFilter = "all";
 let activeMenuPage = 1;
 const menuPageSize = 12;
@@ -498,9 +504,9 @@ function updateMenuList() {
   const matchedItems = [];
 
   menuItems.forEach((item) => {
-    const name = (item.dataset.name || "").toLowerCase();
+    const searchable = [item.dataset.name, item.dataset.category, item.textContent].filter(Boolean).join(" ").toLowerCase();
     const category = item.dataset.category || "";
-    const matchesQuery = !query || name.includes(query);
+    const matchesQuery = !query || searchable.includes(query);
     const matchesFilter = activeMenuFilter === "all" || category === activeMenuFilter;
     const isVisible = matchesQuery && matchesFilter;
 
@@ -530,7 +536,39 @@ function updateMenuList() {
   }
 
   if (menuEmpty) menuEmpty.hidden = matchedItems.length > 0;
+  if (menuResultCount) menuResultCount.textContent = String(matchedItems.length);
 }
+
+function getFeaturedCardIndex() {
+  if (!featuredGrid || !featuredCards.length) return 0;
+  const gridLeft = featuredGrid.getBoundingClientRect().left;
+  return featuredCards.reduce((closestIndex, card, index) => (
+    Math.abs(card.getBoundingClientRect().left - gridLeft)
+      < Math.abs(featuredCards[closestIndex].getBoundingClientRect().left - gridLeft)
+      ? index
+      : closestIndex
+  ), 0);
+}
+
+function updateFeaturedCarousel() {
+  if (!featuredGrid || !featuredCards.length) return;
+  const index = getFeaturedCardIndex();
+  if (featuredPosition) featuredPosition.textContent = `${index + 1} / ${featuredCards.length}`;
+  if (featuredPrev) featuredPrev.disabled = index === 0;
+  if (featuredNext) featuredNext.disabled = index === featuredCards.length - 1;
+}
+
+function moveFeaturedCarousel(direction) {
+  if (!featuredGrid || !featuredCards.length) return;
+  const nextIndex = Math.max(0, Math.min(featuredCards.length - 1, getFeaturedCardIndex() + direction));
+  featuredGrid.scrollTo({ left: featuredCards[nextIndex].offsetLeft - featuredGrid.offsetLeft, behavior: "smooth" });
+}
+
+featuredPrev?.addEventListener("click", () => moveFeaturedCarousel(-1));
+featuredNext?.addEventListener("click", () => moveFeaturedCarousel(1));
+featuredGrid?.addEventListener("scroll", () => requestAnimationFrame(updateFeaturedCarousel), { passive: true });
+window.addEventListener("resize", updateFeaturedCarousel);
+updateFeaturedCarousel();
 
 menuSearch?.addEventListener("input", () => {
   activeMenuPage = 1;
@@ -608,12 +646,51 @@ const adminAccountingStart = document.querySelector(".admin-accounting-start");
 const adminAccountingEnd = document.querySelector(".admin-accounting-end");
 const adminAccountingReset = document.querySelector(".admin-accounting-reset");
 const adminAccountingCsv = document.querySelector(".admin-accounting-csv");
+const adminFormDrawerBackdrop = document.querySelector(".admin-form-drawer-backdrop");
 const adminAccessCode = "";
 const adminAccessStorageKey = "tteokAdminAccess";
 let editingAdminOrderId = "";
 let adminFeedbackTimer = 0;
 let activeDetailItem = null;
 let activeOrderItem = null;
+
+const adminFormDrawerLabels = {
+  customer: "고객",
+  inventory: "재고",
+  supplier: "공급처",
+};
+
+function closeAdminFormDrawer(drawerName = "") {
+  document.querySelectorAll("[data-admin-form-drawer]").forEach((drawer) => {
+    if (drawerName && drawer.dataset.adminFormDrawer !== drawerName) return;
+    drawer.classList.remove("is-open");
+    drawer.setAttribute("aria-hidden", "true");
+  });
+  if (!document.querySelector("[data-admin-form-drawer].is-open")) {
+    if (adminFormDrawerBackdrop) adminFormDrawerBackdrop.hidden = true;
+    document.body.classList.remove("is-admin-drawer-open");
+  }
+}
+
+function openAdminFormDrawer(drawerName, { editing = false } = {}) {
+  const drawer = document.querySelector(`[data-admin-form-drawer="${drawerName}"]`);
+  if (!drawer) return;
+  closeAdminFormDrawer();
+  const title = drawer.querySelector("[data-admin-form-title]");
+  if (title) title.textContent = `${adminFormDrawerLabels[drawerName] || "항목"} ${editing ? "수정" : "등록"}`;
+  drawer.classList.add("is-open");
+  drawer.setAttribute("aria-hidden", "false");
+  if (adminFormDrawerBackdrop) adminFormDrawerBackdrop.hidden = false;
+  document.body.classList.add("is-admin-drawer-open");
+  requestAnimationFrame(() => drawer.querySelector("input:not([type='hidden']), select, textarea")?.focus());
+}
+
+function resetAndOpenAdminFormDrawer(drawerName) {
+  if (drawerName === "customer") resetAdminCustomerForm();
+  if (drawerName === "inventory") resetAdminInventoryForm();
+  if (drawerName === "supplier") resetSupplierForm();
+  openAdminFormDrawer(drawerName);
+}
 
 const defaultInventoryRecipeRules = [
   { keywords: ["송편", "꿀떡", "쑥절편", "흰절편", "가래떡"], materials: [{ name: "멥쌀가루", unit: "kg", amount: 0.08 }] },
@@ -1236,6 +1313,7 @@ function saveAdminCustomer(formData) {
 
   writeCustomers(nextCustomers);
   resetAdminCustomerForm();
+  closeAdminFormDrawer("customer");
   renderAdminDashboard();
   setAdminFeedback(exists ? "고객 정보를 수정했습니다." : "고객을 등록했습니다.");
 }
@@ -1252,7 +1330,7 @@ function editAdminCustomer(customerId) {
   adminCustomerForm.elements.namedItem("memo").value = customer.note || "";
   if (adminCustomerSubmit) adminCustomerSubmit.textContent = "수정 저장";
   if (adminCustomerCancel) adminCustomerCancel.hidden = false;
-  adminCustomerForm.querySelector('input[name="name"]')?.focus();
+  openAdminFormDrawer("customer", { editing: true });
 }
 
 function deleteAdminCustomer(customerId) {
@@ -1537,6 +1615,7 @@ function saveAdminInventory(formData) {
   if (nextItem.safeStock > 0 && nextItem.stock >= nextItem.safeStock) clearLowStockNotified(nextItem.id);
   addActivityLog("재고", `${nextItem.name} 재고를 ${existingItem ? "수정" : "등록"}했습니다.`, "inventory");
   resetAdminInventoryForm();
+  closeAdminFormDrawer("inventory");
   renderAdminDashboard();
   setAdminFeedback(existingItem ? "재고 품목을 수정했습니다." : "재고 품목을 등록했습니다.");
 }
@@ -1554,7 +1633,7 @@ function editAdminInventory(itemId) {
   adminInventoryForm.elements.namedItem("memo").value = item.memo || "";
   if (adminInventorySubmit) adminInventorySubmit.textContent = "수정 저장";
   if (adminInventoryCancel) adminInventoryCancel.hidden = false;
-  adminInventoryForm.querySelector('input[name="name"]')?.focus();
+  openAdminFormDrawer("inventory", { editing: true });
 }
 
 function deleteAdminInventory(itemId) {
@@ -1720,6 +1799,7 @@ function saveSupplier(formData) {
     writePurchaseOrders(readPurchaseOrders().map((order) => (order.supplier === existing.name ? { ...order, supplier: name } : order)));
   }
   resetSupplierForm();
+  closeAdminFormDrawer("supplier");
   renderAdminDashboard();
   setAdminFeedback(existing ? "공급처 정보를 수정했습니다." : "공급처를 등록했습니다.");
 }
@@ -1733,7 +1813,7 @@ function editSupplier(supplierId) {
   });
   if (adminSupplierSubmit) adminSupplierSubmit.textContent = "수정 저장";
   if (adminSupplierCancel) adminSupplierCancel.hidden = false;
-  adminSupplierForm.elements.namedItem("name")?.focus();
+  openAdminFormDrawer("supplier", { editing: true });
 }
 
 function renderSuppliers() {
@@ -2125,6 +2205,21 @@ function buildAccountingMonthlyItems(orders, purchaseOrders) {
 
 let accountingChartInstance = null;
 
+function requestAccountingChartResize() {
+  if (!accountingChartInstance) return;
+
+  // Chart.js가 숨겨진 상위 탭/서브탭 안에서 0px 너비로 계산되는 것을 피합니다.
+  // 두 단계의 프레임을 기다려 hidden 해제와 서브탭 진입 애니메이션이 반영된 뒤
+  // 실제로 보이는 경우에만 크기를 다시 계산합니다.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const canvas = document.querySelector(".admin-revenue-chart");
+      if (!canvas || canvas.hidden || canvas.closest("[hidden]")) return;
+      accountingChartInstance.resize();
+    });
+  });
+}
+
 function renderAccountingChart(monthlyItems) {
   const canvas = document.querySelector(".admin-revenue-chart");
   if (!canvas || typeof Chart === "undefined") return;
@@ -2399,6 +2494,8 @@ function renderAdminDashboard() {
   renderAdminAccounting();
   renderOperationalAlerts();
   renderActivityLogs();
+  applyAdminTableLabels();
+  reapplyAdminTableSorting();
 }
 
 function setAdminTab(tabName) {
@@ -2412,6 +2509,7 @@ function setAdminTab(tabName) {
   };
 
   if (!panels[tabName]) return;
+  closeAdminFormDrawer();
 
   document.querySelectorAll("[data-admin-tab]").forEach((tab) => {
     const isActive = tab.dataset.adminTab === tabName;
@@ -2430,6 +2528,124 @@ function setAdminTab(tabName) {
       requestAnimationFrame(() => panel.classList.add("is-entering"));
     }
   });
+
+  if (tabName === "accounting") requestAccountingChartResize();
+}
+
+function setAdminSubtab(groupName, tabName, { focus = false } = {}) {
+  const tabs = [...document.querySelectorAll(`[data-admin-subtab-group="${groupName}"][data-admin-subtab]`)];
+  const panels = [...document.querySelectorAll(`[data-admin-subpanel-group="${groupName}"][data-admin-subpanel]`)];
+  if (!tabs.some((tab) => tab.dataset.adminSubtab === tabName)) return;
+
+  tabs.forEach((tab) => {
+    const isActive = tab.dataset.adminSubtab === tabName;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+    tab.tabIndex = isActive ? 0 : -1;
+    if (isActive && focus) tab.focus();
+  });
+
+  panels.forEach((panel) => {
+    const isActive = panel.dataset.adminSubpanel === tabName;
+    panel.hidden = !isActive;
+    panel.classList.remove("is-entering");
+    if (isActive) requestAnimationFrame(() => panel.classList.add("is-entering"));
+  });
+
+  if (groupName === "accounting" && tabName === "trends") requestAccountingChartResize();
+}
+
+function initAdminSubtabs() {
+  const groups = new Set(
+    [...document.querySelectorAll("[data-admin-subtab-group][data-admin-subtab]")].map((tab) => tab.dataset.adminSubtabGroup),
+  );
+  groups.forEach((groupName) => {
+    const active = document.querySelector(`[data-admin-subtab-group="${groupName}"].is-active`)
+      || document.querySelector(`[data-admin-subtab-group="${groupName}"][data-admin-subtab]`);
+    if (active) setAdminSubtab(groupName, active.dataset.adminSubtab);
+  });
+}
+
+function getAdminCellSortText(cell) {
+  if (!cell) return "";
+  if (cell.dataset.sortValue !== undefined) return cell.dataset.sortValue.trim();
+  const field = cell.querySelector("input, select, textarea");
+  return (field?.value || cell.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function isAdminNumericSortValue(value) {
+  return /^[+-]?[\d,.]+\s*(?:원|건|개|명|곳|회|kg|g|봉|팩|장|%|개입)?$/i.test(value.replace(/\s+/g, ""));
+}
+
+function parseAdminSortNumber(value) {
+  const normalized = value.replace(/,/g, "").match(/[+-]?(?:\d+\.?\d*|\.\d+)/)?.[0];
+  return normalized === undefined ? Number.NEGATIVE_INFINITY : Number(normalized);
+}
+
+function sortAdminTable(table, columnIndex, direction = "ascending", requestedType = "auto") {
+  const body = table?.tBodies?.[0];
+  if (!body) return;
+
+  const rows = [...body.rows];
+  const values = rows.map((row, index) => ({ row, index, value: getAdminCellSortText(row.cells[columnIndex]) }));
+  const populatedValues = values.map((item) => item.value).filter(Boolean);
+  const sortType = requestedType === "auto"
+    ? (populatedValues.length > 0 && populatedValues.every(isAdminNumericSortValue) ? "number" : "text")
+    : requestedType;
+  const multiplier = direction === "descending" ? -1 : 1;
+  const collator = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
+
+  values.sort((a, b) => {
+    const result = sortType === "number"
+      ? parseAdminSortNumber(a.value) - parseAdminSortNumber(b.value)
+      : collator.compare(a.value, b.value);
+    return result === 0 ? a.index - b.index : result * multiplier;
+  });
+  values.forEach(({ row }) => body.append(row));
+}
+
+function initAdminTableSorting() {
+  document.querySelectorAll(".admin-main .admin-table, .admin-main .admin-mini-table").forEach((table) => {
+    table.querySelectorAll("thead th").forEach((header) => {
+      const label = header.textContent.trim();
+      if (header.dataset.sortable === "false" || ["관리", "처리"].includes(label)) return;
+      header.classList.add("admin-sortable-header");
+      header.tabIndex = 0;
+      header.setAttribute("aria-sort", "none");
+      header.title = `${label} 기준 정렬`;
+    });
+  });
+}
+
+function reapplyAdminTableSorting() {
+  document.querySelectorAll(".admin-main th[aria-sort='ascending'], .admin-main th[aria-sort='descending']").forEach((header) => {
+    sortAdminTable(
+      header.closest("table"),
+      header.cellIndex,
+      header.getAttribute("aria-sort"),
+      header.dataset.sortType || "auto",
+    );
+  });
+}
+
+function applyAdminTableLabels() {
+  document.querySelectorAll(".admin-main .admin-table").forEach((table) => {
+    const labels = [...table.querySelectorAll("thead th")].map((header) => header.textContent.replace(/[↕↑↓]/g, "").trim());
+    table.querySelectorAll("tbody tr").forEach((row) => {
+      [...row.cells].forEach((cell, index) => {
+        cell.dataset.label = labels[index] || "정보";
+      });
+    });
+  });
+}
+
+function handleAdminTableSort(header) {
+  if (!header?.classList.contains("admin-sortable-header")) return;
+  const table = header.closest("table");
+  const nextDirection = header.getAttribute("aria-sort") === "ascending" ? "descending" : "ascending";
+  table.querySelectorAll("thead th[aria-sort]").forEach((current) => current.setAttribute("aria-sort", "none"));
+  header.setAttribute("aria-sort", nextDirection);
+  sortAdminTable(table, header.cellIndex, nextDirection, header.dataset.sortType || "auto");
 }
 
 function updateAdminOrder(id, patch) {
@@ -3052,7 +3268,10 @@ adminCustomerForm?.addEventListener("submit", (event) => {
   saveAdminCustomer(new FormData(adminCustomerForm));
 });
 
-adminCustomerCancel?.addEventListener("click", resetAdminCustomerForm);
+adminCustomerCancel?.addEventListener("click", () => {
+  resetAdminCustomerForm();
+  closeAdminFormDrawer("customer");
+});
 
 document.querySelector(".admin-customer-list")?.addEventListener("click", (event) => {
   const row = event.target.closest("tr[data-customer-id]");
@@ -3112,7 +3331,10 @@ adminInventoryForm?.addEventListener("submit", (event) => {
   saveAdminInventory(new FormData(adminInventoryForm));
 });
 
-adminInventoryCancel?.addEventListener("click", resetAdminInventoryForm);
+adminInventoryCancel?.addEventListener("click", () => {
+  resetAdminInventoryForm();
+  closeAdminFormDrawer("inventory");
+});
 adminInventorySample?.addEventListener("click", createSampleInventory);
 adminRecipeReset?.addEventListener("click", resetRecipes);
 
@@ -3126,7 +3348,10 @@ adminSupplierForm?.addEventListener("submit", (event) => {
   saveSupplier(new FormData(adminSupplierForm));
 });
 
-adminSupplierCancel?.addEventListener("click", resetSupplierForm);
+adminSupplierCancel?.addEventListener("click", () => {
+  resetSupplierForm();
+  closeAdminFormDrawer("supplier");
+});
 
 document.querySelector(".admin-supplier-list")?.addEventListener("click", (event) => {
   const row = event.target.closest("tr[data-supplier-id]");
@@ -3226,6 +3451,60 @@ document.querySelector(".admin-sidebar-alerts")?.addEventListener("click", (even
   const button = event.target.closest("button[data-admin-flow-tab]");
   if (!button) return;
   setAdminTab(button.dataset.adminFlowTab);
+  if (button.dataset.alertType === "purchases") setAdminSubtab("inventory", "purchases");
+  if (button.dataset.alertType === "inventory") setAdminSubtab("inventory", "stock");
+});
+
+document.querySelector(".admin-main")?.addEventListener("click", (event) => {
+  const formOpen = event.target.closest("[data-admin-form-open]");
+  if (formOpen) {
+    resetAndOpenAdminFormDrawer(formOpen.dataset.adminFormOpen);
+    return;
+  }
+
+  if (event.target.closest("[data-admin-form-close]")) {
+    const drawer = event.target.closest("[data-admin-form-drawer]");
+    if (drawer?.dataset.adminFormDrawer === "customer") resetAdminCustomerForm();
+    if (drawer?.dataset.adminFormDrawer === "inventory") resetAdminInventoryForm();
+    if (drawer?.dataset.adminFormDrawer === "supplier") resetSupplierForm();
+    closeAdminFormDrawer(drawer?.dataset.adminFormDrawer || "");
+    return;
+  }
+
+  const subtab = event.target.closest("button[data-admin-subtab][data-admin-subtab-group]");
+  if (subtab) {
+    setAdminSubtab(subtab.dataset.adminSubtabGroup, subtab.dataset.adminSubtab);
+    return;
+  }
+
+  handleAdminTableSort(event.target.closest("th"));
+});
+
+adminFormDrawerBackdrop?.addEventListener("click", () => closeAdminFormDrawer());
+
+document.querySelector(".admin-main")?.addEventListener("keydown", (event) => {
+  const subtab = event.target.closest("button[data-admin-subtab][data-admin-subtab-group]");
+  if (subtab && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+    event.preventDefault();
+    const tabs = [...document.querySelectorAll(
+      `[data-admin-subtab-group="${subtab.dataset.adminSubtabGroup}"][data-admin-subtab]`,
+    )];
+    const currentIndex = tabs.indexOf(subtab);
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? tabs.length - 1
+        : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    const nextTab = tabs[nextIndex];
+    setAdminSubtab(nextTab.dataset.adminSubtabGroup, nextTab.dataset.adminSubtab, { focus: true });
+    return;
+  }
+
+  const header = event.target.closest("th.admin-sortable-header");
+  if (header && ["Enter", " "].includes(event.key)) {
+    event.preventDefault();
+    handleAdminTableSort(header);
+  }
 });
 
 document.querySelector(".admin-overflow-menu")?.addEventListener("click", (event) => {
@@ -3238,6 +3517,7 @@ document.querySelector(".admin-overflow-menu")?.addEventListener("click", (event
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    closeAdminFormDrawer();
     closeProductDetail();
     closeOrderRequest();
     closeAdminOrderCreate();
@@ -3246,6 +3526,8 @@ document.addEventListener("keydown", (event) => {
 
 updateMenuList();
 renderAdminDashboard();
+initAdminSubtabs();
+initAdminTableSorting();
 setAdminTab("orders");
 
 if (document.querySelector(".admin-sidebar-nav")) {
