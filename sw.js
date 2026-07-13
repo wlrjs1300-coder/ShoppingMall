@@ -1,4 +1,4 @@
-const CACHE_NAME = "tteokjip-v4";
+const CACHE_NAME = "tteokjip-v5";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
