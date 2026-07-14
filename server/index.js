@@ -61,14 +61,18 @@ function schedulePickupReminders() {
   console.log(`[알림] D-1 리마인더 스케줄러 등록 (${Math.round((ms / 3600000) * 10) / 10}시간 후 첫 실행)`);
 }
 
-const server = app.listen(PORT, () => {
-  console.log(`따뜻한 떡집 서버 실행 중 → http://localhost:${PORT}`);
-  if ((process.env.NOTIFICATION_MODE || "none") !== "none") {
-    schedulePickupReminders();
-  }
-});
+if (require.main === module) {
+  const server = app.listen(PORT, () => {
+    console.log(`따뜻한 떡집 서버 실행 중 → http://localhost:${PORT}`);
+    if ((process.env.NOTIFICATION_MODE || "none") !== "none") {
+      schedulePickupReminders();
+    }
+  });
 
-process.on("SIGTERM", () => {
-  console.log("[서버] 종료 신호 수신. 정상 종료 중…");
-  server.close(() => process.exit(0));
-});
+  process.on("SIGTERM", () => {
+    console.log("[서버] 종료 신호 수신. 정상 종료 중…");
+    server.close(() => process.exit(0));
+  });
+}
+
+module.exports = app;
