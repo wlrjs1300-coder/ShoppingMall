@@ -484,6 +484,72 @@ copyAddressButton?.addEventListener("click", async () => {
   }
 });
 
+const heroSlides = [...document.querySelectorAll(".hero-slide")];
+const heroDotsContainer = document.querySelector("[data-hero-dots]");
+const heroPosition = document.querySelector("[data-hero-position]");
+const heroPrev = document.querySelector("[data-hero-prev]");
+const heroNext = document.querySelector("[data-hero-next]");
+const heroToggle = document.querySelector("[data-hero-toggle]");
+const heroToggleIcon = document.querySelector("[data-hero-toggle-icon]");
+let heroIndex = 0;
+let heroTimer = null;
+const heroIntervalMs = 5000;
+
+if (heroSlides.length > 1) {
+  heroDotsContainer?.append(
+    ...heroSlides.map((_, index) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.setAttribute("aria-label", `${index + 1}번 배너로 이동`);
+      if (index === 0) dot.classList.add("is-active");
+      dot.addEventListener("click", () => goToHeroSlide(index));
+      return dot;
+    })
+  );
+
+  function renderHeroSlide() {
+    heroSlides.forEach((slide, index) => slide.classList.toggle("is-active", index === heroIndex));
+    heroDotsContainer?.querySelectorAll("button").forEach((dot, index) => dot.classList.toggle("is-active", index === heroIndex));
+    if (heroPosition) heroPosition.textContent = `${heroIndex + 1} / ${heroSlides.length}`;
+  }
+
+  function goToHeroSlide(index) {
+    heroIndex = (index + heroSlides.length) % heroSlides.length;
+    renderHeroSlide();
+  }
+
+  function startHeroAutoplay() {
+    stopHeroAutoplay();
+    heroTimer = setInterval(() => goToHeroSlide(heroIndex + 1), heroIntervalMs);
+  }
+
+  function stopHeroAutoplay() {
+    if (heroTimer) clearInterval(heroTimer);
+    heroTimer = null;
+  }
+
+  heroPrev?.addEventListener("click", () => goToHeroSlide(heroIndex - 1));
+  heroNext?.addEventListener("click", () => goToHeroSlide(heroIndex + 1));
+
+  heroToggle?.addEventListener("click", () => {
+    const isPlaying = heroToggle.dataset.playing === "true";
+    if (isPlaying) {
+      stopHeroAutoplay();
+      heroToggle.dataset.playing = "false";
+      heroToggle.setAttribute("aria-label", "배너 자동재생 시작");
+      if (heroToggleIcon) heroToggleIcon.textContent = "▶";
+    } else {
+      startHeroAutoplay();
+      heroToggle.dataset.playing = "true";
+      heroToggle.setAttribute("aria-label", "배너 자동재생 일시정지");
+      if (heroToggleIcon) heroToggleIcon.textContent = "❚❚";
+    }
+  });
+
+  renderHeroSlide();
+  startHeroAutoplay();
+}
+
 const menuSearch = document.querySelector("#menuSearch");
 const menuItems = [...document.querySelectorAll(".menu-item")];
 const menuButtons = [...document.querySelectorAll(".menu-filters button, .menu-category-bar button")];
@@ -575,6 +641,20 @@ menuSearch?.addEventListener("input", () => {
   updateMenuList();
 });
 
+document.querySelector(".header-search")?.addEventListener("submit", (event) => {
+  if (menuItems.length) {
+    event.preventDefault();
+  }
+});
+
+if (menuSearch && menuItems.length) {
+  const queryFromUrl = new URLSearchParams(window.location.search).get("q");
+  if (queryFromUrl) {
+    menuSearch.value = queryFromUrl;
+    updateMenuList();
+  }
+}
+
 menuButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activeMenuFilter = button.dataset.filter || "all";
@@ -583,6 +663,16 @@ menuButtons.forEach((button) => {
     updateMenuList();
   });
 });
+
+if (menuButtons.length) {
+  const filterFromUrl = new URLSearchParams(window.location.search).get("filter");
+  const matchedButton = filterFromUrl && menuButtons.find((button) => button.dataset.filter === filterFromUrl);
+  if (matchedButton) {
+    activeMenuFilter = filterFromUrl;
+    menuButtons.forEach((item) => item.classList.toggle("is-active", item === matchedButton));
+    updateMenuList();
+  }
+}
 
 menuPagination?.addEventListener("click", (event) => {
   const pageButton = event.target.closest("button[data-page]");
@@ -3544,4 +3634,265 @@ if (document.querySelector(".admin-sidebar-nav")) {
     sendPickupAlerts();
     sendLowStockAlerts();
   }, 10 * 60 * 1000);
+}
+
+// 제출 버튼을 잠그고(중복 제출 방지) 비동기 작업을 실행한 뒤 복구하는 공통 헬퍼.
+// action()이 true를 반환하면(성공 후 리다이렉트 대기 등) 버튼을 계속 비활성 상태로 둔다.
+async function runFormSubmit(button, busyText, action) {
+  if (!button) { await action(); return; }
+  const defaultText = button.textContent;
+  button.disabled = true;
+  button.textContent = busyText;
+  let keepBusy = false;
+  try {
+    keepBusy = await action();
+  } finally {
+    if (!keepBusy) {
+      button.disabled = false;
+      button.textContent = defaultText;
+    }
+  }
+}
+
+// 회원가입/로그인 응답을 사용자 메시지로 매핑하는 공통 규칙 (400/409/429/500/네트워크 오류)
+function describeAuthError(status, body, fallback) {
+  if (status === 409) return body?.error || "이미 가입된 이메일입니다.";
+  if (status === 429) return body?.error || "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+  if (status === 400 || status === 401) return body?.error || fallback;
+  return "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
+function showInlineNotice(text) {
+  const notice = document.createElement("div");
+  notice.setAttribute("role", "status");
+  notice.setAttribute("aria-live", "polite");
+  notice.style.cssText =
+    "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);" +
+    "background:#fff0f3;color:#c0445e;border:1px solid rgba(218,135,155,.5);" +
+    "padding:10px 20px;border-radius:10px;font-size:0.84rem;z-index:99999;" +
+    "box-shadow:0 2px 12px rgba(0,0,0,.12);white-space:nowrap;";
+  notice.textContent = text;
+  document.body.appendChild(notice);
+  setTimeout(() => notice.remove(), 3500);
+}
+
+// ─── 회원가입 ────────────────────────────────────────────────
+const signupForm = document.querySelector("[data-signup-form]");
+if (signupForm) {
+  const signupMessage = signupForm.querySelector("[data-signup-message]");
+  const signupSubmitButton = signupForm.querySelector('[type="submit"]');
+
+  // "전체 동의" 체크박스 ↔ 개별 약관 체크박스 동기화
+  const agreeAllCheckbox = signupForm.querySelector("[data-agree-all]");
+  const agreeCheckboxes = [
+    ...signupForm.querySelectorAll('input[name="agreeTerms"], input[name="agreePrivacy"], input[name="agreeMarketing"]'),
+  ];
+  agreeAllCheckbox?.addEventListener("change", () => {
+    agreeCheckboxes.forEach((checkbox) => { checkbox.checked = agreeAllCheckbox.checked; });
+  });
+  agreeCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (agreeAllCheckbox) agreeAllCheckbox.checked = agreeCheckboxes.every((c) => c.checked);
+    });
+  });
+
+  signupForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    signupMessage.classList.remove("is-success");
+    signupMessage.textContent = "";
+
+    const data = new FormData(signupForm);
+    const name = String(data.get("name") || "").trim();
+    const phoneDigits = String(data.get("phone") || "").replace(/\D/g, "");
+    const email = String(data.get("email") || "").trim();
+    const password = String(data.get("password") || "");
+    const passwordConfirm = String(data.get("passwordConfirm") || "");
+    const postalCode = String(data.get("postalCode") || "").trim();
+    const address = String(data.get("address") || "").trim();
+    const addressDetail = String(data.get("addressDetail") || "").trim();
+    const agreeTerms = Boolean(data.get("agreeTerms"));
+    const agreePrivacy = Boolean(data.get("agreePrivacy"));
+    const agreeMarketing = Boolean(data.get("agreeMarketing"));
+
+    // 서버(server/utils/normalize.js, server/routes/users.js)와 최대한 동일한 규칙으로 검사
+    if (!name || name.length > 50) {
+      signupMessage.textContent = "이름을 확인해 주세요.";
+      return;
+    }
+    if (!phoneDigits || !/^01[0-9]{8,9}$/.test(phoneDigits)) {
+      signupMessage.textContent = "휴대폰 번호 형식을 확인해 주세요.";
+      return;
+    }
+    if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      signupMessage.textContent = "이메일 형식을 확인해 주세요.";
+      return;
+    }
+    // bcrypt는 72바이트를 넘는 입력을 조용히 잘라버리므로 문자 길이가 아닌 UTF-8 바이트로 검사한다
+    const passwordBytes = new TextEncoder().encode(password).length;
+    if (password.length < 8 || passwordBytes > 72) {
+      signupMessage.textContent = "비밀번호는 8자 이상, 72바이트(영문 72자/한글 24자 이내)로 입력해 주세요.";
+      return;
+    }
+    if (password !== passwordConfirm) {
+      signupMessage.textContent = "비밀번호가 일치하지 않습니다.";
+      return;
+    }
+    if (!address || address.length > 200) {
+      signupMessage.textContent = "배송지 주소를 확인해 주세요.";
+      return;
+    }
+    if (addressDetail.length > 200) {
+      signupMessage.textContent = "상세 주소를 확인해 주세요.";
+      return;
+    }
+    if (!agreeTerms || !agreePrivacy) {
+      signupMessage.textContent = "필수 약관(이용약관, 개인정보 수집·이용)에 동의해 주세요.";
+      return;
+    }
+
+    runFormSubmit(signupSubmitButton, "가입 처리 중...", async () => {
+      try {
+        // 고객 인증은 HttpOnly Cookie 방식이라 관리자용 apiFetch()(Authorization 헤더/sessionStorage 토큰)를
+        // 쓰지 않고 일반 fetch로 호출한다. 같은 오리진이라 credentials는 명시하지 않아도 쿠키가 오가지만
+        // 의도를 명확히 하기 위해 "same-origin"을 지정한다.
+        const res = await fetch("/api/users/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            email, password, name,
+            phone: phoneDigits,
+            postalCode: postalCode || undefined,
+            address,
+            addressDetail: addressDetail || undefined,
+            agreeTerms, agreePrivacy, agreeMarketing,
+          }),
+        });
+
+        let body = null;
+        try { body = await res.json(); } catch {}
+
+        if (res.ok) {
+          signupMessage.classList.add("is-success");
+          signupMessage.textContent = "가입이 완료되었습니다. 홈으로 이동합니다.";
+          if (signupSubmitButton) signupSubmitButton.textContent = "이동 중...";
+          setTimeout(() => { window.location.href = "index.html"; }, 900);
+          return true; // 리다이렉트 전까지 버튼 비활성 유지
+        }
+
+        signupMessage.textContent = describeAuthError(res.status, body, "입력값을 다시 확인해 주세요.");
+        return false;
+      } catch {
+        signupMessage.textContent = "서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.";
+        return false;
+      }
+    });
+  });
+}
+
+// ─── 로그인 ──────────────────────────────────────────────────
+const loginForm = document.querySelector("[data-login-form]");
+if (loginForm) {
+  const loginMessage = loginForm.querySelector("[data-login-message]");
+  const loginSubmitButton = loginForm.querySelector('[type="submit"]');
+
+  loginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    loginMessage.classList.remove("is-success");
+    loginMessage.textContent = "";
+
+    const data = new FormData(loginForm);
+    const email = String(data.get("email") || "").trim();
+    // 비밀번호는 trim하지 않는다 — 앞뒤 공백도 비밀번호의 일부일 수 있음
+    const password = String(data.get("password") || "");
+
+    if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      loginMessage.textContent = "이메일 형식을 확인해 주세요.";
+      return;
+    }
+    if (!password) {
+      loginMessage.textContent = "비밀번호를 입력해 주세요.";
+      return;
+    }
+    if (new TextEncoder().encode(password).length > 72) {
+      loginMessage.textContent = "비밀번호 길이를 확인해 주세요.";
+      return;
+    }
+
+    runFormSubmit(loginSubmitButton, "로그인 중...", async () => {
+      try {
+        const res = await fetch("/api/users/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ email, password }),
+        });
+
+        let body = null;
+        try { body = await res.json(); } catch {}
+
+        if (res.ok) {
+          loginMessage.classList.add("is-success");
+          loginMessage.textContent = "로그인되었습니다. 홈으로 이동합니다.";
+          if (loginSubmitButton) loginSubmitButton.textContent = "이동 중...";
+          setTimeout(() => { window.location.href = "index.html"; }, 900);
+          return true;
+        }
+
+        loginMessage.textContent = describeAuthError(res.status, body, "이메일 또는 비밀번호가 올바르지 않습니다.");
+        return false;
+      } catch {
+        loginMessage.textContent = "서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.";
+        return false;
+      }
+    });
+  });
+}
+
+// ─── 헤더 로그인 상태 표시 (index/menu/faq/signup/login 공통) ──
+const authSignupLink = document.querySelector("[data-auth-signup-link]");
+const authLoginLink = document.querySelector("[data-auth-login-link]");
+if (authSignupLink && authLoginLink) {
+  const applyGuestHeader = () => {
+    authSignupLink.textContent = "회원가입";
+    authSignupLink.href = "signup.html";
+    authSignupLink.removeAttribute("role");
+    authSignupLink.onclick = null;
+    authLoginLink.textContent = "로그인";
+    authLoginLink.href = "login.html";
+    authLoginLink.removeAttribute("role");
+    authLoginLink.onclick = null;
+  };
+
+  const applyMemberHeader = () => {
+    authSignupLink.textContent = "마이페이지";
+    authSignupLink.href = "#";
+    authSignupLink.setAttribute("role", "button");
+    authSignupLink.onclick = (event) => {
+      event.preventDefault();
+      showInlineNotice("마이페이지는 준비 중입니다.");
+    };
+    authLoginLink.textContent = "로그아웃";
+    authLoginLink.href = "#";
+    authLoginLink.setAttribute("role", "button");
+    authLoginLink.onclick = (event) => {
+      event.preventDefault();
+      // 고객 쿠키만 제거한다 — 관리자용 tteokApiToken(sessionStorage)은 손대지 않음
+      fetch("/api/users/logout", { method: "POST", credentials: "same-origin" })
+        .catch(() => {})
+        .finally(() => {
+          applyGuestHeader();
+          showInlineNotice("로그아웃되었습니다.");
+        });
+    };
+  };
+
+  fetch("/api/users/me", { credentials: "same-origin" })
+    .then((res) => (res.status === 200 ? res.json() : null))
+    .then((body) => {
+      if (body?.user) applyMemberHeader();
+    })
+    .catch(() => {
+      // 네트워크 오류 시에도 비로그인 기본 상태(정적 HTML 그대로)를 유지하고 페이지 기능은 막지 않는다
+    });
 }

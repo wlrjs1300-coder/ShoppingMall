@@ -6,6 +6,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "tteokjip-secret-chang
 
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const path = require("path");
 const db = require("./db");
 const { notifyPickupReminders } = require("./services/notify");
@@ -17,11 +18,13 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || true,
 }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "..")));
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/customers", require("./routes/customers"));
+app.use("/api/users", require("./routes/users"));
 app.use("/api/inventory", require("./routes/inventory"));
 app.use("/api/recipes", require("./routes/recipes"));
 app.use("/api/purchase-orders", require("./routes/purchase-orders"));

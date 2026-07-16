@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>따뜻한 떡집 | 회원가입</title>
+    <meta name="description" content="따뜻한 떡집 회원가입 페이지입니다." />
+    <meta name="theme-color" content="#fff3f7" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/logo.svg" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body class="signup-page">
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="따뜻한 떡집 홈">
+        <img class="brand-logo" src="assets/logo.svg" alt="따뜻한 떡집" />
+      </a>
+      <form class="header-search" role="search" action="menu.html" method="get">
+        <input type="search" id="menuSearch" name="q" placeholder="메뉴 검색" aria-label="메뉴 검색" autocomplete="off" />
+        <button type="submit" aria-label="검색">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </form>
+      <div class="header-actions">
+        <a class="header-text-link is-current" data-auth-signup-link href="signup.html">회원가입</a>
+        <a class="header-text-link" data-auth-login-link href="login.html">로그인</a>
+        <a class="header-text-link" href="faq.html">고객센터</a>
+        <a class="header-text-link" href="#">장바구니</a>
+      </div>
+    </header>
+
+    <main class="auth-page">
+      <section class="auth-card">
+        <h1>회원가입</h1>
+
+        <form data-signup-form novalidate>
+          <label>
+            <span>이름</span>
+            <input type="text" name="name" autocomplete="name" required />
+          </label>
+          <label>
+            <span>휴대폰 번호</span>
+            <input type="tel" name="phone" placeholder="010-0000-0000" autocomplete="tel" required />
+          </label>
+          <label>
+            <span>이메일</span>
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+          <label>
+            <span>우편번호</span>
+            <input type="text" name="postalCode" placeholder="선택 입력" inputmode="numeric" autocomplete="postal-code" />
+          </label>
+          <label>
+            <span>배송지 주소</span>
+            <input type="text" name="address" placeholder="주소를 입력해 주세요" autocomplete="street-address" required />
+          </label>
+          <label>
+            <span>상세 주소</span>
+            <input type="text" name="addressDetail" placeholder="동/호수 등 상세 주소" autocomplete="address-line2" />
+          </label>
+          <label>
+            <span>비밀번호</span>
+            <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+          </label>
+          <label>
+            <span>비밀번호 확인</span>
+            <input type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
+          </label>
+
+          <div class="auth-agree-group">
+            <label class="auth-agree auth-agree-all">
+              <input type="checkbox" data-agree-all />
+              <span>전체 동의</span>
+            </label>
+            <label class="auth-agree">
+              <input type="checkbox" name="agreeTerms" required />
+              <span>이용약관 동의 <b>(필수)</b></span>
+            </label>
+            <label class="auth-agree">
+              <input type="checkbox" name="agreePrivacy" required />
+              <span>개인정보 수집 및 이용 동의 <b>(필수)</b></span>
+            </label>
+            <label class="auth-agree">
+              <input type="checkbox" name="agreeMarketing" />
+              <span>마케팅 정보 수신 동의 (선택)</span>
+            </label>
+          </div>
+
+          <button class="primary-button" type="submit">가입하기</button>
+          <p class="auth-card-message" role="status" aria-live="polite" data-signup-message></p>
+        </form>
+
+        <p class="auth-switch">이미 계정이 있으신가요? <a href="login.html">로그인</a></p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>따뜻한 떡집</strong>
+        <span>경기도 화성시 소재</span>
+      </div>
+      <div>
+        <span class="js-phone-text">031-000-0000</span>
+        <span class="js-hours-text">영업 중 · 19:00에 영업 종료</span>
+        <span class="footer-actions">
+          <a class="js-phone-link" href="tel:0310000000">전화 상담</a>
+          <a class="js-map-link" href="#" target="_blank" rel="noreferrer">지도 보기</a>
+        </span>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js");
+      }
+    </script>
+  </body>
+</html>

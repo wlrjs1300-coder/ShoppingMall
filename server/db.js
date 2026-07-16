@@ -115,6 +115,44 @@ db.exec(`
     requested_at TEXT NOT NULL,
     paid_at TEXT
   );
+
+  -- 쇼핑몰 회원 계정 (관리자 CRM용 customers 테이블과는 완전히 별개)
+  CREATE TABLE IF NOT EXISTS user_accounts (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active'
+      CHECK (status IN ('active', 'withdrawn')),
+    terms_agreed_at TEXT NOT NULL,
+    privacy_agreed_at TEXT NOT NULL,
+    marketing_consent INTEGER NOT NULL DEFAULT 0
+      CHECK (marketing_consent IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS user_addresses (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    address_name TEXT,
+    recipient_name TEXT NOT NULL,
+    recipient_phone TEXT NOT NULL,
+    postal_code TEXT,
+    address TEXT NOT NULL,
+    address_detail TEXT,
+    is_default INTEGER NOT NULL DEFAULT 0
+      CHECK (is_default IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id)
+      REFERENCES user_accounts(id)
+      ON DELETE CASCADE
+  );
+
+  -- user_addresses.user_id는 FK라 조회 시 자주 필터링됨 (내 배송지 목록)
+  CREATE INDEX IF NOT EXISTS idx_user_addresses_user_id ON user_addresses(user_id);
 `);
 
 // 기존 DB 스키마 마이그레이션
@@ -127,5 +165,20 @@ migrate("ALTER TABLE inventory_logs ADD COLUMN materials TEXT");
 
 // suppliers: items 컬럼 추가
 migrate("ALTER TABLE suppliers ADD COLUMN items TEXT");
+
+// 컬럼이 이미 있는 "정상적인 재실행"과 진짜 스키마 오류(오타, 잘못된 REFERENCES 등)를
+// 구분하기 위해 PRAGMA table_info로 존재 여부를 먼저 확인한 뒤에만 ALTER를 실행한다.
+// (위 migrate()처럼 에러를 통째로 삼키면 진짜 오류도 조용히 묻힐 수 있어 신규 컬럼엔 이 방식을 쓴다)
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (columns.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+}
+
+// orders: 회원 주문 연결용 nullable FK (기존 주문은 전부 NULL로 남아 비회원 주문으로 유지됨)
+ensureColumn("orders", "user_id", "user_id TEXT REFERENCES user_accounts(id)");
+
+// orders.user_id도 FK라 "내 주문 목록" 조회 시 필터링에 쓰일 컬럼 — 인덱스 추가
+db.exec("CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)");
 
 module.exports = db;

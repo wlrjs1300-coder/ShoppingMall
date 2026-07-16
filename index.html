@@ -21,37 +21,169 @@
       <a class="brand" href="index.html" aria-label="따뜻한 떡집 홈">
         <img class="brand-logo" src="assets/logo.svg" alt="따뜻한 떡집" />
       </a>
-      <nav class="main-nav" aria-label="주요 메뉴">
-        <a class="is-current" href="index.html">홈</a>
-        <a href="menu.html">메뉴</a>
-        <a href="faq.html">자주 묻는 질문</a>
-      </nav>
-      <a href="admin.html" class="admin-entry-btn" aria-label="관리자">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      </a>
+      <form class="header-search" role="search" action="menu.html" method="get">
+        <input type="search" id="menuSearch" name="q" placeholder="메뉴 검색" aria-label="메뉴 검색" autocomplete="off" />
+        <button type="submit" aria-label="검색">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </form>
+      <div class="header-actions">
+        <a class="header-text-link" data-auth-signup-link href="signup.html">회원가입</a>
+        <a class="header-text-link" data-auth-login-link href="login.html">로그인</a>
+        <a class="header-text-link" href="faq.html">고객센터</a>
+        <a class="header-text-link" href="#">장바구니</a>
+      </div>
     </header>
+
+    <div class="event-ticker" aria-label="이벤트 안내">
+      <span class="event-ticker-label">EVENT</span>
+      <div class="event-ticker-viewport">
+        <div class="event-ticker-track">
+          <span>🎉 명절 송편 예약, 지금 신청하면 안심입니다 · 수량 한정</span>
+          <span>🎁 답례떡·단체주문 상담 시 시식 쿠폰 증정</span>
+          <span>👶 백일·돌잡이 떡 상담, 이번 달 예약 마감 임박</span>
+          <span>🚚 동탄 지역 당일 픽업 가능 · 전화 상담 환영</span>
+          <span aria-hidden="true">🎉 명절 송편 예약, 지금 신청하면 안심입니다 · 수량 한정</span>
+          <span aria-hidden="true">🎁 답례떡·단체주문 상담 시 시식 쿠폰 증정</span>
+          <span aria-hidden="true">👶 백일·돌잡이 떡 상담, 이번 달 예약 마감 임박</span>
+          <span aria-hidden="true">🚚 동탄 지역 당일 픽업 가능 · 전화 상담 환영</span>
+        </div>
+      </div>
+    </div>
 
     <main>
       <section class="home-hero">
-        <img class="home-hero-image" src="assets/tteok-hero.png" alt="접시와 나무 트레이에 담긴 여러 종류의 떡" />
-        <div class="home-hero-content">
-          <div class="hero-brand-lockup">
-            <p class="eyebrow">DONGTAN RICE CAKE SHOP</p>
-            <span>예약 · 답례 · 단체</span>
+        <nav class="hero-category-nav" aria-label="빠른 메뉴 분류">
+          <p class="hero-category-nav-title">카테고리</p>
+          <a href="menu.html">전체 메뉴 보기</a>
+          <a href="menu.html?filter=송편">송편</a>
+          <a href="menu.html?filter=설기">설기</a>
+          <a href="menu.html?filter=인절미">인절미</a>
+          <a href="menu.html?filter=찰떡">찰떡</a>
+          <a href="menu.html?filter=기본떡">기본떡</a>
+          <a href="menu.html?filter=행사">백일/행사</a>
+          <a href="menu.html?filter=답례">답례/단체</a>
+        </nav>
+
+        <div class="hero-carousel" aria-roledescription="carousel" aria-label="이벤트 배너">
+          <div class="hero-slides" data-hero-slides>
+            <article class="hero-slide is-active" style="background-image: url('assets/tteok-hero.png')">
+              <div class="hero-slide-content">
+                <p class="eyebrow">DONGTAN RICE CAKE SHOP</p>
+                <h1>오늘 빚은 떡을 따뜻하게 전합니다</h1>
+                <p>송편 예약부터 답례·단체주문까지 차분히 준비합니다.</p>
+                <div class="hero-actions">
+                  <a class="primary-button" href="menu.html">메뉴와 가격 보기</a>
+                  <a class="secondary-button js-phone-link" href="tel:0310000000">전화 상담</a>
+                </div>
+              </div>
+            </article>
+            <article class="hero-slide" style="background-image: url('assets/products/menu-songpyeon.png')">
+              <div class="hero-slide-content">
+                <p class="eyebrow">SEASON RESERVATION</p>
+                <h1>명절 송편, 지금 예약하면 안심입니다</h1>
+                <p>수량 한정 예약제로 매일 신선하게 빚어 준비합니다.</p>
+                <div class="hero-actions">
+                  <a class="primary-button" href="menu.html?filter=송편">송편 예약 보기</a>
+                  <a class="secondary-button js-phone-link" href="tel:0310000000">예약 상담</a>
+                </div>
+              </div>
+            </article>
+            <article class="hero-slide" style="background-image: url('assets/products/menu-baekil.png')">
+              <div class="hero-slide-content">
+                <p class="eyebrow">BAEKIL &amp; EVENT</p>
+                <h1>백일·돌잔치, 미리 준비해 드립니다</h1>
+                <p>기념일 일정에 맞춰 색과 구성을 상담해 드려요.</p>
+                <div class="hero-actions">
+                  <a class="primary-button" href="menu.html?filter=행사">행사떡 보기</a>
+                  <a class="secondary-button js-phone-link" href="tel:0310000000">일정 상담</a>
+                </div>
+              </div>
+            </article>
+            <article class="hero-slide" style="background-image: url('assets/products/menu-gift-box.png')">
+              <div class="hero-slide-content">
+                <p class="eyebrow">GIFT &amp; BULK ORDER</p>
+                <h1>답례떡·단체주문도 한 번에</h1>
+                <p>수량과 포장까지 맞춤 상담으로 도와드립니다.</p>
+                <div class="hero-actions">
+                  <a class="primary-button" href="menu.html?filter=답례">답례·단체 보기</a>
+                  <a class="secondary-button js-phone-link" href="tel:0310000000">견적 상담</a>
+                </div>
+              </div>
+            </article>
           </div>
-          <h1>오늘 빚은 떡을 따뜻하게 전합니다</h1>
-          <p class="hero-subcopy">송편 예약부터 답례·단체주문까지 차분히 준비합니다.</p>
-          <div class="home-quick-info" aria-label="따뜻한 떡집 주요 안내">
-            <span><strong>백일떡</strong></span>
-            <span><strong>수수팥떡</strong></span>
-            <span><strong>답례떡</strong></span>
-            <span><strong>단체주문</strong></span>
-            <span><strong>기본떡</strong></span>
-            <span><strong>송편 예약</strong></span>
+
+          <div class="hero-carousel-controls" aria-label="배너 이동">
+            <button type="button" data-hero-prev aria-label="이전 배너">‹</button>
+            <button type="button" data-hero-toggle aria-label="배너 자동재생 일시정지" data-playing="true">
+              <span data-hero-toggle-icon>❚❚</span>
+            </button>
+            <span data-hero-position aria-live="polite">1 / 4</span>
+            <button type="button" data-hero-next aria-label="다음 배너">›</button>
           </div>
-          <div class="hero-actions">
-            <a class="primary-button" href="menu.html">메뉴와 가격 보기</a>
-            <a class="secondary-button js-phone-link" href="tel:0310000000">전화 상담</a>
+
+          <div class="hero-carousel-dots" data-hero-dots aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section class="home-best-section" aria-label="인기 메뉴">
+        <div class="home-best-grid">
+          <div class="home-best-col">
+            <div class="home-best-head">
+              <h2>요즘 주목 받는 메뉴</h2>
+              <a class="text-link" href="menu.html">더보기 ›</a>
+            </div>
+            <div class="home-best-cards">
+              <a class="food-card home-best-card" href="menu.html?filter=송편">
+                <span class="ribbon-badge">베스트</span>
+                <div class="food-card-image image-songpyeon"></div>
+                <div class="food-card-body"><h3>송편 예약</h3><strong>상담 후 안내</strong></div>
+              </a>
+              <a class="food-card home-best-card" href="menu.html?filter=행사">
+                <span class="ribbon-badge">베스트</span>
+                <div class="food-card-image image-baekil"></div>
+                <div class="food-card-body"><h3>백일떡</h3><strong>상담 후 안내</strong></div>
+              </a>
+              <a class="food-card home-best-card" href="menu.html?filter=답례">
+                <span class="ribbon-badge">베스트</span>
+                <div class="food-card-image image-gift-box"></div>
+                <div class="food-card-body"><h3>답례떡</h3><strong>상담 후 견적</strong></div>
+              </a>
+              <a class="food-card home-best-card" href="menu.html?filter=답례">
+                <span class="ribbon-badge">베스트</span>
+                <div class="food-card-image image-bulk-order"></div>
+                <div class="food-card-body"><h3>단체주문</h3><strong>상담 후 견적</strong></div>
+              </a>
+            </div>
+          </div>
+
+          <div class="home-best-col">
+            <div class="home-best-head">
+              <h2>나를 위한 추천 메뉴</h2>
+              <a class="text-link" href="menu.html">더보기 ›</a>
+            </div>
+            <div class="home-best-cards">
+              <a class="food-card home-best-card" href="menu.html?filter=인절미">
+                <span class="ribbon-badge is-pick">추천</span>
+                <div class="food-card-image image-injeolmi"></div>
+                <div class="food-card-body"><h3>인절미</h3><strong>3,500원</strong></div>
+              </a>
+              <a class="food-card home-best-card" href="menu.html?filter=찰떡">
+                <span class="ribbon-badge is-pick">추천</span>
+                <div class="food-card-image image-chal-sirutteok"></div>
+                <div class="food-card-body"><h3>찰시루떡</h3><strong>4,000원</strong></div>
+              </a>
+              <a class="food-card home-best-card" href="menu.html?filter=설기">
+                <span class="ribbon-badge is-pick">추천</span>
+                <div class="food-card-image image-honey-seolgi"></div>
+                <div class="food-card-body"><h3>꿀설기</h3><strong>3,500원</strong></div>
+              </a>
+              <a class="food-card home-best-card" href="menu.html?filter=기본떡">
+                <span class="ribbon-badge is-pick">추천</span>
+                <div class="food-card-image image-yaksik"></div>
+                <div class="food-card-body"><h3>약식</h3><strong>4,000원</strong></div>
+              </a>
+            </div>
           </div>
         </div>
       </section>
