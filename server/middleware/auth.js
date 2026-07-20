@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+ï»¿const jwt = require("jsonwebtoken");
 
 const ROLE_PRIORITY = {
   owner: 300,
@@ -30,7 +30,7 @@ function requireRole(allowedRoles) {
     const neededLevel = Math.max(...[...allowed].map(maxLevel));
 
     if (currentLevel < neededLevel) {
-      return res.status(403).json({ error: "±ÇÇÑÀÌ ÃæºÐÇÏÁö ¾Ê½À´Ï´Ù." });
+      return res.status(403).json({ error: "ê¶Œí•œì´ ë¶€ì¡±í•©ë‹ˆë‹¤." });
     }
     next();
   };
@@ -39,19 +39,19 @@ function requireRole(allowedRoles) {
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "·Î±×ÀÎ Á¤º¸°¡ ¾ø½À´Ï´Ù." });
+    return res.status(401).json({ error: "ë¡œê·¸ì¸ ì •ë³´ê°€ ì—†ìŠµë‹ˆë‹¤." });
   }
   const token = header.slice(7);
   let payload;
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    return res.status(401).json({ error: "À¯È¿ÇÏÁö ¾ÊÀº ÀÎÁõ Á¤º¸ÀÔ´Ï´Ù." });
+    return res.status(401).json({ error: "ìœ íš¨í•˜ì§€ ì•Šì€ ì¸ì¦ ì •ë³´ìž…ë‹ˆë‹¤." });
   }
 
   const normalized = normalizeAdminRole(payload.role);
   if (!ROLE_PRIORITY.hasOwnProperty(normalized) || normalized === "customer") {
-    return res.status(403).json({ error: "°ü¸®ÀÚ ±ÇÇÑÀÌ ¾ø½À´Ï´Ù." });
+    return res.status(403).json({ error: "ê´€ë¦¬ìž ê¶Œí•œì´ ì—†ìŠµë‹ˆë‹¤." });
   }
 
   req.admin = {
