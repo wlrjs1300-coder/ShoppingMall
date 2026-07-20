@@ -31,6 +31,19 @@ const STATUS_TRANSITIONS = {
 const MAX_QUANTITY = 99;
 const IDEMPOTENCY_KEY_RE = /^[A-Za-z0-9._:-]{8,128}$/;
 
+function getActorLabel(req) {
+  if (!req?.admin) return "admin";
+  if (req.admin.id) return req.admin.id;
+  return req.admin.role ? `${req.admin.role}:admin` : "admin";
+}
+
+function makeChangeMeta(req) {
+  return {
+    actor: getActorLabel(req),
+    adminRole: req.admin?.role || "admin",
+  };
+}
+
 const publicOrderLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -352,7 +365,7 @@ router.post("/admin", requireAuth, (req, res) => {
       logisticsStatus: req.body.logisticsStatus, memo: req.body.memo, createdAt: now,
     });
     insertItem(id, { productId: null, productName: String(req.body.product || "상품"), unitPrice, quantity, lineTotal: unitPrice * quantity }, 0);
-    addStatusHistory(id, null, status, "admin", now);
+    addStatusHistory(id, null, status, getActorLabel(req), now);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -459,7 +472,7 @@ router.post("/production/complete", requireAuth, (req, res) => {
     `).run(`invlog-${crypto.randomUUID()}`, productName, quantity, orderIds.length, JSON.stringify(materials), now);
     addAuditLog({
       category: "생산", action: "production_complete", entityId: orderIds.join(","),
-      previousValue: "생산 진행", nextValue: "생산 완료", actor: "관리자", createdAt: now,
+      previousValue: "생산 진행", nextValue: "생산 완료", actor: getActorLabel(req), createdAt: now,
       message: `${productName} ${quantity}개 생산 완료 · 원재료 차감`,
     });
     db.exec("COMMIT");
@@ -535,16 +548,16 @@ router.put("/:id", requireAuth, (req, res) => {
     if (workflowOrderStatus !== existing.status || nextWorkflow !== existing.workflow_status) {
       const historyPrevious = requestedWorkflow === undefined ? existing.status : existing.workflow_status;
       const historyNext = requestedWorkflow === undefined ? workflowOrderStatus : nextWorkflow;
-      addStatusHistory(existing.id, historyPrevious, historyNext, "admin", now, changeReason || null);
+      addStatusHistory(existing.id, historyPrevious, historyNext, getActorLabel(req), now, changeReason || null);
       addAuditLog({
         category: "주문 상태", action: "status_change", entityId: existing.id,
-        previousValue: historyPrevious, nextValue: historyNext, actor: "관리자", createdAt: now,
+        previousValue: historyPrevious, nextValue: historyNext, actor: getActorLabel(req), createdAt: now,
         message: `${existing.id} 상태 변경${changeReason ? ` · 사유: ${changeReason}` : ""}`,
       });
     }
     if (requestedTotal !== existing.total_amount) {
       addAuditLog({ category: "견적", action: "amount_change", entityId: existing.id,
-        previousValue: String(existing.total_amount), nextValue: String(requestedTotal), actor: "관리자", createdAt: now,
+        previousValue: String(existing.total_amount), nextValue: String(requestedTotal), actor: getActorLabel(req), createdAt: now,
         message: `${existing.id} 주문 금액을 변경했습니다.` });
     }
     db.exec("COMMIT");

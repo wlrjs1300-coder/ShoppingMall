@@ -21,7 +21,7 @@ router.post("/login", adminLoginLimiter, (req, res) => {
   if (!matches) {
     return res.status(401).json({ error: "확인 코드가 올바르지 않습니다." });
   }
-  const token = jwt.sign({ role: "admin" }, process.env.JWT_SECRET, { expiresIn: "24h" });
+  const token = jwt.sign({ sub: "admin:root", role: "admin" }, process.env.JWT_SECRET, { expiresIn: "24h" });
   res.json({ token });
 });
 

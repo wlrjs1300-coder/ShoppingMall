@@ -1,22 +1,65 @@
 const jwt = require("jsonwebtoken");
 
+const ROLE_PRIORITY = {
+  owner: 300,
+  manager: 200,
+  staff: 100,
+  admin: 300,
+  customer: 0,
+};
+
+function normalizeRole(role) {
+  if (role === "owner" || role === "manager" || role === "staff" || role === "admin" || role === "customer") return role;
+  return "customer";
+}
+
+function normalizeAdminRole(role) {
+  if (role === "owner" || role === "manager" || role === "staff") return role;
+  if (role === "admin") return "owner";
+  return "customer";
+}
+
+function requireRole(allowedRoles) {
+  const allow = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+  return (req, res, next) => {
+    const role = normalizeRole(req.admin?.role || "customer");
+    const allowed = new Set((allow || ["owner"]).map(normalizeRole));
+
+    const maxLevel = (value) => ROLE_PRIORITY[value] ?? 0;
+    const currentLevel = maxLevel(role);
+    const neededLevel = Math.max(...[...allowed].map(maxLevel));
+
+    if (currentLevel < neededLevel) {
+      return res.status(403).json({ error: "±ÇÇÑÀÌ ÃæºÐÇÏÁö ¾Ê½À´Ï´Ù." });
+    }
+    next();
+  };
+}
+
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "ì¸ì¦ì´ í•„ìš”í•©ë‹ˆë‹¤." });
+    return res.status(401).json({ error: "·Î±×ÀÎ Á¤º¸°¡ ¾ø½À´Ï´Ù." });
   }
   const token = header.slice(7);
   let payload;
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    return res.status(401).json({ error: "í† í°ì´ ìœ íš¨í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤." });
+    return res.status(401).json({ error: "À¯È¿ÇÏÁö ¾ÊÀº ÀÎÁõ Á¤º¸ÀÔ´Ï´Ù." });
   }
-  if (payload.role !== "admin") {
-    return res.status(403).json({ error: "ê´€ë¦¬ìž ê¶Œí•œì´ í•„ìš”í•©ë‹ˆë‹¤." });
+
+  const normalized = normalizeAdminRole(payload.role);
+  if (!ROLE_PRIORITY.hasOwnProperty(normalized) || normalized === "customer") {
+    return res.status(403).json({ error: "°ü¸®ÀÚ ±ÇÇÑÀÌ ¾ø½À´Ï´Ù." });
   }
-  req.admin = payload;
+
+  req.admin = {
+    id: payload.sub || `admin:${payload.role || "admin"}`,
+    role: normalized,
+    payload,
+  };
   next();
 }
 
-module.exports = { requireAuth };
+module.exports = { requireAuth, requireRole, normalizeRole, normalizeAdminRole };
