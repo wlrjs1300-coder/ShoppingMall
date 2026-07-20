@@ -16,8 +16,9 @@ function cookieOptions() {
   };
 }
 
-function issueCustomerToken(userId) {
-  return jwt.sign({ sub: userId, role: "customer" }, process.env.JWT_SECRET, { expiresIn: TOKEN_TTL });
+function issueCustomerToken(userId, role = "customer") {
+  const safeRole = role === "admin" ? "admin" : "customer";
+  return jwt.sign({ sub: userId, role: safeRole }, process.env.JWT_SECRET, { expiresIn: TOKEN_TTL });
 }
 
 function setCustomerCookie(res, token) {
@@ -38,16 +39,31 @@ function requireCustomerAuth(req, res, next) {
   } catch {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
-  if (payload.role !== "customer" || !payload.sub) {
+  if (!["customer", "admin"].includes(payload.role) || !payload.sub) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
 
-  const user = db.prepare("SELECT id, status FROM user_accounts WHERE id = ?").get(payload.sub);
+  const user = db.prepare("SELECT id, role, status FROM user_accounts WHERE id = ?").get(payload.sub);
   if (!user || user.status !== "active") {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
 
-  req.user = { id: user.id };
+  req.user = { id: user.id, role: user.role };
+  next();
+}
+
+function optionalCustomerAuth(req, res, next) {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (!token) return next();
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (!["customer", "admin"].includes(payload.role) || !payload.sub) return next();
+    const user = db.prepare("SELECT id, role, status FROM user_accounts WHERE id = ?").get(payload.sub);
+    if (user?.status === "active") req.user = { id: user.id, role: user.role };
+  } catch {
+    // 공개 주문은 비회원도 가능하므로 잘못되거나 만료된 쿠키는 비회원으로 처리한다.
+  }
   next();
 }
 
@@ -56,5 +72,6 @@ module.exports = {
   issueCustomerToken,
   setCustomerCookie,
   clearCustomerCookie,
+  optionalCustomerAuth,
   requireCustomerAuth,
 };

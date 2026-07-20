@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>따뜻한 떡집 | 비회원 문의조회</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css?v=135" />
+</head>
+<body class="inquiry-lookup-page">
+  <header class="site-header" data-shared-header></header>
+  <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
+  <main class="auth-page">
+    <section class="auth-card inquiry-lookup-card">
+      <span class="inquiry-lookup-kicker">GUEST INQUIRY</span>
+      <h1>비회원 문의조회</h1>
+      <p class="auth-card-desc">문의 접수번호와 접수할 때 입력한 연락처로 답변을 확인해 주세요.</p>
+      <form data-inquiry-lookup-form>
+        <label><span>문의 접수번호</span><input name="id" type="text" placeholder="inquiry-로 시작하는 접수번호" autocomplete="off" required /></label>
+        <label><span>연락처</span><input name="phone" type="tel" placeholder="010-0000-0000" autocomplete="tel" required /></label>
+        <button class="primary-button" type="submit">문의 조회하기</button>
+        <p class="auth-message" data-inquiry-lookup-message role="status" aria-live="polite"></p>
+      </form>
+      <article class="guest-inquiry-result" data-inquiry-lookup-result hidden></article>
+      <p class="auth-switch">새 문의가 필요하신가요? <a href="menu.html#menu-list">메뉴 보러 가기</a></p>
+    </section>
+  </main>
+  <footer class="site-footer" data-shared-footer></footer>
+  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="js/inquiry-lookup.js"></script>
+</body>
+</html>

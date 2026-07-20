@@ -10,6 +10,11 @@ function rowToLog(row) {
     category: row.category,
     message: row.message,
     tab: row.tab,
+    action: row.action,
+    entityId: row.entity_id,
+    previousValue: row.previous_value,
+    nextValue: row.next_value,
+    actor: row.actor,
     createdAt: row.created_at,
   };
 }
@@ -24,10 +29,12 @@ router.get("/", requireAuth, (req, res) => {
 // POST /api/activity-logs
 router.post("/", requireAuth, (req, res) => {
   const now = new Date().toISOString();
-  const { id = `activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, category, message, tab = "orders" } = req.body;
+  const { id = `activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, category, message, tab = "orders",
+    action = null, entityId = null, previousValue = null, nextValue = null, actor = "관리자" } = req.body;
   db.prepare(`
-    INSERT INTO activity_logs (id, category, message, tab, created_at) VALUES (?, ?, ?, ?, ?)
-  `).run(id, category ?? null, message ?? null, tab, now);
+    INSERT INTO activity_logs (id, category, message, tab, action, entity_id, previous_value, next_value, actor, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, category ?? null, message ?? null, tab, action, entityId, previousValue, nextValue, actor, now);
   res.status(201).json({ ok: true });
 });
 

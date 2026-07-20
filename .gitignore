@@ -1,25 +1,47 @@
 # 의존성
 node_modules/
-server/node_modules/
 
-# 환경변수 (JWT 시크릿, API 키 등)
-server/.env
+# 환경변수와 인증서 (예시 파일만 공개)
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 
 # SQLite 데이터베이스 (고객·주문 데이터)
-server/*.db
-server/*.db-shm
-server/*.db-wal
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
 
-# 로그/백업/빌드 산출물
+# 로그·백업·업로드·임시 파일
 *.log
 nohup.out
+*.dump
+*.bak
+*.backup
 backup/
 backups/
 uploads/
+tmp/
+temp/
+
+# 빌드·테스트·도구 캐시
 dist/
 build/
+coverage/
+.next/
 .cache/
+.chrome-*/
+.claude/
+.codex/
 
-# OS
+# OS와 편집기
 .DS_Store
 Thumbs.db
+*.swp
+*~

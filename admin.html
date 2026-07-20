@@ -9,58 +9,49 @@
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/logo.svg" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=134" />
     <link rel="manifest" href="manifest.json" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
   </head>
   <body class="admin-page">
 
-    <!-- 잠금 화면 -->
+    <!-- 관리자 회원 권한 확인 화면 -->
     <div class="admin-lock" data-admin-lock>
-      <form class="admin-lock-card" data-admin-lock-form>
+      <div class="admin-lock-card">
         <p class="section-kicker">ADMIN ACCESS</p>
-        <h1>관리자 확인</h1>
-        <p>관리 화면은 매장 운영용입니다. 확인 코드를 입력해 주세요.</p>
-        <label>
-          <span>확인 코드</span>
-          <input name="code" type="password" inputmode="numeric" autocomplete="off" placeholder="****" required />
-        </label>
-        <button class="primary-button" type="submit">관리자 화면 열기</button>
-        <p class="admin-lock-message" role="status"></p>
-      </form>
-    </div>
-
-    <!-- 관리자 헤더 -->
-    <header class="admin-app-header">
-      <a class="brand admin-brand" href="index.html" aria-label="따뜻한 떡집 홈">
-        <img class="brand-logo" src="assets/logo.svg" alt="따뜻한 떡집" />
-      </a>
-      <span class="admin-app-badge">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        관리자 모드
-      </span>
-      <div class="admin-header-kpis">
-        <span>접수 <strong data-admin-stat="orders">0</strong>건</span>
-        <span class="admin-header-kpi-divider"></span>
-        <span>매출 <strong data-admin-stat="revenue">0원</strong></span>
+        <h1>관리자 권한 확인</h1>
+        <p>관리자 계정으로 로그인한 경우에만 관리 화면을 이용할 수 있습니다.</p>
+        <a class="primary-button" href="login.html?next=admin.html">관리자 계정으로 로그인</a>
+        <p class="admin-lock-message" role="status">로그인 정보를 확인하고 있습니다.</p>
       </div>
-      <button class="admin-lockout" type="button">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        잠금
-      </button>
-    </header>
+    </div>
 
     <!-- 관리자 레이아웃 -->
     <div class="admin-layout">
 
       <!-- 사이드바 -->
       <aside class="admin-sidebar">
+        <div class="admin-sidebar-brand">
+          <a class="brand admin-brand" href="index.html" aria-label="따뜻한 떡집 홈">
+            <img class="brand-logo" src="assets/logo.svg" alt="따뜻한 떡집" />
+          </a>
+          <span class="admin-app-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            관리자 모드
+          </span>
+        </div>
         <nav class="admin-sidebar-nav" aria-label="관리 영역">
 
           <button class="admin-sidebar-btn is-active" type="button" data-admin-tab="orders">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
             <span>주문관리</span>
             <em data-admin-tab-count="orders">0</em>
+          </button>
+
+          <button class="admin-sidebar-btn" type="button" data-admin-tab="inquiries">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 01-4 4H8l-5 3V7a4 4 0 014-4h10a4 4 0 014 4z"/><path d="M8 9h8M8 13h5"/></svg>
+            <span>문의관리</span>
+            <em data-admin-tab-count="inquiries">0</em>
           </button>
 
           <button class="admin-sidebar-btn" type="button" data-admin-tab="customers">
@@ -81,16 +72,16 @@
             <em data-admin-tab-count="inventory">0</em>
           </button>
 
-          <button class="admin-sidebar-btn" type="button" data-admin-tab="logistics">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            <span>픽업/배송</span>
-            <em data-admin-tab-count="logistics">0</em>
-          </button>
-
           <button class="admin-sidebar-btn" type="button" data-admin-tab="accounting">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
             <span>매출관리</span>
             <em data-admin-tab-count="accounting">0</em>
+          </button>
+
+          <button class="admin-sidebar-btn" type="button" data-admin-tab="logs">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/><path d="M3 4v5h5"/></svg>
+            <span>로그관리</span>
+            <em data-admin-tab-count="logs">0</em>
           </button>
 
         </nav>
@@ -113,11 +104,7 @@
             <strong data-admin-alert-count="purchases">0</strong>
             <em data-admin-alert-detail="purchases">진행 중 발주가 없습니다.</em>
           </button>
-          <button class="admin-sidebar-alert-btn" type="button" data-admin-flow-tab="logistics" data-alert-type="logistics">
-            <span>픽업·배송 대기</span>
-            <strong data-admin-alert-count="logistics">0</strong>
-            <em data-admin-alert-detail="logistics">대기 항목이 없습니다.</em>
-          </button>
+          <button class="admin-sidebar-alert-btn" type="button" data-admin-flow-tab="orders" data-alert-type="payments"><span>결제 대기</span><strong data-admin-alert-count="payments">0</strong><em data-admin-alert-detail="payments">미결제 주문이 없습니다.</em></button>
         </div>
       </aside>
 
@@ -130,33 +117,43 @@
             <div class="admin-stat-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
             </div>
-            <span>접수 주문</span>
+            <span data-admin-stat-label>접수 주문</span>
             <strong data-admin-stat="orders">0</strong>
+            <small data-admin-stat-meta>현재 등록된 주문</small>
           </article>
           <article data-stat-type="quantity">
             <div class="admin-stat-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
             </div>
-            <span>생산 수량</span>
+            <span data-admin-stat-label>생산 수량</span>
             <strong data-admin-stat="quantity">0</strong>
+            <small data-admin-stat-meta>전체 주문 수량</small>
           </article>
           <article data-stat-type="revenue">
             <div class="admin-stat-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
             </div>
-            <span>매출 집계</span>
+            <span data-admin-stat-label>매출 집계</span>
             <strong data-admin-stat="revenue">0원</strong>
+            <small data-admin-stat-meta>주문 매출 합계</small>
           </article>
           <article data-stat-type="profit">
             <div class="admin-stat-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
             </div>
-            <span>예상 이윤</span>
-            <strong data-admin-stat="profit">0원</strong>
+            <span data-admin-stat-label>평균 이익률</span>
+            <strong data-admin-stat="profit">0%</strong>
+            <small data-admin-stat-meta>전체 주문 매출 기준</small>
           </article>
         </section>
 
-        <p class="admin-feedback" role="status" aria-live="polite"></p>
+        <div class="admin-feedback" role="status" aria-live="polite" aria-atomic="true">
+          <span class="admin-feedback-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path class="admin-feedback-success-mark" d="m7 12 3 3 7-7" /><path class="admin-feedback-notice-mark" d="M12 7v6m0 4h.01" /></svg>
+          </span>
+          <span class="admin-feedback-copy"><strong>처리 완료</strong><span data-admin-feedback-message></span></span>
+          <span class="admin-feedback-timer" aria-hidden="true"></span>
+        </div>
 
         <!-- ─── 주문관리 패널 ─── -->
         <section class="admin-panel admin-order-panel">
@@ -166,24 +163,25 @@
               <h2>주문관리</h2>
             </div>
             <div class="admin-search-row">
+              <label class="admin-filter admin-order-status-filter">
+                <span class="admin-status-filter-heading"><b>진행 상태</b><small data-status-filter-caption>전체 주문</small></span>
+                <span class="admin-status-filter-control" data-status-tone="all">
+                  <i aria-hidden="true"></i>
+                  <select class="admin-status-filter">
+                  <option value="all">전체 상태</option>
+                  <option value="결제대기">결제대기</option><option value="접수대기">접수대기</option><option value="접수완료">접수완료</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="픽업준비완료">픽업준비완료</option><option value="픽업완료">픽업완료</option>
+                  <option value="취소">취소</option>
+                  </select>
+                  <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg>
+                </span>
+              </label>
               <label class="admin-search">
                 <span>검색</span>
                 <input class="admin-search-input" type="search" placeholder="고객명 · 상품명 · 연락처 검색" />
               </label>
-              <label class="admin-filter">
-                <span>상태</span>
-                <select class="admin-status-filter">
-                  <option value="all">전체 상태</option>
-                  <option value="접수대기">접수대기</option>
-                  <option value="준비중">준비중</option>
-                  <option value="준비완료">준비완료</option>
-                  <option value="픽업완료">픽업완료</option>
-                </select>
-              </label>
             </div>
             <div class="admin-toolbar-actions">
               <span class="admin-total-info">총 <b data-admin-total>0</b>건</span>
-              <button class="admin-action-btn is-primary admin-order-create-open" type="button">주문 등록</button>
               <button class="admin-action-btn is-muted admin-demo-data is-dev-only" type="button" hidden>데모 생성</button>
               <details class="admin-overflow-menu">
                 <summary class="admin-action-btn admin-overflow-toggle" title="더보기">
@@ -194,27 +192,43 @@
                   <button class="admin-export-data" type="button">백업 저장</button>
                   <button class="admin-import-data" type="button">백업 불러오기</button>
                   <input class="admin-import-input" type="file" accept="application/json,.json" hidden />
-                  <hr class="admin-overflow-divider" />
-                  <button class="admin-clear-orders" type="button">운영 데이터 초기화</button>
                 </div>
               </details>
             </div>
+          </div>
+          <div class="admin-bulk-bar" hidden>
+            <div class="admin-bulk-selection">
+              <span class="admin-bulk-check" aria-hidden="true">✓</span>
+              <strong><span data-admin-selected-count>0</span>건 선택</strong>
+            </div>
+            <div class="admin-bulk-group admin-bulk-status-group">
+              <span class="admin-bulk-label">진행 단계</span>
+              <select data-admin-bulk-status aria-label="변경할 진행 단계"><option value="">단계 선택</option><option value="접수대기">접수대기</option><option value="접수완료">접수완료</option><option value="배송중">배송중</option><option value="배송완료">배송완료</option><option value="픽업준비완료">픽업준비완료</option><option value="픽업완료">픽업완료</option><option value="취소">취소</option></select>
+              <button class="admin-bulk-primary" type="button" data-admin-bulk-apply>변경 적용</button>
+            </div>
+            <div class="admin-bulk-group admin-bulk-print-group">
+              <span class="admin-bulk-label">문서 출력</span>
+              <select data-admin-print-type aria-label="출력 문서 종류"><option value="production">제작지시서</option><option value="pickup">픽업 확인서</option><option value="delivery">배송 목록</option></select>
+              <button type="button" data-admin-bulk-print>출력</button>
+            </div>
+            <button class="admin-bulk-clear" type="button" data-admin-bulk-clear>선택 해제</button>
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
                 <tr>
-                  <th>접수</th>
-                  <th>고객</th>
+                  <th class="admin-select-column"><input type="checkbox" data-admin-select-all aria-label="현재 주문 전체 선택" /></th>
+                  <th>주문번호</th>
+                  <th>주문날짜</th>
+                  <th>고객명</th>
+                  <th>연락처</th>
                   <th>상품</th>
                   <th>수량</th>
-                  <th>픽업</th>
-                  <th>상태</th>
-                  <th>요청메모</th>
-                  <th>판매가</th>
-                  <th>원가</th>
-                  <th>이윤</th>
-                  <th>관리</th>
+                  <th>주문 금액</th>
+                  <th>수령 일정</th>
+                  <th>수령 방법</th>
+                  <th>진행 상태</th>
+                  <th data-sortable="false" aria-label="주문 상세 열"></th>
                 </tr>
               </thead>
               <tbody class="admin-order-list"></tbody>
@@ -223,49 +237,131 @@
           </div>
         </section>
 
+        <!-- ─── 문의관리 패널 ─── -->
+        <section class="admin-panel admin-inquiry-panel" hidden>
+          <div class="admin-toolbar">
+            <div>
+              <p class="admin-panel-kicker">INQUIRY</p>
+              <h2>문의관리</h2>
+            </div>
+            <div class="admin-search-row">
+              <label class="admin-filter">
+                <span>처리 상태</span>
+                <select class="admin-status-filter" data-admin-inquiry-status>
+                  <option value="">전체 상태</option><option value="접수">접수</option><option value="답변완료">답변완료</option>
+                </select>
+              </label>
+              <label class="admin-search"><span>검색</span><input class="admin-search-input" type="search" data-admin-inquiry-search placeholder="고객명 · 연락처 · 상품명 검색" /></label>
+            </div>
+            <div class="admin-toolbar-actions"><span class="admin-total-info">총 <b data-admin-inquiry-total>0</b>건</span></div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table admin-inquiry-table">
+              <thead><tr><th>문의번호</th><th>접수일</th><th>고객명</th><th>연락처</th><th>문의상품</th><th>수량</th><th>희망일</th><th>처리 상태</th><th aria-label="상세"></th></tr></thead>
+              <tbody data-admin-inquiry-list></tbody>
+            </table>
+            <p class="admin-empty" data-admin-inquiry-empty hidden><strong class="admin-empty-title">접수된 문의가 없습니다.</strong><span class="admin-empty-desc">메뉴 페이지에서 접수된 문의가 이곳에 표시됩니다.</span></p>
+          </div>
+        </section>
+
+        <dialog class="admin-inquiry-dialog" data-admin-inquiry-dialog aria-labelledby="admin-inquiry-detail-title">
+          <form class="admin-inquiry-detail" data-admin-inquiry-form method="dialog">
+            <header><div><p class="admin-panel-kicker">INQUIRY DETAIL</p><span class="admin-inquiry-title-row"><h2 id="admin-inquiry-detail-title">문의 상세</h2><i class="admin-inquiry-status" data-admin-inquiry-header-status></i></span></div><button type="button" data-admin-inquiry-close aria-label="닫기">×</button></header>
+            <div data-admin-inquiry-detail></div>
+          </form>
+        </dialog>
+
         <!-- ─── 고객관리 패널 ─── -->
+        <dialog class="admin-order-detail-dialog" data-admin-order-detail-dialog aria-labelledby="admin-order-detail-title">
+          <div class="admin-order-detail" data-admin-order-detail></div>
+        </dialog>
+
+        <dialog class="admin-cancel-reason-dialog" data-admin-cancel-reason-dialog aria-labelledby="admin-cancel-reason-title">
+          <form class="admin-cancel-reason-card" method="dialog" data-admin-cancel-reason-form>
+            <p class="admin-panel-kicker">ORDER CANCELLATION</p>
+            <h2 id="admin-cancel-reason-title">주문 취소 사유</h2>
+            <p>선택한 주문을 취소하는 이유를 입력해 주세요. 입력한 내용은 상태 변경 이력에 기록됩니다.</p>
+            <label>
+              <span>취소 사유 <em>필수</em></span>
+              <textarea data-admin-cancel-reason maxlength="200" rows="4" placeholder="예: 고객 요청으로 주문을 취소합니다." required></textarea>
+              <small>최대 200자</small>
+            </label>
+            <div class="admin-cancel-reason-actions">
+              <button type="button" data-admin-cancel-reason-close>돌아가기</button>
+              <button class="is-danger" type="submit">취소 적용</button>
+            </div>
+          </form>
+        </dialog>
+
+        <dialog class="admin-payment-link-dialog" data-admin-payment-link-dialog aria-labelledby="admin-payment-link-title">
+          <div class="admin-payment-link-card">
+            <p class="admin-panel-kicker">PAYMENT REQUEST</p>
+            <h2 id="admin-payment-link-title">결제 요청 링크</h2>
+            <p>아래 링크를 고객에게 전달하면 고객이 결제 화면에서 결제를 진행할 수 있습니다.</p>
+            <dl><div><dt>주문</dt><dd data-payment-link-order>-</dd></div><div><dt>결제 금액</dt><dd data-payment-link-amount>-</dd></div><div><dt>유효 시간</dt><dd data-payment-link-expiry>-</dd></div></dl>
+            <label><span>고객 전달용 URL</span><input data-payment-link-url readonly /></label>
+            <div class="admin-payment-link-actions"><button type="button" data-payment-link-close>닫기</button><button type="button" data-payment-link-copy>링크 복사</button><button class="is-primary" type="button" data-payment-link-open>결제 화면 열기</button></div>
+          </div>
+        </dialog>
+
         <section class="admin-panel admin-customer-panel" hidden>
           <div class="admin-toolbar">
             <div>
               <p class="admin-panel-kicker">CUSTOMER</p>
               <h2>고객관리</h2>
             </div>
+            <div class="admin-search-row">
+              <label class="admin-filter">
+                <span>고객 구분</span>
+                <select class="admin-customer-type-filter">
+                  <option value="all">전체 고객</option>
+                  <option value="회원">회원</option>
+                  <option value="비회원">비회원</option>
+                </select>
+              </label>
+              <label class="admin-search">
+                <span>검색</span>
+                <input class="admin-customer-search-input" type="search" placeholder="고객명 · 연락처 · 메모 검색" />
+              </label>
+            </div>
             <div class="admin-toolbar-actions">
-              <span class="admin-total-info">등록 고객 <b data-admin-customer-total>0</b>명</span>
-              <button class="admin-action-btn is-primary" type="button" data-admin-form-open="customer">고객 등록</button>
+              <span class="admin-total-info">총 <b data-admin-customer-total>0</b>명</span>
             </div>
           </div>
           <form class="admin-customer-form admin-form-drawer" data-admin-form-drawer="customer" aria-hidden="true" autocomplete="off">
             <div class="admin-form-drawer-head">
-              <div><span>CUSTOMER</span><h3 data-admin-form-title>고객 등록</h3></div>
-              <button type="button" data-admin-form-close aria-label="고객 등록 닫기">닫기</button>
+              <div><span>CUSTOMER PROFILE</span><h3 data-admin-form-title>고객 등록</h3></div>
+              <button type="button" data-admin-form-close aria-label="고객 정보 창 닫기">×</button>
             </div>
+            <p class="admin-customer-form-lead">연락처와 고객 특이사항을 정리하면 다음 주문과 상담에서 빠르게 확인할 수 있습니다.</p>
             <input name="id" type="hidden" />
-            <label>
-              <span>고객명</span>
-              <input name="name" type="text" placeholder="예: 김민지" required />
-            </label>
-            <label>
-              <span>연락처</span>
-              <input name="phone" type="tel" placeholder="010-0000-0000" />
-            </label>
-            <label>
-              <span>구분</span>
-              <select name="type">
-                <option value="일반">일반</option>
-                <option value="행사">행사</option>
-                <option value="단체">단체</option>
-                <option value="단골">단골</option>
-              </select>
-            </label>
-            <label class="admin-customer-memo-field">
-              <span>메모</span>
-              <input name="memo" type="text" placeholder="예: 백일떡 문의, 오전 픽업 선호" />
-            </label>
-            <button class="admin-action-btn is-primary admin-customer-submit" type="submit">고객 저장</button>
-            <button class="admin-action-btn admin-customer-cancel" type="button" hidden>취소</button>
+            <section class="admin-customer-form-section">
+              <div class="admin-customer-form-section-head"><strong>기본 정보</strong><span>필수 정보</span></div>
+              <div class="admin-customer-form-grid">
+                <label>
+                  <span>고객명 <em>필수</em></span>
+                  <input name="name" type="text" placeholder="예: 김민지" required />
+                </label>
+                <label>
+                  <span>연락처</span>
+                  <input name="phone" type="tel" placeholder="010-0000-0000" />
+                </label>
+              </div>
+            </section>
+            <section class="admin-customer-form-section">
+              <div class="admin-customer-form-section-head"><strong>고객 관리 정보</strong><span>상담 참고용</span></div>
+              <label class="admin-customer-memo-field">
+                <span>고객 메모</span>
+                <textarea name="memo" rows="4" placeholder="예: 백일떡 문의, 오전 픽업 선호"></textarea>
+                <small>선호 상품, 수령 방식, 상담 내용을 간단히 기록해 주세요.</small>
+              </label>
+            </section>
+            <footer class="admin-customer-form-actions">
+              <button class="admin-action-btn admin-customer-cancel" type="button" hidden>수정 취소</button>
+              <button class="admin-action-btn is-primary admin-customer-submit" type="submit">고객 저장</button>
+            </footer>
           </form>
-          <div class="admin-table-wrap">
+          <div class="admin-table-wrap admin-primary-table-wrap">
             <table class="admin-table admin-customer-table">
               <thead>
                 <tr>
@@ -273,8 +369,7 @@
                   <th>연락처</th>
                   <th>구분</th>
                   <th>주문횟수</th>
-                  <th>총수량</th>
-                  <th>총매출</th>
+                  <th>최근 주문 상품</th>
                   <th>최근 주문</th>
                   <th>메모</th>
                   <th>관리</th>
@@ -293,45 +388,56 @@
               <p class="admin-panel-kicker">PRODUCTION</p>
               <h2>생산관리</h2>
             </div>
-            <div class="admin-toolbar-actions">
-              <label class="admin-inline-filter">
-                <span>픽업일</span>
-                <input class="admin-production-date-filter" type="date" />
+            <div class="admin-search-row">
+              <label class="admin-inline-filter admin-production-date-field">
+                <span>수령일</span>
+                <span class="admin-production-date-picker" data-production-date-picker>
+                  <input class="admin-production-date-filter" type="hidden" />
+                  <button class="admin-production-date-trigger" type="button" data-production-date-trigger aria-haspopup="dialog" aria-expanded="false">
+                    <span data-production-date-label>전체 날짜</span>
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                  </button>
+                  <span class="admin-production-calendar" data-production-calendar hidden>
+                    <span class="admin-production-calendar-head"><button type="button" data-production-calendar-prev aria-label="이전 달">‹</button><strong data-production-calendar-title></strong><button type="button" data-production-calendar-next aria-label="다음 달">›</button></span>
+                    <span class="admin-production-calendar-week"><b>일</b><b>월</b><b>화</b><b>수</b><b>목</b><b>금</b><b>토</b></span>
+                    <span class="admin-production-calendar-days" data-production-calendar-days></span>
+                    <span class="admin-production-calendar-foot"><button type="button" data-production-calendar-clear>전체 날짜</button><button type="button" data-production-calendar-today>오늘</button></span>
+                  </span>
+                </span>
               </label>
-              <button class="admin-action-btn admin-production-reset" type="button">전체 보기</button>
-              <span class="admin-total-info">준비 항목 <b data-admin-production-total>0</b>개</span>
+              <label class="admin-search">
+                <span>검색</span>
+                <input class="admin-production-search-input" type="search" placeholder="상품명 · 원재료 검색" />
+              </label>
+            </div>
+            <div class="admin-toolbar-actions">
+              <span class="admin-total-info">총 <b data-admin-production-total>0</b>개</span>
             </div>
           </div>
-          <div class="admin-production-summary" aria-label="생산 요약">
-            <article>
-              <span>생산 대기 수량</span>
-              <strong data-production-stat="quantity">0</strong>
-            </article>
-            <article>
-              <span>가장 가까운 픽업</span>
-              <strong data-production-stat="next">-</strong>
-            </article>
-            <article>
-              <span>진행 주문</span>
-              <strong data-production-stat="active">0</strong>
-            </article>
-            <article>
-              <span>오늘 생산</span>
-              <strong data-production-stat="today">0</strong>
-            </article>
+          <div class="admin-production-bulk-bar" data-production-bulk-bar hidden>
+            <strong>선택 <span data-production-selected-count>0</span>건</strong>
+            <select data-production-bulk-status aria-label="일괄 변경할 생산 상태">
+              <option value="">변경할 상태</option>
+              <option value="생산 대기">생산 대기</option>
+              <option value="생산 중">생산 중</option>
+              <option value="생산 완료">생산 완료</option>
+            </select>
+            <button class="is-primary" type="button" data-production-bulk-apply>일괄 변경</button>
+            <button type="button" data-production-bulk-clear>선택 해제</button>
           </div>
-          <div class="admin-table-wrap">
+          <div class="admin-table-wrap admin-primary-table-wrap">
             <table class="admin-table admin-production-table">
               <thead>
                 <tr>
-                  <th>픽업일</th>
+                  <th data-sortable="false"><input type="checkbox" data-production-select-all aria-label="현재 생산 항목 전체 선택" /></th>
+                  <th>긴급도</th>
+                  <th>수령 일정</th>
                   <th>상품</th>
-                  <th>준비수량</th>
-                  <th>예상 원재료</th>
-                  <th>주문건수</th>
-                  <th>픽업시간</th>
-                  <th>진행상태</th>
-                  <th>처리</th>
+                  <th>생산 수량</th>
+                  <th>필요 원재료</th>
+                  <th>포장·요청</th>
+                  <th>생산 상태</th>
+                  <th data-sortable="false">관리</th>
                 </tr>
               </thead>
               <tbody class="admin-production-list"></tbody>
@@ -340,6 +446,10 @@
           </div>
         </section>
 
+        <dialog class="admin-production-detail-dialog" data-admin-production-detail-dialog aria-labelledby="admin-production-detail-title">
+          <div class="admin-production-detail" data-admin-production-detail></div>
+        </dialog>
+
         <!-- ─── 재고관리 패널 ─── -->
         <section class="admin-panel admin-inventory-panel" hidden>
           <div class="admin-toolbar">
@@ -347,91 +457,44 @@
               <p class="admin-panel-kicker">INVENTORY</p>
               <h2>재고관리</h2>
             </div>
-            <div class="admin-toolbar-actions">
-              <span class="admin-total-info">원재료 <b data-admin-inventory-total>0</b>개</span>
-              <button class="admin-action-btn is-primary" type="button" data-admin-form-open="inventory">재고 등록</button>
-              <button class="admin-action-btn is-muted admin-inventory-sample" type="button">기본 재고 넣기</button>
+            <div class="admin-search-row">
+              <label class="admin-search">
+                <span>검색</span>
+                <input class="admin-inventory-search-input" type="search" placeholder="품목명 · 용도 · 메모 검색" />
+              </label>
             </div>
-          </div>
-          <div class="admin-inventory-summary" aria-label="재고 요약">
-            <article>
-              <span>관리 품목</span>
-              <strong data-inventory-stat="total">0</strong>
-            </article>
-            <article>
-              <span>주의 필요</span>
-              <strong data-inventory-stat="warning">0</strong>
-            </article>
-            <article>
-              <span>부족</span>
-              <strong data-inventory-stat="danger">0</strong>
-            </article>
-            <article>
-              <span>발주 후보</span>
-              <strong data-inventory-stat="purchase">0</strong>
-            </article>
-          </div>
-          <div class="admin-subtabs" role="tablist" aria-label="재고관리 세부 메뉴">
-            <button class="is-active" type="button" role="tab" aria-selected="true" aria-controls="inventory-stock-panel" data-admin-subtab="stock" data-admin-subtab-group="inventory">재고 현황</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="inventory-purchases-panel" data-admin-subtab="purchases" data-admin-subtab-group="inventory">발주 관리</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="inventory-suppliers-panel" data-admin-subtab="suppliers" data-admin-subtab-group="inventory">공급처</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="inventory-recipes-panel" data-admin-subtab="recipes" data-admin-subtab-group="inventory">배합 기준</button>
+            <div class="admin-toolbar-actions admin-inventory-toolbar-actions">
+              <span class="admin-total-info">등록 품목 <b data-admin-inventory-total>0</b>개</span>
+              <button class="admin-inventory-history-icon" type="button" data-inventory-usage-open title="사용 이력" aria-label="사용 이력 열기">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5M12 7v5l3 2"/></svg>
+              </button>
+              <button class="admin-inventory-stock-action" type="button" data-admin-form-open="inventory"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>재고 등록</span></button>
+            </div>
           </div>
           <div class="admin-subpanel" id="inventory-purchases-panel" role="tabpanel" data-admin-subpanel="purchases" data-admin-subpanel-group="inventory" hidden>
-          <div class="admin-purchase-board" aria-label="재고 발주 후보">
-            <div class="admin-insight-head">
-              <span>PURCHASE</span>
-              <strong>발주가 필요한 원재료</strong>
-            </div>
-            <div class="admin-mini-table-wrap">
-              <table class="admin-mini-table">
+          <div class="admin-purchase-board admin-purchase-unified-board" aria-label="발주 통합 관리">
+            <div class="admin-table-wrap admin-primary-table-wrap">
+              <table class="admin-table admin-purchase-table">
+                <colgroup><col style="width:22%" /><col style="width:11%" /><col style="width:11%" /><col style="width:18%" /><col style="width:16%" /><col style="width:22%" /></colgroup>
                 <thead>
                   <tr>
                     <th>품목</th>
                     <th>현재 재고</th>
-                    <th>권장 발주</th>
-                    <th>처리</th>
-                  </tr>
-                </thead>
-                <tbody class="admin-purchase-list"></tbody>
-              </table>
-              <p class="admin-empty admin-purchase-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><strong class="admin-empty-title">발주가 필요한 품목이 없습니다.</strong><span class="admin-empty-desc">재고가 안전 수량 아래로 내려가면 여기에 표시됩니다.</span></p>
-            </div>
-          </div>
-          <div class="admin-purchase-status-board" aria-label="발주 현황">
-            <div class="admin-insight-head">
-              <span>ORDER STATUS</span>
-              <strong>발주 진행 현황</strong>
-              <b class="admin-purchase-cost-total">진행 발주액 <em data-purchase-cost-total>0원</em></b>
-            </div>
-            <div class="admin-mini-table-wrap">
-              <table class="admin-mini-table">
-                <thead>
-                  <tr>
-                    <th>요청일</th>
-                    <th>품목</th>
                     <th>발주 수량</th>
-                    <th>공급처</th>
-                    <th>단가</th>
                     <th>발주금액</th>
-                    <th>상태</th>
+                    <th>진행 상태</th>
                     <th>관리</th>
                   </tr>
                 </thead>
+                <tbody class="admin-purchase-list"></tbody>
                 <tbody class="admin-purchase-order-list"></tbody>
               </table>
-              <p class="admin-empty admin-purchase-order-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span><strong class="admin-empty-title">등록된 발주 요청이 없습니다.</strong><span class="admin-empty-desc">발주 필요 품목에서 요청하면 여기에 표시됩니다.</span></p>
+              <p class="admin-empty admin-purchase-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><strong class="admin-empty-title">관리할 발주가 없습니다.</strong><span class="admin-empty-desc">재고가 안전 수량 아래로 내려가면 자동으로 표시됩니다.</span></p>
             </div>
           </div>
           </div>
           <div class="admin-subpanel" id="inventory-suppliers-panel" role="tabpanel" data-admin-subpanel="suppliers" data-admin-subpanel-group="inventory" hidden>
           <div class="admin-supplier-board" aria-label="공급처 관리">
-            <div class="admin-insight-head">
-              <span>SUPPLIER</span>
-              <strong>공급처 관리</strong>
-              <b class="admin-supplier-total">등록 <em data-admin-supplier-total>0</em>곳</b>
-              <button class="admin-action-btn" type="button" data-admin-form-open="supplier">공급처 등록</button>
-            </div>
             <form class="admin-supplier-form admin-form-drawer" data-admin-form-drawer="supplier" aria-hidden="true" autocomplete="off">
               <div class="admin-form-drawer-head">
                 <div><span>SUPPLIER</span><h3 data-admin-form-title>공급처 등록</h3></div>
@@ -445,8 +508,8 @@
               <button class="admin-action-btn is-primary admin-supplier-submit" type="submit">공급처 저장</button>
               <button class="admin-action-btn admin-supplier-cancel" type="button" hidden>취소</button>
             </form>
-            <div class="admin-mini-table-wrap">
-              <table class="admin-mini-table">
+            <div class="admin-table-wrap admin-primary-table-wrap">
+              <table class="admin-table admin-supplier-table">
                 <thead>
                   <tr>
                     <th>공급처</th>
@@ -463,70 +526,44 @@
             <datalist id="adminSupplierOptions"></datalist>
           </div>
           </div>
-          <div class="admin-subpanel" id="inventory-recipes-panel" role="tabpanel" data-admin-subpanel="recipes" data-admin-subpanel-group="inventory" hidden>
-          <div class="admin-recipe-board" aria-label="상품별 원재료 배합표">
-            <div class="admin-insight-head">
-              <span>RECIPE</span>
-              <strong>상품별 원재료 기준</strong>
-              <button class="admin-action-btn admin-recipe-reset" type="button">기본값 복원</button>
-            </div>
-            <div class="admin-mini-table-wrap">
-              <table class="admin-mini-table">
-                <thead>
-                  <tr>
-                    <th>상품 기준</th>
-                    <th>1개당 차감 원재료</th>
-                    <th>관리</th>
-                  </tr>
-                </thead>
-                <tbody class="admin-recipe-list"></tbody>
-              </table>
-            </div>
-            <form class="admin-recipe-form" autocomplete="off">
-              <input name="keywords" type="text" placeholder="상품 키워드 예: 약식, 영양떡" required />
-              <input name="materials" type="text" placeholder="원재료 예: 멥쌀가루:0.08:kg, 개별 포장지:1:장" required />
-              <button class="admin-action-btn is-primary" type="submit">기준 추가</button>
-            </form>
-          </div>
-          </div>
           <div class="admin-subpanel" id="inventory-stock-panel" role="tabpanel" data-admin-subpanel="stock" data-admin-subpanel-group="inventory">
           <form class="admin-inventory-form admin-form-drawer" data-admin-form-drawer="inventory" aria-hidden="true" autocomplete="off">
             <div class="admin-form-drawer-head">
-              <div><span>INVENTORY</span><h3 data-admin-form-title>재고 등록</h3></div>
-              <button type="button" data-admin-form-close aria-label="재고 등록 닫기">닫기</button>
+              <div><span>INVENTORY ITEM</span><h3 data-admin-form-title>재고 등록</h3></div>
+              <button type="button" data-admin-form-close aria-label="재고 등록 닫기">×</button>
             </div>
+            <p class="admin-inventory-form-lead">생산에 사용하는 재료와 포장재의 현재 수량 및 발주 기준을 관리합니다.</p>
             <input name="id" type="hidden" />
-            <label>
-              <span>품목명</span>
-              <input name="name" type="text" placeholder="예: 멥쌀가루" required />
-            </label>
-            <label>
-              <span>현재 재고</span>
-              <input name="stock" type="number" min="0" step="0.1" placeholder="예: 12" required />
-            </label>
-            <label>
-              <span>단위</span>
-              <input name="unit" type="text" placeholder="kg, 봉, 팩" required />
-            </label>
-            <label>
-              <span>안전 재고</span>
-              <input name="safeStock" type="number" min="0" step="0.1" placeholder="예: 5" required />
-            </label>
-            <label class="admin-inventory-memo-field">
-              <span>메모</span>
-              <input name="memo" type="text" placeholder="예: 매주 월요일 입고" />
-            </label>
-            <button class="admin-action-btn is-primary admin-inventory-submit" type="submit">재고 저장</button>
-            <button class="admin-action-btn admin-inventory-cancel" type="button" hidden>취소</button>
+            <section class="admin-inventory-form-section">
+              <div class="admin-inventory-form-section-head"><strong>품목 정보</strong><span>필수 정보</span></div>
+              <div class="admin-inventory-form-grid is-item-info">
+                <label><span>품목명 <em>필수</em></span><input name="name" type="text" placeholder="예: 멥쌀가루" required /></label>
+                <label><span>관리 단위 <em>필수</em></span><input name="unit" type="text" placeholder="예: kg, 봉, 팩" required /></label>
+              </div>
+            </section>
+            <section class="admin-inventory-form-section">
+              <div class="admin-inventory-form-section-head"><strong>재고 기준</strong><span>발주 판단 기준</span></div>
+              <div class="admin-inventory-form-grid">
+                <label><span>현재 재고 <em>필수</em></span><input name="stock" type="number" min="0" step="0.1" placeholder="예: 12" required /><small>현재 보유하고 있는 실제 수량입니다.</small></label>
+                <label><span>안전 재고 <em>필수</em></span><input name="safeStock" type="number" min="0" step="0.1" placeholder="예: 5" required /><small>이 수량 이하가 되면 발주가 필요한 것으로 표시합니다.</small></label>
+              </div>
+              <label class="admin-inventory-memo-field"><span>관리 메모 <small>선택</small></span><input name="memo" type="text" placeholder="예: 매주 월요일 입고 · 백일떡 공용" /></label>
+            </section>
+            <footer class="admin-inventory-form-actions">
+              <button class="admin-action-btn admin-inventory-cancel" type="button" hidden>수정 취소</button>
+              <button class="admin-action-btn is-primary admin-inventory-submit" type="submit">재고 저장</button>
+            </footer>
           </form>
-          <div class="admin-table-wrap">
+          <div class="admin-table-wrap admin-primary-table-wrap">
             <table class="admin-table admin-inventory-table">
               <thead>
                 <tr>
                   <th>품목</th>
                   <th>현재 재고</th>
                   <th>안전 재고</th>
-                  <th>상태</th>
+                  <th>재고 상태</th>
+                  <th>발주 수량</th>
+                  <th>발주 상태</th>
                   <th>메모</th>
                   <th>관리</th>
                 </tr>
@@ -535,13 +572,13 @@
             </table>
             <p class="admin-empty admin-inventory-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span><strong class="admin-empty-title">등록된 재고가 없습니다.</strong><span class="admin-empty-desc">기본 재고를 추가하거나 직접 품목을 등록해 주세요.</span></p>
           </div>
+          </div>
+          <dialog class="admin-inventory-usage-dialog" data-inventory-usage-dialog aria-labelledby="inventory-usage-dialog-title">
+          <div class="admin-inventory-usage-modal">
+            <header><div><span>USAGE HISTORY</span><h2 id="inventory-usage-dialog-title">재료 사용 이력</h2></div><button type="button" data-inventory-usage-close aria-label="사용 이력 닫기">×</button></header>
           <div class="admin-usage-log">
-            <div class="admin-insight-head">
-              <span>USAGE LOG</span>
-              <strong>최근 원재료 사용 이력</strong>
-            </div>
-            <div class="admin-mini-table-wrap">
-              <table class="admin-mini-table">
+            <div class="admin-table-wrap admin-primary-table-wrap">
+              <table class="admin-table admin-inventory-usage-table">
                 <thead>
                   <tr>
                     <th>처리일</th>
@@ -552,57 +589,9 @@
                 <tbody class="admin-inventory-log-list"></tbody>
               </table>
               <p class="admin-empty admin-inventory-log-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><strong class="admin-empty-title">원재료 사용 이력이 없습니다.</strong><span class="admin-empty-desc">준비완료 처리 시 재고가 자동 차감됩니다.</span></p>
-            </div>
           </div>
           </div>
-        </section>
-
-        <!-- ─── 픽업/배송 패널 ─── -->
-        <section class="admin-panel admin-logistics-panel" hidden>
-          <div class="admin-toolbar">
-            <div>
-              <p class="admin-panel-kicker">LOGISTICS</p>
-              <h2>픽업/배송 관리</h2>
-            </div>
-            <div class="admin-toolbar-actions">
-              <label class="admin-inline-filter">
-                <span>수령일</span>
-                <input class="admin-logistics-date-filter" type="date" />
-              </label>
-              <button class="admin-action-btn admin-logistics-reset" type="button">전체 보기</button>
-              <span class="admin-total-info">처리 항목 <b data-admin-logistics-total>0</b>건</span>
-            </div>
-          </div>
-          <div class="admin-logistics-summary" aria-label="픽업 배송 요약">
-            <article>
-              <span>매장 픽업</span>
-              <strong data-logistics-stat="pickup">0</strong>
-            </article>
-            <article>
-              <span>배송 상담</span>
-              <strong data-logistics-stat="delivery">0</strong>
-            </article>
-            <article>
-              <span>완료 대기</span>
-              <strong data-logistics-stat="active">0</strong>
-            </article>
-          </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table admin-logistics-table">
-              <thead>
-                <tr>
-                  <th>수령일</th>
-                  <th>고객</th>
-                  <th>상품</th>
-                  <th>방식</th>
-                  <th>주소/메모</th>
-                  <th>물류상태</th>
-                </tr>
-              </thead>
-              <tbody class="admin-logistics-list"></tbody>
-            </table>
-            <p class="admin-empty admin-logistics-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><strong class="admin-empty-title">픽업/배송 관리 항목이 없습니다.</strong><span class="admin-empty-desc">접수 주문의 픽업일이 오면 여기에 자동 표시됩니다.</span></p>
-          </div>
+          </dialog>
         </section>
 
         <!-- ─── 매출관리 패널 ─── -->
@@ -612,146 +601,37 @@
               <p class="admin-panel-kicker">ACCOUNTING</p>
               <h2>매출관리</h2>
             </div>
-            <div class="admin-toolbar-actions">
-              <label class="admin-inline-filter">
-                <span>시작일</span>
-                <input class="admin-accounting-start" type="date" />
-              </label>
-              <label class="admin-inline-filter">
-                <span>종료일</span>
-                <input class="admin-accounting-end" type="date" />
-              </label>
-              <button class="admin-action-btn admin-accounting-reset" type="button">전체 보기</button>
-              <button class="admin-action-btn is-primary admin-accounting-csv" type="button">회계 CSV</button>
-              <span class="admin-total-info">매출 상품 <b data-admin-accounting-total>0</b>개</span>
+            <div class="admin-accounting-filter-row">
+              <span class="admin-accounting-filter-label">조회 기간</span>
+              <label><span class="sr-only">시작일</span><input class="admin-accounting-start" type="date" aria-label="매출 조회 시작일" /></label>
+              <i aria-hidden="true">–</i>
+              <label><span class="sr-only">종료일</span><input class="admin-accounting-end" type="date" aria-label="매출 조회 종료일" /></label>
+            </div>
+            <div class="admin-toolbar-actions admin-accounting-toolbar-actions">
+              <span class="admin-total-info">상품 <b data-admin-accounting-total>0</b>개</span>
+              <button class="admin-action-btn admin-accounting-reset" type="button">초기화</button>
+              <button class="admin-action-btn is-primary admin-accounting-csv" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" /></svg>CSV 저장</button>
             </div>
           </div>
-          <div class="admin-accounting-summary" aria-label="매출 요약">
-            <article>
-              <span>총매출</span>
-              <strong data-accounting-stat="revenue">0원</strong>
-            </article>
-            <article>
-              <span>총원가</span>
-              <strong data-accounting-stat="cost">0원</strong>
-            </article>
-            <article>
-              <span>예상이윤</span>
-              <strong data-accounting-stat="profit">0원</strong>
-            </article>
-            <article>
-              <span>이윤율</span>
-              <strong data-accounting-stat="margin">0%</strong>
-            </article>
-            <article>
-              <span>입고 발주비</span>
-              <strong data-accounting-stat="purchaseCost">0원</strong>
-            </article>
-            <article>
-              <span>순현금흐름</span>
-              <strong data-accounting-stat="cashFlow">0원</strong>
-            </article>
-          </div>
           <div class="admin-subtabs" role="tablist" aria-label="매출관리 세부 메뉴">
-            <button class="is-active" type="button" role="tab" aria-selected="true" aria-controls="accounting-overview-panel" data-admin-subtab="overview" data-admin-subtab-group="accounting">매출 요약</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="accounting-trends-panel" data-admin-subtab="trends" data-admin-subtab-group="accounting">월별 추이</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="accounting-purchases-panel" data-admin-subtab="purchases" data-admin-subtab-group="accounting">발주비</button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="accounting-products-panel" data-admin-subtab="products" data-admin-subtab-group="accounting">상품별 손익</button>
+            <button class="is-active" type="button" role="tab" aria-selected="true" aria-controls="accounting-overview-panel" data-admin-subtab="overview" data-admin-subtab-group="accounting">매출 현황</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="accounting-products-panel" data-admin-subtab="products" data-admin-subtab-group="accounting">상품별 분석</button>
           </div>
           <div class="admin-subpanel" id="accounting-overview-panel" role="tabpanel" data-admin-subpanel="overview" data-admin-subpanel-group="accounting">
-          <div class="admin-accounting-insights">
-            <article>
-              <div class="admin-insight-head">
-                <span>DAILY SALES</span>
-                <strong>일자별 요약</strong>
-              </div>
-              <div class="admin-mini-table-wrap">
-                <table class="admin-mini-table">
+          <div class="admin-table-wrap admin-accounting-daily-wrap">
+                <table class="admin-table admin-accounting-daily-table">
                   <thead>
                     <tr>
                       <th>일자</th>
                       <th>주문</th>
-                      <th>매출</th>
-                      <th>이윤</th>
+                      <th>순매출</th>
+                      <th>평균 주문액</th>
+                      <th>예상 이익</th>
                     </tr>
                   </thead>
                   <tbody class="admin-accounting-daily-list"></tbody>
                 </table>
                 <p class="admin-empty admin-accounting-daily-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><strong class="admin-empty-title">집계할 매출이 없습니다.</strong><span class="admin-empty-desc">해당 기간에 판매가가 입력된 주문이 없습니다.</span></p>
-              </div>
-            </article>
-            <article>
-              <div class="admin-insight-head">
-                <span>PROFIT CHECK</span>
-                <strong>수익 포인트</strong>
-              </div>
-              <dl class="admin-profit-check">
-                <div>
-                  <dt>매출 1위</dt>
-                  <dd data-accounting-insight="topRevenue">-</dd>
-                </div>
-                <div>
-                  <dt>이윤 1위</dt>
-                  <dd data-accounting-insight="topProfit">-</dd>
-                </div>
-                <div>
-                  <dt>원가 미입력</dt>
-                  <dd data-accounting-insight="missingCost">0건</dd>
-                </div>
-              </dl>
-            </article>
-          </div>
-          </div>
-          <div class="admin-subpanel" id="accounting-trends-panel" role="tabpanel" data-admin-subpanel="trends" data-admin-subpanel-group="accounting" hidden>
-          <div class="admin-accounting-monthly">
-            <div class="admin-insight-head">
-              <span>MONTHLY TREND</span>
-              <strong>월별 손익·현금흐름</strong>
-            </div>
-            <div class="admin-mini-table-wrap">
-              <table class="admin-mini-table">
-                <thead>
-                  <tr>
-                    <th>월</th>
-                    <th>매출 추이</th>
-                    <th>매출</th>
-                    <th>예상이윤</th>
-                    <th>입고 발주비</th>
-                    <th>순현금흐름</th>
-                  </tr>
-                </thead>
-                <tbody class="admin-accounting-monthly-list"></tbody>
-              </table>
-              <p class="admin-empty admin-accounting-monthly-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><strong class="admin-empty-title">월별 회계 데이터가 없습니다.</strong><span class="admin-empty-desc">판매가가 입력된 주문이 생기면 자동으로 집계됩니다.</span></p>
-            </div>
-          </div>
-          <div class="admin-accounting-chart">
-            <div class="admin-insight-head">
-              <span>REVENUE CHART</span>
-              <strong>월별 매출·이윤 추이</strong>
-            </div>
-            <canvas class="admin-revenue-chart" aria-label="월별 매출 및 이윤 차트"></canvas>
-          </div>
-          </div>
-          <div class="admin-subpanel" id="accounting-purchases-panel" role="tabpanel" data-admin-subpanel="purchases" data-admin-subpanel-group="accounting" hidden>
-          <div class="admin-accounting-purchases">
-            <div class="admin-insight-head">
-              <span>PURCHASE COST</span>
-              <strong>공급처별 입고 발주비</strong>
-            </div>
-            <div class="admin-mini-table-wrap">
-              <table class="admin-mini-table">
-                <thead>
-                  <tr>
-                    <th>공급처</th>
-                    <th>입고 건수</th>
-                    <th>입고 발주비</th>
-                  </tr>
-                </thead>
-                <tbody class="admin-accounting-purchase-list"></tbody>
-              </table>
-              <p class="admin-empty admin-accounting-purchase-empty"><span class="admin-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><strong class="admin-empty-title">입고 완료된 발주비가 없습니다.</strong><span class="admin-empty-desc">해당 기간에 입고 처리된 발주가 없습니다.</span></p>
-            </div>
           </div>
           </div>
           <div class="admin-subpanel" id="accounting-products-panel" role="tabpanel" data-admin-subpanel="products" data-admin-subpanel-group="accounting" hidden>
@@ -762,10 +642,10 @@
                   <th>상품</th>
                   <th>판매수량</th>
                   <th>주문건수</th>
-                  <th>매출</th>
+                  <th>순매출</th>
                   <th>원가</th>
-                  <th>이윤</th>
-                  <th>이윤율</th>
+                  <th>예상 이익</th>
+                  <th>이익률</th>
                 </tr>
               </thead>
               <tbody class="admin-accounting-list"></tbody>
@@ -775,9 +655,48 @@
           </div>
         </section>
 
+        <!-- ─── 로그관리 패널 ─── -->
+        <section class="admin-panel admin-log-panel" hidden>
+          <div class="admin-toolbar admin-log-toolbar">
+            <div>
+              <p class="admin-panel-kicker">AUDIT LOG</p>
+              <h2>로그관리</h2>
+            </div>
+            <div class="admin-search-row">
+              <label class="admin-search admin-log-search"><span>검색</span><input class="admin-search-input" type="search" data-admin-log-search placeholder="주문번호 · 유형 · 변경 내용 검색" /></label>
+            </div>
+            <div class="admin-toolbar-actions">
+              <span class="admin-total-info">총 <b data-admin-log-visible-total>0</b>건</span>
+              <button class="admin-action-btn" type="button" data-admin-log-reset>초기화</button>
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table admin-log-table">
+              <thead><tr><th>변경 일시</th><th>유형</th><th>대상</th><th>변경 전</th><th>변경 후</th><th>처리자</th><th>내용</th></tr></thead>
+              <tbody class="admin-log-list"></tbody>
+            </table>
+            <p class="admin-empty admin-log-empty"><strong class="admin-empty-title">조건에 맞는 로그가 없습니다.</strong><span class="admin-empty-desc">주문 상태를 변경하면 자동으로 기록됩니다.</span></p>
+          </div>
+        </section>
+
         <button class="admin-form-drawer-backdrop" type="button" aria-label="등록 화면 닫기" hidden></button>
       </main>
     </div>
+
+    <dialog class="admin-purchase-request-dialog" data-purchase-request-dialog aria-labelledby="purchase-request-title">
+      <form class="admin-purchase-request-form" data-purchase-request-form>
+        <header><div><span>PURCHASE REQUEST</span><h2 id="purchase-request-title">발주 요청</h2></div><button type="button" data-purchase-request-close aria-label="발주 요청 닫기">×</button></header>
+        <input name="itemId" type="hidden" />
+        <div class="admin-purchase-request-item"><strong data-purchase-request-item-name>-</strong><span data-purchase-request-stock>-</span></div>
+        <div class="admin-purchase-request-grid">
+          <label><span>발주 수량</span><div class="admin-input-with-unit"><input name="amount" type="number" min="0.1" step="0.1" required /><b data-purchase-request-unit></b></div></label>
+          <label><span>공급처</span><input name="supplier" type="text" list="adminSupplierOptions" placeholder="공급처를 선택해 주세요" required /></label>
+          <label><span>단가</span><div class="admin-input-with-unit"><input name="unitCost" type="number" min="0" step="1" required /><b>원</b></div></label>
+          <div class="admin-purchase-request-total"><span>예상 발주금액</span><strong data-purchase-request-total>0원</strong></div>
+        </div>
+        <footer><button class="admin-action-btn" type="button" data-purchase-request-close>취소</button><button class="admin-action-btn is-primary" type="submit">발주 완료로 등록</button></footer>
+      </form>
+    </dialog>
 
     <!-- 주문 등록 모달 -->
     <div class="order-request-backdrop admin-order-create-backdrop" hidden></div>
@@ -858,7 +777,8 @@
       </form>
     </aside>
 
-    <script src="script.js"></script>
+    <script src="cart-utils.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js?v=4"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js"></script><script src="js/admin/dashboard.js?v=9"></script><script src="js/admin/orders.js?v=64"></script><script src="js/admin/customers.js?v=5"></script><script src="js/admin/inventory.js?v=20"></script><script src="js/admin/suppliers.js?v=9"></script><script src="js/admin/accounting.js?v=47"></script><script src="js/admin/inquiries.js?v=4"></script><script src="js/admin/events.js?v=68"></script><script src="js/auth.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");

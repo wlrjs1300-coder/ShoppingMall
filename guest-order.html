@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>따뜻한 떡집 | 비회원 주문 정보</title>
+    <meta name="description" content="비회원 주문을 위한 주문자 정보를 입력합니다." />
+    <meta name="theme-color" content="#fff3f7" />
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="guest-order-page">
+    <header class="site-header" data-shared-header></header>
+    <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
+
+    <main class="auth-page">
+      <section class="auth-card">
+        <h1>비회원 주문</h1>
+        <p class="auth-card-desc">주문 확인과 안내에 필요한 정보만 입력해 주세요.</p>
+
+        <form data-guest-order-form novalidate>
+          <label>
+            <span>이름</span>
+            <input type="text" name="customer" maxlength="50" autocomplete="name" required />
+          </label>
+          <label>
+            <span>연락처</span>
+            <div class="auth-field-with-button">
+              <input type="tel" name="phone" maxlength="13" placeholder="010-0000-0000" autocomplete="tel" inputmode="tel" data-guest-phone required />
+              <button type="button" class="auth-inline-button" data-guest-send-code>인증번호 받기</button>
+            </div>
+          </label>
+          <div class="auth-code-row" data-guest-code-row hidden>
+            <label>
+              <span>인증번호</span>
+              <div class="auth-field-with-button">
+                <input type="text" name="phoneCode" inputmode="numeric" maxlength="6" placeholder="6자리 숫자" data-guest-code />
+                <button type="button" class="auth-inline-button" data-guest-verify-code>확인</button>
+              </div>
+            </label>
+            <p class="auth-field-error" data-guest-code-message role="status" aria-live="polite"></p>
+          </div>
+          <label>
+            <span>우편번호</span>
+            <div class="auth-field-with-button">
+              <input type="text" name="postalCode" autocomplete="postal-code" readonly required />
+              <button type="button" class="auth-inline-button" data-guest-address-search>주소 검색</button>
+            </div>
+          </label>
+          <label><span>기본 주소</span><input type="text" name="address" autocomplete="street-address" readonly required /></label>
+          <label><span>상세 주소</span><input type="text" name="addressDetail" maxlength="100" autocomplete="address-line2" required /></label>
+          <label><span>비회원 주문 조회 비밀번호</span><input type="password" name="guestPassword" minlength="8" maxlength="72" autocomplete="new-password" placeholder="8자 이상 입력해 주세요" required /></label>
+          <label><span>비밀번호 확인</span><input type="password" name="guestPasswordConfirm" minlength="8" maxlength="72" autocomplete="new-password" required /></label>
+          <label class="auth-agree">
+            <input type="checkbox" name="agreePrivacy" required />
+            <span><a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a>에 동의합니다. <strong>(필수)</strong></span>
+          </label>
+          <button class="primary-button" type="submit">비회원 주문 계속하기</button>
+          <p class="auth-message" data-guest-order-message role="alert" aria-live="polite"></p>
+        </form>
+
+        <p class="auth-switch">회원으로 주문하시겠어요? <a href="login.html">로그인</a></p>
+      </section>
+    </main>
+
+    <footer class="site-footer" data-shared-footer></footer>
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script src="cart-utils.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js"></script>
+  </body>
+</html>

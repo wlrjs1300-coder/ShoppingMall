@@ -48,6 +48,12 @@
     .order-row:last-child strong { font-size: 1.05rem; color: #df4f6d; }
     .order-label { color: #666; }
     #payment-method { margin-bottom: 8px; }
+    .direct-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+    .direct-methods label { cursor: pointer; }
+    .direct-methods input { position: absolute; opacity: 0; }
+    .direct-methods span { display: grid; min-height: 46px; place-items: center; padding: 8px; border: 1px solid #eadde0; border-radius: 9px; color: #68545a; background: #fff; font-size: .82rem; font-weight: 700; }
+    .direct-methods input:checked + span { color: #df4f6d; border-color: #df4f6d; background: #fff2f5; box-shadow: 0 0 0 2px rgba(223,79,109,.08); }
+    .payment-guide { margin: 0 0 16px; padding: 11px 13px; border-radius: 9px; color: #806970; background: #faf5f6; font-size: .78rem; line-height: 1.55; }
     #agreement { margin-bottom: 20px; }
     #pay-btn {
       width: 100%;
@@ -71,6 +77,7 @@
     .result-box.fail h2 { color: #c0392b; }
     #loading { padding: 40px; text-align: center; color: #888; }
     .error-box { padding: 32px 24px; text-align: center; color: #c0392b; }
+    .retry-btn { margin-top: 20px; padding: 12px 22px; border: 1px solid #df4f6d; border-radius: 9px; background: #fff; color: #df4f6d; font-weight: 700; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -107,9 +114,11 @@
     <div class="result-icon">❌</div>
     <h2>결제 실패</h2>
     <p id="fail-message">결제에 실패했습니다. 다시 시도해 주세요.</p>
+    <button id="retry-btn" class="retry-btn" type="button">다시 시도</button>
   </div>
 </div>
 
+<script src="cart-utils.js"></script><script src="js/ui.js"></script>
 <script>
   const API_BASE = window.location.protocol === "file:"
     ? "http://localhost:3001/api"
@@ -117,6 +126,14 @@
   const params = new URLSearchParams(location.search);
   const orderId = params.get("orderId");
   const step = params.get("step");
+  const linkToken = params.get("token");
+  const cacheKey = `tteok-payment-session:${orderId || "unknown"}`;
+
+  function readSession() {
+    try { return JSON.parse(sessionStorage.getItem(cacheKey) || "null"); } catch { return null; }
+  }
+
+  function saveSession(value) { sessionStorage.setItem(cacheKey, JSON.stringify(value)); }
 
   function show(id) {
     ["loading", "step-payment", "step-success", "step-fail"].forEach((s) => {
@@ -143,24 +160,31 @@
     }
     if (step === "fail") {
       show("step-fail");
-      document.getElementById("fail-message").textContent =
-        params.get("message") || "결제에 실패했습니다. 다시 시도해 주세요.";
+      const errorCode = params.get("code");
+      const errorMessage = params.get("message") || "결제에 실패했습니다. 다시 시도해 주세요.";
+      document.getElementById("fail-message").textContent = `${errorMessage}${errorCode ? ` (${errorCode})` : ""}`;
       return;
     }
 
     // 결제 정보 + 클라이언트 키 병렬 로드
+    let cached = readSession();
     const [infoRes, configRes] = await Promise.all([
-      fetch(`${API_BASE}/payments/info/${encodeURIComponent(orderId)}`).catch(() => null),
+      cached ? Promise.resolve(null) : fetch(`${API_BASE}/payments/info/${encodeURIComponent(orderId)}?token=${encodeURIComponent(linkToken || "")}`).catch(() => null),
       fetch(`${API_BASE}/payments/config`).catch(() => null),
     ]);
 
-    if (!infoRes || !infoRes.ok) {
+    if (!cached && (!infoRes || !infoRes.ok)) {
       show("step-fail");
       document.getElementById("fail-message").textContent = "결제 정보를 찾을 수 없습니다.";
       return;
     }
 
-    const info = await infoRes.json();
+    if (!cached) {
+      const info = await infoRes.json();
+      cached = { info, sessionToken: info.sessionToken };
+      saveSession(cached);
+    }
+    const info = cached.info;
     const config = configRes ? await configRes.json() : {};
 
     if (info.status === "DONE") {
@@ -184,6 +208,11 @@
   }
 
   async function initWidget(clientKey, info) {
+    if (typeof TossPayments !== "function") throw new Error("결제 모듈을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.");
+    if (!/^(?:test|live)_gck_/.test(clientKey)) {
+      await initDirectPayment(clientKey, info);
+      return;
+    }
     const tossPayments = TossPayments(clientKey);
     const widgets = tossPayments.widgets({ customerKey: orderId });
 
@@ -206,16 +235,59 @@
           orderId,
           orderName: info.orderName || "따뜻한 떡집 주문",
           customerName: info.customerName || undefined,
-          customerMobilePhone: info.customerPhone ? info.customerPhone.replace(/-/g, "") : undefined,
-          successUrl: `${baseUrl}?step=success&orderId=${encodeURIComponent(orderId)}`,
-          failUrl: `${baseUrl}?step=fail&orderId=${encodeURIComponent(orderId)}`,
+          successUrl: `${baseUrl}?step=success&orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken || "")}`,
+          failUrl: `${baseUrl}?step=fail&orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken || "")}`,
         });
       } catch (err) {
         payBtn.disabled = false;
         payBtn.textContent = "결제하기";
         if (err.code !== "USER_CANCEL") {
-          alert(err.message || "결제 중 오류가 발생했습니다.");
+          AppUI.alert(err.message || "결제 중 오류가 발생했습니다.");
         }
+      }
+    });
+  }
+
+  async function initDirectPayment(clientKey, info) {
+    const tossPayments = TossPayments(clientKey);
+    const customerKeyStorage = `tteok-payment-customer:${orderId}`;
+    let customerKey = sessionStorage.getItem(customerKeyStorage);
+    if (!customerKey) {
+      customerKey = crypto.randomUUID ? crypto.randomUUID() : `guest-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+      sessionStorage.setItem(customerKeyStorage, customerKey);
+    }
+    const payment = tossPayments.payment({ customerKey });
+    const methodRoot = document.getElementById("payment-method");
+    const preferred = info.paymentMethod === "transfer" ? "TRANSFER" : "CARD";
+    const methods = [
+      ["CARD", "카드·간편결제"],
+      ["TRANSFER", "계좌이체"],
+      ["MOBILE_PHONE", "휴대폰 결제"],
+    ];
+    methodRoot.innerHTML = `<div class="direct-methods">${methods.map(([value, label]) => `<label><input type="radio" name="directPaymentMethod" value="${value}" ${value === preferred ? "checked" : ""}><span>${label}</span></label>`).join("")}</div><p class="payment-guide">카드·간편결제를 선택하면 토스 결제창에서 카드 또는 지원되는 간편결제를 고를 수 있습니다.</p>`;
+    document.getElementById("agreement").hidden = true;
+    const payBtn = document.getElementById("pay-btn");
+    payBtn.disabled = false;
+    const baseUrl = location.href.split("?")[0];
+    payBtn.addEventListener("click", async () => {
+      const selected = methodRoot.querySelector('input[name="directPaymentMethod"]:checked')?.value || "CARD";
+      payBtn.disabled = true;
+      payBtn.textContent = "결제 진행 중…";
+      try {
+        const request = {
+          method: selected,
+          amount: { currency: "KRW", value: info.amount },
+          orderId,
+          orderName: info.orderName || "따뜻한 떡집 주문",
+          customerName: info.customerName || undefined,
+          successUrl: `${baseUrl}?step=success&orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken || "")}`,
+          failUrl: `${baseUrl}?step=fail&orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken || "")}`,
+        };
+        await payment.requestPayment(request);
+      } catch (error) {
+        payBtn.disabled = false;
+        payBtn.textContent = "결제하기";
+        if (error.code !== "USER_CANCEL") AppUI.alert(`${error.message || "결제창을 열지 못했습니다."}${error.code ? ` (${error.code})` : ""}`);
       }
     });
   }
@@ -223,6 +295,12 @@
   async function handleSuccess() {
     const paymentKey = params.get("paymentKey");
     const amount = Number(params.get("amount"));
+    const existingSession = readSession();
+
+    if (existingSession?.completed) {
+      show("step-success");
+      return;
+    }
 
     if (!paymentKey || !amount) {
       show("step-fail");
@@ -230,25 +308,42 @@
       return;
     }
 
+    const cached = existingSession;
+    if (!cached?.sessionToken) {
+      show("step-fail");
+      document.getElementById("fail-message").textContent = "결제 세션이 만료되었습니다. 새 결제 링크를 요청해 주세요.";
+      return;
+    }
     const res = await fetch(`${API_BASE}/payments/confirm`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Payment-Session": cached.sessionToken },
       body: JSON.stringify({ paymentKey, orderId, amount }),
     }).catch(() => null);
 
     if (res && res.ok) {
       const data = await res.json();
-      if (data.ok) { show("step-success"); return; }
+      if (data.ok) {
+        const cart = CartUtils.parseCart(localStorage.getItem("tteokShoppingCart"));
+        localStorage.setItem("tteokShoppingCart", CartUtils.serializeCart(CartUtils.removeItems(cart, data.productIds || [])));
+        saveSession({ ...cached, completed: true });
+        show("step-success");
+        return;
+      }
     }
 
     show("step-fail");
     document.getElementById("fail-message").textContent = "결제 승인 처리 중 오류가 발생했습니다.";
   }
 
+  document.getElementById("retry-btn").addEventListener("click", () => {
+    const baseUrl = location.href.split("?")[0];
+    location.href = `${baseUrl}?orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken || "")}`;
+  });
+
   init().catch((err) => {
     console.error(err);
     show("step-fail");
-    document.getElementById("fail-message").textContent = "오류가 발생했습니다.";
+    document.getElementById("fail-message").textContent = err?.message || "결제 화면을 준비하지 못했습니다.";
   });
 </script>
 </body>

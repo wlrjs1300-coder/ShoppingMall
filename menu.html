@@ -16,39 +16,9 @@
     <link rel="manifest" href="manifest.json" />
   </head>
   <body class="menu-page">
-    <header class="site-header">
-      <a class="brand" href="index.html" aria-label="따뜻한 떡집 홈">
-        <img class="brand-logo" src="assets/logo.svg" alt="따뜻한 떡집" />
-      </a>
-      <form class="header-search" role="search" action="menu.html" method="get">
-        <input type="search" id="menuSearch" name="q" placeholder="메뉴 검색" aria-label="메뉴 검색" autocomplete="off" />
-        <button type="submit" aria-label="검색">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
-      </form>
-      <div class="header-actions">
-        <a class="header-text-link" data-auth-signup-link href="signup.html">회원가입</a>
-        <a class="header-text-link" data-auth-login-link href="login.html">로그인</a>
-        <a class="header-text-link" href="faq.html">고객센터</a>
-        <a class="header-text-link" href="#">장바구니</a>
-      </div>
-    </header>
+    <header class="site-header" data-shared-header></header>
 
-    <div class="event-ticker" aria-label="이벤트 안내">
-      <span class="event-ticker-label">EVENT</span>
-      <div class="event-ticker-viewport">
-        <div class="event-ticker-track">
-          <span>🎉 명절 송편 예약, 지금 신청하면 안심입니다 · 수량 한정</span>
-          <span>🎁 답례떡·단체주문 상담 시 시식 쿠폰 증정</span>
-          <span>👶 백일·돌잡이 떡 상담, 이번 달 예약 마감 임박</span>
-          <span>🚚 동탄 지역 당일 픽업 가능 · 전화 상담 환영</span>
-          <span aria-hidden="true">🎉 명절 송편 예약, 지금 신청하면 안심입니다 · 수량 한정</span>
-          <span aria-hidden="true">🎁 답례떡·단체주문 상담 시 시식 쿠폰 증정</span>
-          <span aria-hidden="true">👶 백일·돌잡이 떡 상담, 이번 달 예약 마감 임박</span>
-          <span aria-hidden="true">🚚 동탄 지역 당일 픽업 가능 · 전화 상담 환영</span>
-        </div>
-      </div>
-    </div>
+    <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
 
     <main>
       <section class="section menu-featured-section">
@@ -63,57 +33,8 @@
             <button type="button" data-featured-next aria-label="다음 BEST 상품">→</button>
           </div>
         </div>
-        <div class="food-card-grid featured-food-grid">
-          <article class="food-card">
-            <div class="food-card-image image-songpyeon"></div>
-            <div class="food-card-body">
-              <span class="food-badge">예약</span>
-              <h3>송편 예약</h3>
-              <p>명절 일정에 맞춰 준비합니다.</p>
-              <strong>상담 후 안내</strong>
-              <button class="card-button add-interest" type="button" data-name="송편 예약" data-price="상담 후 안내">문의 남기기</button>
-            </div>
-          </article>
-          <article class="food-card">
-            <div class="food-card-image image-baekil"></div>
-            <div class="food-card-body">
-              <span class="food-badge">행사</span>
-              <h3>백일떡</h3>
-              <p>기념일에 맞춰 구성합니다.</p>
-              <strong>상담 후 안내</strong>
-              <button class="card-button add-interest" type="button" data-name="백일떡" data-price="상담 후 안내">문의 남기기</button>
-            </div>
-          </article>
-          <article class="food-card">
-            <div class="food-card-image image-redbean"></div>
-            <div class="food-card-body">
-              <span class="food-badge">행사</span>
-              <h3>수수팥떡</h3>
-              <p>아이 행사에 많이 찾습니다.</p>
-              <strong>상담 후 안내</strong>
-              <button class="card-button add-interest" type="button" data-name="수수팥떡" data-price="상담 후 안내">문의 남기기</button>
-            </div>
-          </article>
-          <article class="food-card">
-            <div class="food-card-image image-gift-box"></div>
-            <div class="food-card-body">
-              <span class="food-badge">답례</span>
-              <h3>답례떡</h3>
-              <p>개별 포장 상담 가능</p>
-              <strong>상담 후 견적</strong>
-              <button class="card-button add-interest" type="button" data-name="답례떡" data-price="상담 후 견적">문의 남기기</button>
-            </div>
-          </article>
-          <article class="food-card">
-            <div class="food-card-image image-bulk-order"></div>
-            <div class="food-card-body">
-              <span class="food-badge">단체</span>
-              <h3>단체주문</h3>
-              <p>행사 수량 맞춤 구성</p>
-              <strong>상담 후 견적</strong>
-              <button class="card-button add-interest" type="button" data-name="단체주문" data-price="상담 후 견적">문의 남기기</button>
-            </div>
-          </article>
+        <div class="food-card-grid featured-food-grid" aria-live="polite">
+          <div class="menu-catalog-state is-loading" role="status"><strong>BEST 상품을 불러오고 있습니다.</strong></div>
         </div>
       </section>
 
@@ -132,66 +53,23 @@
         </div>
       </section>
 
-      <section class="section menu-section">
+      <section class="section menu-section" id="menu-list">
         <div class="menu-list-head">
           <div>
-            <p class="section-kicker">ALL MENU</p>
-            <h2>전체 메뉴</h2>
+            <h2 data-menu-list-title>전체 메뉴</h2>
             <p class="menu-result-summary" role="status"><strong data-menu-result-count>0</strong>개의 메뉴</p>
           </div>
         </div>
 
-        <div class="menu-grid food-card-grid" aria-label="전체 메뉴">
-          <article class="menu-item food-card small-food-card" data-category="행사" data-name="백일떡" data-price="상담 후 안내"><div class="food-card-image image-baekil"></div><div class="food-card-body"><span class="food-badge">백일/행사</span><h3>백일떡</h3><p>기념일 구성 상담 가능</p><strong>상담 후 안내</strong><button class="menu-add add-interest" type="button" data-name="백일떡" data-price="상담 후 안내">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="행사" data-name="수수팥떡" data-price="상담 후 안내"><div class="food-card-image image-redbean"></div><div class="food-card-body"><span class="food-badge">백일/행사</span><h3>수수팥떡</h3><p>아이 행사 대표 메뉴</p><strong>상담 후 안내</strong><button class="menu-add add-interest" type="button" data-name="수수팥떡" data-price="상담 후 안내">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="답례" data-name="답례떡" data-price="상담 후 견적"><div class="food-card-image image-gift-box"></div><div class="food-card-body"><span class="food-badge">답례/단체</span><h3>답례떡</h3><p>개별 포장 상담 가능</p><strong>상담 후 견적</strong><button class="menu-add add-interest" type="button" data-name="답례떡" data-price="상담 후 견적">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="답례" data-name="단체주문" data-price="상담 후 견적"><div class="food-card-image image-bulk-order"></div><div class="food-card-body"><span class="food-badge">답례/단체</span><h3>단체주문</h3><p>행사 수량 맞춤 구성</p><strong>상담 후 견적</strong><button class="menu-add add-interest" type="button" data-name="단체주문" data-price="상담 후 견적">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="송편" data-name="깨송편" data-price="4,000원"><div class="food-card-image image-songpyeon"></div><div class="food-card-body"><span class="food-badge">송편</span><h3>깨송편</h3><p>고소한 깨소 송편</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="깨송편" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="송편" data-name="송편 예약" data-price="상담 후 안내"><div class="food-card-image image-songpyeon"></div><div class="food-card-body"><span class="food-badge">송편</span><h3>송편 예약</h3><p>시즌 예약 상담</p><strong>상담 후 안내</strong><button class="menu-add add-interest" type="button" data-name="송편 예약" data-price="상담 후 안내">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="가래떡" data-price="3,500원"><div class="food-card-image image-garaetteok"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>가래떡</h3><p>쫄깃한 기본 떡</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="가래떡" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="흰절편" data-price="3,500원"><div class="food-card-image image-white-jeolpyeon"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>흰절편</h3><p>담백한 절편</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="흰절편" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="쑥절편" data-price="4,000원"><div class="food-card-image image-mugwort-jeolpyeon"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>쑥절편</h3><p>쑥 향을 담은 절편</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="쑥절편" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="쑥개떡" data-price="4,000원"><div class="food-card-image image-mugwort-gaetteok"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>쑥개떡</h3><p>정겨운 쑥떡</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="쑥개떡" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="콩편" data-price="3,500원"><div class="food-card-image image-kongpyeon"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>콩편</h3><p>고소한 콩 떡</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="콩편" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="찹쌀떡" data-price="3,500원"><div class="food-card-image image-chapssaltteok"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>찹쌀떡</h3><p>쫀득한 간식 떡</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="찹쌀떡" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="약식" data-price="4,000원"><div class="food-card-image image-yaksik"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>약식</h3><p>달콤한 찰밥 떡</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="약식" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="꿀떡" data-price="3,500원"><div class="food-card-image image-honey-tteok"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>꿀떡</h3><p>달콤한 한입 떡</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="꿀떡" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="기본떡" data-name="과일경단" data-price="3,500원"><div class="food-card-image image-fruit-gyeongdan"></div><div class="food-card-body"><span class="food-badge">기본떡</span><h3>과일경단</h3><p>색감 좋은 경단</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="과일경단" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="설기" data-name="꿀설기" data-price="3,500원"><div class="food-card-image image-honey-seolgi"></div><div class="food-card-body"><span class="food-badge">설기</span><h3>꿀설기</h3><p>부드럽고 달콤한 설기</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="꿀설기" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="설기" data-name="수박설기" data-price="3,000원"><div class="food-card-image image-watermelon-seolgi"></div><div class="food-card-body"><span class="food-badge">설기</span><h3>수박설기</h3><p>귀여운 모양 설기</p><strong>3,000원</strong><button class="menu-add add-interest" type="button" data-name="수박설기" data-price="3,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="설기" data-name="쑥설기" data-price="4,000원"><div class="food-card-image image-mugwort-seolgi"></div><div class="food-card-body"><span class="food-badge">설기</span><h3>쑥설기</h3><p>쑥 향이 좋은 설기</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="쑥설기" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="설기" data-name="흑미호박샌드" data-price="4,000원"><div class="food-card-image image-blackrice-pumpkin-sand"></div><div class="food-card-body"><span class="food-badge">설기</span><h3>흑미호박샌드</h3><p>식감이 좋은 샌드 떡</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="흑미호박샌드" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="설기" data-name="잡과병 모듬설기" data-price="4,000원"><div class="food-card-image image-assorted-seolgi"></div><div class="food-card-body"><span class="food-badge">설기</span><h3>잡과병(모듬설기)</h3><p>여러 재료가 어우러진 설기</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="잡과병(모듬설기)" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="인절미" data-name="인절미" data-price="3,500원"><div class="food-card-image image-injeolmi"></div><div class="food-card-body"><span class="food-badge">인절미</span><h3>인절미</h3><p>고소한 기본 인절미</p><strong>3,500원</strong><button class="menu-add add-interest" type="button" data-name="인절미" data-price="3,500원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="인절미" data-name="쑥인절미" data-price="4,000원"><div class="food-card-image image-mugwort-injeolmi"></div><div class="food-card-body"><span class="food-badge">인절미</span><h3>쑥인절미</h3><p>쑥 향과 고소함</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="쑥인절미" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="인절미" data-name="카스테라 인절미" data-price="4,000원"><div class="food-card-image image-castella-injeolmi"></div><div class="food-card-body"><span class="food-badge">인절미</span><h3>카스테라 인절미</h3><p>부드러운 카스테라 가루</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="카스테라 인절미" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="인절미" data-name="흑임자 인절미" data-price="4,000원"><div class="food-card-image image-black-sesame-injeolmi"></div><div class="food-card-body"><span class="food-badge">인절미</span><h3>흑임자 인절미</h3><p>진한 흑임자 고소함</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="흑임자 인절미" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="찰떡" data-name="찰시루떡" data-price="4,000원"><div class="food-card-image image-chal-sirutteok"></div><div class="food-card-body"><span class="food-badge">찰떡</span><h3>찰시루떡</h3><p>든든한 찰떡</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="찰시루떡" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="찰떡" data-name="완두배기 찰떡" data-price="4,000원"><div class="food-card-image image-pea-chaltteok"></div><div class="food-card-body"><span class="food-badge">찰떡</span><h3>완두배기 찰떡</h3><p>완두의 식감</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="완두배기 찰떡" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="찰떡" data-name="콩찰떡" data-price="4,000원"><div class="food-card-image image-bean-chaltteok"></div><div class="food-card-body"><span class="food-badge">찰떡</span><h3>콩찰떡</h3><p>고소한 콩의 맛</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="콩찰떡" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="찰떡" data-name="호박찰떡" data-price="4,000원"><div class="food-card-image image-pumpkin-chaltteok"></div><div class="food-card-body"><span class="food-badge">찰떡</span><h3>호박찰떡</h3><p>달큰한 호박 풍미</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="호박찰떡" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="찰떡" data-name="견과류찰떡" data-price="4,000원"><div class="food-card-image image-nut-chaltteok"></div><div class="food-card-body"><span class="food-badge">찰떡</span><h3>견과류찰떡</h3><p>견과류가 씹히는 찰떡</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="견과류찰떡" data-price="4,000원">전화</button></div></article>
-          <article class="menu-item food-card small-food-card" data-category="찰떡" data-name="모듬찰떡" data-price="4,000원"><div class="food-card-image image-assorted-chaltteok"></div><div class="food-card-body"><span class="food-badge">찰떡</span><h3>모듬찰떡</h3><p>다양하게 즐기는 찰떡</p><strong>4,000원</strong><button class="menu-add add-interest" type="button" data-name="모듬찰떡" data-price="4,000원">전화</button></div></article>
+        <div class="menu-grid food-card-grid" data-products-grid aria-label="전체 메뉴" aria-live="polite">
+          <div class="menu-catalog-state is-loading" role="status"><strong>메뉴를 불러오고 있습니다.</strong></div>
         </div>
         <p class="menu-empty" hidden>조건에 맞는 메뉴가 없습니다.</p>
         <nav class="menu-pagination" aria-label="전체 메뉴 페이지 이동"></nav>
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div>
-        <strong>따뜻한 떡집</strong>
-        <span>경기도 화성시 소재</span>
-      </div>
-      <div>
-        <span class="js-phone-text">031-000-0000</span>
-        <span class="js-hours-text">영업 중 · 19:00에 영업 종료</span>
-        <span class="footer-actions">
-          <a class="js-phone-link" href="tel:0310000000">전화 상담</a>
-          <a class="js-map-link" href="#" target="_blank" rel="noreferrer">지도 보기</a>
-        </span>
-      </div>
-    </footer>
+    <footer class="site-footer" data-shared-footer></footer>
 
     <div class="product-detail-backdrop" hidden></div>
     <aside class="product-detail-panel" aria-label="상품 상세 안내" aria-hidden="true">
@@ -206,7 +84,7 @@
         <span>매장 픽업과 배송 상담을 선택할 수 있습니다.</span>
         <span>희망 날짜와 수량을 남겨주시면 확인이 빠릅니다.</span>
       </div>
-      <button class="primary-button product-detail-add" type="button">문의 남기기</button>
+      <button class="primary-button product-detail-add" type="button">문의하기</button>
     </aside>
 
     <div class="order-request-backdrop" hidden></div>
@@ -216,8 +94,7 @@
       <h2>주문 상담 요청</h2>
       <p class="order-request-lead">메뉴, 수량, 수령 일정을 남겨주시면 매장에서 확인 후 연락드립니다.</p>
       <form class="order-request-form">
-        <input type="hidden" name="product" />
-        <input type="hidden" name="price" />
+        <input type="hidden" name="productId" />
         <label>
           <span>메뉴</span>
           <input type="text" name="displayProduct" readonly />
@@ -267,7 +144,8 @@
         <p class="order-request-status" role="status"></p>
       </form>
     </aside>
-    <script src="script.js"></script>
+    <script src="cart-utils.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js"></script><script src="js/auth.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");

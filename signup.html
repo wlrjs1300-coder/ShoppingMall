@@ -13,23 +13,9 @@
     <link rel="manifest" href="manifest.json" />
   </head>
   <body class="signup-page">
-    <header class="site-header">
-      <a class="brand" href="index.html" aria-label="따뜻한 떡집 홈">
-        <img class="brand-logo" src="assets/logo.svg" alt="따뜻한 떡집" />
-      </a>
-      <form class="header-search" role="search" action="menu.html" method="get">
-        <input type="search" id="menuSearch" name="q" placeholder="메뉴 검색" aria-label="메뉴 검색" autocomplete="off" />
-        <button type="submit" aria-label="검색">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
-      </form>
-      <div class="header-actions">
-        <a class="header-text-link is-current" data-auth-signup-link href="signup.html">회원가입</a>
-        <a class="header-text-link" data-auth-login-link href="login.html">로그인</a>
-        <a class="header-text-link" href="faq.html">고객센터</a>
-        <a class="header-text-link" href="#">장바구니</a>
-      </div>
-    </header>
+    <header class="site-header" data-shared-header></header>
+
+    <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
 
     <main class="auth-page">
       <section class="auth-card">
@@ -41,20 +27,46 @@
             <input type="text" name="name" autocomplete="name" required />
           </label>
           <label>
-            <span>휴대폰 번호</span>
-            <input type="tel" name="phone" placeholder="010-0000-0000" autocomplete="tel" required />
+            <span>아이디</span>
+            <div class="auth-field-with-button"><input type="text" name="username" autocomplete="username" placeholder="영문 소문자·숫자·밑줄 4~20자" minlength="4" maxlength="20" required /><button type="button" class="auth-inline-button" data-check-username>중복 확인</button></div>
+            <p class="auth-field-error" data-username-check-message aria-live="polite"></p>
           </label>
           <label>
+            <span>휴대폰 번호</span>
+            <div class="auth-field-with-button">
+              <input type="tel" name="phone" placeholder="010-0000-0000" autocomplete="tel" data-phone-input required />
+              <button type="button" class="auth-inline-button" data-send-code-button>인증번호 받기</button>
+            </div>
+          </label>
+
+          <div class="auth-code-row" data-code-row hidden>
+            <label>
+              <span>인증번호</span>
+              <div class="auth-field-with-button">
+                <input type="text" name="phoneCode" inputmode="numeric" placeholder="6자리 숫자" maxlength="6" data-code-input />
+                <button type="button" class="auth-inline-button" data-verify-code-button>확인</button>
+              </div>
+            </label>
+            <p class="auth-field-hint" data-code-timer></p>
+            <p class="auth-field-hint" data-dev-code-hint hidden></p>
+            <p class="auth-field-error" role="status" aria-live="polite" data-code-message></p>
+          </div>
+
+          <label>
             <span>이메일</span>
-            <input type="email" name="email" autocomplete="email" required />
+            <div class="auth-field-with-button"><input type="email" name="email" autocomplete="email" required /><button type="button" class="auth-inline-button" data-check-email>중복 확인</button></div>
+            <p class="auth-field-error" data-email-check-message aria-live="polite"></p>
           </label>
           <label>
             <span>우편번호</span>
-            <input type="text" name="postalCode" placeholder="선택 입력" inputmode="numeric" autocomplete="postal-code" />
+            <div class="auth-field-with-button">
+              <input type="text" name="postalCode" placeholder="주소 검색을 이용해 주세요" inputmode="numeric" autocomplete="postal-code" readonly />
+              <button type="button" class="auth-inline-button" data-address-search>주소 검색</button>
+            </div>
           </label>
           <label>
             <span>배송지 주소</span>
-            <input type="text" name="address" placeholder="주소를 입력해 주세요" autocomplete="street-address" required />
+            <input type="text" name="address" placeholder="주소 검색을 이용해 주세요" autocomplete="street-address" readonly required />
           </label>
           <label>
             <span>상세 주소</span>
@@ -62,11 +74,14 @@
           </label>
           <label>
             <span>비밀번호</span>
-            <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+            <input type="password" name="password" autocomplete="new-password" minlength="8" data-password-input required />
+            <p class="auth-field-hint">8자 이상 입력해 주세요. 영문·숫자·특수문자 조합을 권장합니다.</p>
+            <p class="auth-field-error" role="status" aria-live="polite" data-password-rule-error></p>
           </label>
           <label>
             <span>비밀번호 확인</span>
-            <input type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
+            <input type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" data-password-confirm-input required />
+            <p class="auth-field-error" role="status" aria-live="polite" data-password-match-error></p>
           </label>
 
           <div class="auth-agree-group">
@@ -76,11 +91,11 @@
             </label>
             <label class="auth-agree">
               <input type="checkbox" name="agreeTerms" required />
-              <span>이용약관 동의 <b>(필수)</b></span>
+              <span><a href="terms.html" target="_blank" rel="noreferrer">이용약관</a> 동의 <b>(필수)</b></span>
             </label>
             <label class="auth-agree">
               <input type="checkbox" name="agreePrivacy" required />
-              <span>개인정보 수집 및 이용 동의 <b>(필수)</b></span>
+              <span><a href="privacy.html" target="_blank" rel="noreferrer">개인정보 수집 및 이용</a> 동의 <b>(필수)</b></span>
             </label>
             <label class="auth-agree">
               <input type="checkbox" name="agreeMarketing" />
@@ -96,22 +111,11 @@
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div>
-        <strong>따뜻한 떡집</strong>
-        <span>경기도 화성시 소재</span>
-      </div>
-      <div>
-        <span class="js-phone-text">031-000-0000</span>
-        <span class="js-hours-text">영업 중 · 19:00에 영업 종료</span>
-        <span class="footer-actions">
-          <a class="js-phone-link" href="tel:0310000000">전화 상담</a>
-          <a class="js-map-link" href="#" target="_blank" rel="noreferrer">지도 보기</a>
-        </span>
-      </div>
-    </footer>
+    <footer class="site-footer" data-shared-footer></footer>
 
-    <script src="script.js"></script>
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script src="cart-utils.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");

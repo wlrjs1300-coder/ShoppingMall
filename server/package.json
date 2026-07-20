@@ -9,7 +9,14 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "deploy:check": "node scripts/deployment-preflight.js",
+    "db:backup": "node scripts/backup-db.js",
+    "db:restore": "node scripts/restore-db.js",
+    "user:promote": "node scripts/promote-user.js",
+    "users:portfolio": "node scripts/seed-portfolio-users.js",
+    "demo:seed": "node scripts/seed-demo.js",
+    "portfolio:capture": "node scripts/capture-portfolio.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

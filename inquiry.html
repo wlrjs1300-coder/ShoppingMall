@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>따뜻한 떡집 | 상품 문의</title>
+    <meta name="description" content="상품 구성과 일정에 관한 문의를 남겨 주세요." />
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=135" />
+  </head>
+  <body class="inquiry-page">
+    <header class="site-header" data-shared-header></header>
+    <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
+    <main class="auth-page">
+      <section class="auth-card inquiry-card">
+        <h1>상품 문의하기</h1>
+        <p class="auth-card-desc">수량과 희망 일정을 알려주시면 확인 후 연락드리겠습니다.</p>
+        <form data-inquiry-form novalidate>
+          <label><span>문의 상품</span><input type="text" name="productName" readonly required /><input type="hidden" name="productId" /></label>
+          <label><span>이름</span><input type="text" name="customer" maxlength="50" autocomplete="name" required /></label>
+          <label><span>연락처</span><input type="tel" name="phone" maxlength="13" autocomplete="tel" placeholder="010-0000-0000" required /></label>
+          <div class="inquiry-field">
+            <label for="inquiry-quantity">예상 수량</label>
+            <div class="inquiry-quantity-control">
+              <button type="button" data-quantity-step="-1" aria-label="수량 줄이기">−</button>
+              <input id="inquiry-quantity" type="number" name="quantity" min="1" max="9999" value="10" inputmode="numeric" required />
+              <button type="button" data-quantity-step="1" aria-label="수량 늘리기">＋</button>
+            </div>
+            <div class="inquiry-quick-options" aria-label="자주 선택하는 수량">
+              <button type="button" data-quantity-value="10">10개</button>
+              <button type="button" data-quantity-value="30">30개</button>
+              <button type="button" data-quantity-value="50">50개</button>
+              <button type="button" data-quantity-value="100">100개</button>
+            </div>
+          </div>
+          <div class="inquiry-field">
+            <label for="inquiry-date-display">희망 날짜 <small>선택</small></label>
+            <div class="inquiry-date-picker" data-date-picker>
+              <button id="inquiry-date-display" class="inquiry-date-trigger" type="button" aria-haspopup="dialog" aria-expanded="false" data-date-trigger>
+                <span data-date-display>날짜를 선택해 주세요</span>
+                <svg class="inquiry-date-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                  <path d="M7 3v3M17 3v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v12H4V7a2 2 0 0 1 2-2Z" />
+                  <path d="M8 13h2M14 13h2M8 16.5h2M14 16.5h2" />
+                </svg>
+              </button>
+              <input type="hidden" name="desiredDate" />
+              <div class="inquiry-calendar" role="dialog" aria-modal="false" aria-label="희망 날짜 선택" data-calendar hidden>
+                <div class="inquiry-calendar-header">
+                  <button type="button" aria-label="이전 달" data-calendar-prev>‹</button>
+                  <strong data-calendar-title></strong>
+                  <button type="button" aria-label="다음 달" data-calendar-next>›</button>
+                </div>
+                <div class="inquiry-calendar-weekdays" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+                <div class="inquiry-calendar-days" data-calendar-days></div>
+                <div class="inquiry-calendar-footer">
+                  <button type="button" data-calendar-today>오늘</button>
+                  <button type="button" data-date-clear>선택 지우기</button>
+                </div>
+              </div>
+            </div>
+            <div class="inquiry-quick-options" aria-label="빠른 날짜 선택">
+              <button type="button" data-date-offset="3">3일 후</button>
+              <button type="button" data-date-offset="7">1주 후</button>
+              <button type="button" data-date-offset="14">2주 후</button>
+            </div>
+          </div>
+          <label><span>문의 내용</span><textarea name="message" maxlength="1000" rows="5" placeholder="포장, 구성, 예산 등 궁금한 내용을 적어 주세요." required></textarea></label>
+          <label class="auth-agree"><input type="checkbox" name="agreePrivacy" required /><span><a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a>에 동의합니다. <strong>(필수)</strong></span></label>
+          <button class="primary-button" type="submit">문의 접수하기</button>
+          <p class="auth-message" data-inquiry-message role="status" aria-live="polite"></p>
+        </form>
+        <p class="auth-switch">이전에 남긴 문의가 있으신가요? <a href="inquiry-lookup.html">비회원 문의조회</a></p>
+      </section>
+    </main>
+    <footer class="site-footer" data-shared-footer></footer>
+    <script src="cart-utils.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/inquiry.js"></script><script src="js/cart.js"></script><script src="js/auth.js"></script>
+  </body>
+</html>

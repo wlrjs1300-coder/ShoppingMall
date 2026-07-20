@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>소셜 회원 시작하기 | 따뜻한 떡집</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="login-page social-consent-page">
+    <header class="site-header" data-shared-header></header>
+    <main class="social-consent-main">
+      <section class="social-consent-card" aria-labelledby="consent-title">
+        <div class="social-consent-brand"><img src="assets/logo.svg" alt="" /><span>따뜻한 떡집</span></div>
+        <p class="social-consent-eyebrow">WELCOME</p>
+        <h1 id="consent-title">반가워요.<br />약관 확인 후 바로 시작할게요</h1>
+        <div class="social-auth-complete"><span aria-hidden="true">✓</span><p><strong data-social-consent-provider>소셜</strong> 인증이 완료되었습니다.<small>처음 한 번만 확인하면 다음부터는 바로 로그인됩니다.</small></p></div>
+
+        <form data-social-consent-form novalidate>
+          <label class="consent-all-row">
+            <input type="checkbox" data-consent-all />
+            <span><strong>전체 동의</strong><small>선택 항목은 제외하고 동의할 수도 있어요.</small></span>
+          </label>
+
+          <div class="consent-list">
+            <div class="consent-item">
+              <label><input type="checkbox" name="agreeTerms" required /><span><b>필수</b> 이용약관 동의</span></label>
+              <button type="button" class="consent-detail-toggle" data-consent-detail="terms" aria-label="이용약관 내용 보기">보기 <span aria-hidden="true">⌄</span></button>
+              <div class="consent-detail" data-consent-panel="terms" hidden>
+                따뜻한 떡집의 주문, 결제, 취소 및 서비스 이용 기준을 확인합니다.
+                <a href="terms.html" target="_blank" rel="noreferrer">약관 전문 보기</a>
+              </div>
+            </div>
+            <div class="consent-item">
+              <label><input type="checkbox" name="agreePrivacy" required /><span><b>필수</b> 개인정보 수집·이용 동의</span></label>
+              <button type="button" class="consent-detail-toggle" data-consent-detail="privacy" aria-label="개인정보 수집 이용 내용 보기">보기 <span aria-hidden="true">⌄</span></button>
+              <div class="consent-detail" data-consent-panel="privacy" hidden>
+                계정 식별과 주문 처리를 위해 소셜 식별값 및 제공에 동의한 정보를 이용합니다.
+                <a href="privacy.html" target="_blank" rel="noreferrer">처리방침 전문 보기</a>
+              </div>
+            </div>
+            <div class="consent-item">
+              <label><input type="checkbox" name="agreeMarketing" /><span><em>선택</em> 이벤트·혜택 정보 수신 동의</span></label>
+              <button type="button" class="consent-detail-toggle" data-consent-detail="marketing" aria-label="마케팅 수신 내용 보기">보기 <span aria-hidden="true">⌄</span></button>
+              <div class="consent-detail" data-consent-panel="marketing" hidden>신상품, 예약 일정 및 혜택 소식을 안내받습니다. 마이페이지에서 언제든 변경할 수 있습니다.</div>
+            </div>
+          </div>
+
+          <p class="auth-message" data-social-consent-message role="status" aria-live="polite"></p>
+          <button class="primary-button social-consent-submit" type="submit"><span>동의하고 시작하기</span><span aria-hidden="true">→</span></button>
+          <a class="social-consent-cancel" href="login.html">다른 방법으로 로그인</a>
+        </form>
+      </section>
+    </main>
+    <script src="js/ui.js"></script><script src="js/components.js"></script><script src="js/social-consent.js?v=20260718"></script>
+  </body>
+</html>

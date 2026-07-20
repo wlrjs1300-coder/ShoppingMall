@@ -120,20 +120,24 @@ async function notifyPickupReminders(db) {
 
   const rows = db
     .prepare(
-      "SELECT * FROM orders WHERE pickup_date = ? AND status NOT IN ('픽업완료', '배송완료', '취소')"
+      `SELECT o.*, COALESCE(SUM(oi.quantity), 0) AS total_quantity,
+        GROUP_CONCAT(oi.product_name, ', ') AS product_names
+       FROM orders o LEFT JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.pickup_date = ? AND o.status NOT IN ('픽업완료', '배송완료', '취소')
+       GROUP BY o.id`
     )
     .all(tomorrowStr);
 
   let sent = 0;
   for (const row of rows) {
     const dedupKey = `remind-${row.id}-${todayStr}`;
-    if (notifiedReminders.has(dedupKey) || !row.phone) continue;
+    if (notifiedReminders.has(dedupKey) || !row.customer_phone) continue;
 
-    const text = `[${storeName()}] ${row.customer || "고객"}님, 내일(${tomorrowStr}) ${row.product || "주문"} ${row.quantity || 1}개 픽업이 예정되어 있습니다.`;
-    const result = await notify(row.phone, text, process.env.KAKAO_TEMPLATE_REMIND, {
-      customer: row.customer || "고객",
-      product: row.product || "주문",
-      quantity: String(row.quantity || 1),
+    const text = `[${storeName()}] ${row.customer_name || "고객"}님, 내일(${tomorrowStr}) ${row.product_names || "주문"} ${row.total_quantity || 1}개 픽업이 예정되어 있습니다.`;
+    const result = await notify(row.customer_phone, text, process.env.KAKAO_TEMPLATE_REMIND, {
+      customer: row.customer_name || "고객",
+      product: row.product_names || "주문",
+      quantity: String(row.total_quantity || 1),
       pickupDate: tomorrowStr,
     }).catch(() => null);
 

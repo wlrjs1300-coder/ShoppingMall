@@ -1,39 +1,39 @@
-const CACHE_NAME = "tteokjip-v8"; // login.html 추가 + 헤더/스크립트 변경으로 버전 갱신
+const CACHE_NAME = "tteokjip-v22"; // 외부 주소 검색 스크립트는 서비스 워커 처리 대상에서 제외
 
-self.addEventListener("install", () => {
-  self.skipWaiting();
-});
-
+self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
-      )
-      .then(() => self.clients.claim()),
-  );
+  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
 });
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
+  } catch {
+    return (await cache.match(request)) || Response.error();
+  }
+}
+
+async function staleWhileRevalidate(request, event) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  const refresh = fetch(request).then((response) => {
+    if (response.ok && !/no-store/.test(response.headers.get("cache-control") || "")) cache.put(request, response.clone());
+    return response;
+  }).catch(() => cached);
+  if (cached) {
+    event.waitUntil(refresh);
+    return cached;
+  }
+  return refresh;
+}
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  if (!event.request.url.startsWith("http")) return;
-  if (event.request.url.includes("/api/")) return;
-
-  event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cached = await cache.match(event.request);
-
-      const networkFetch = fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type !== "opaque") {
-            cache.put(event.request, response.clone());
-          }
-          return response;
-        })
-        .catch(() => cached);
-
-      return cached || networkFetch;
-    }),
-  );
+  const { request } = event;
+  const requestUrl = new URL(request.url);
+  if (request.method !== "GET" || requestUrl.origin !== self.location.origin || requestUrl.pathname.startsWith("/api/")) return;
+  if (request.mode === "navigate") event.respondWith(networkFirst(request));
+  else event.respondWith(staleWhileRevalidate(request, event));
 });

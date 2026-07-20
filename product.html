@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>메뉴 상세 | 따뜻한 떡집</title>
+    <meta name="description" content="따뜻한 떡집 메뉴의 구성과 가격을 확인하세요." />
+    <meta name="theme-color" content="#fff3f7" />
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="product-page">
+    <header class="site-header" data-shared-header></header>
+    <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
+
+    <main class="product-detail-page">
+      <nav class="product-detail-breadcrumb" aria-label="현재 위치"><a href="menu.html">메뉴</a><span aria-hidden="true">/</span><span data-detail-breadcrumb>상세</span></nav>
+      <section class="product-detail-layout" data-product-detail aria-live="polite">
+        <div class="product-detail-loading" role="status">메뉴 정보를 불러오고 있습니다.</div>
+      </section>
+      <section class="product-detail-guide" aria-label="주문 안내">
+        <article>
+          <div class="product-guide-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M9 13h14l-1.5 12h-11z"/><path d="M12 13V9a4 4 0 0 1 8 0v4M16 5V2M8 7 6 5M24 7l2-2"/></svg></div>
+          <div><span>01 · FRESH</span><strong>당일 생산</strong><p>주문 일정에 맞춰 정성껏 준비합니다.</p></div>
+        </article>
+        <article>
+          <div class="product-guide-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m5 11 11-6 11 6-11 6z"/><path d="M5 11v12l11 6 11-6V11M16 17v12M10 8l11 6"/></svg></div>
+          <div><span>02 · PACKAGE</span><strong>안전한 포장</strong><p>떡의 모양과 신선함을 지켜 포장합니다.</p></div>
+        </article>
+        <article>
+          <div class="product-guide-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M3 8h17v15H3zM20 13h5l4 5v5h-9z"/><circle cx="9" cy="24" r="3"/><circle cx="24" cy="24" r="3"/><path d="M20 18h9"/></svg></div>
+          <div><span>03 · DELIVERY</span><strong>픽업·배송 상담</strong><p>상품별 가능한 수령 방법을 안내합니다.</p></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer" data-shared-footer></footer>
+    <script src="cart-utils.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/auth.js"></script><script src="js/product-detail.js"></script>
+  </body>
+</html>

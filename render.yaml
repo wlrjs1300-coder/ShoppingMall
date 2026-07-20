@@ -1,17 +1,41 @@
 services:
   - type: web
-    name: tteokjip
     runtime: node
-    buildCommand: cd server && npm install
-    startCommand: cd server && node index.js
+    name: tteokjip
+    buildCommand: cd server && npm ci
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 30
+    disk:
+      name: tteokjip-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
-      - key: NODE_VERSION
-        value: "22"
-      - key: PORT
-        value: "3000"
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /data/tteokjip.db
+      - key: BACKUP_DIR
+        value: /data/backups
       - key: ADMIN_CODE
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: NOTIFICATION_MODE
-        value: none
+      - key: AUTH_CODE_PEPPER
+        generateValue: true
+      - key: ALLOWED_ORIGIN
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: STORE_NAME
+        value: 따뜻한 떡집
+      - key: STORE_PHONE
+        sync: false
+      - key: STORE_HOURS
+        value: 09:00 - 19:00
+      - key: STORE_ADDRESS
+        sync: false
+      - key: STORE_PARKING
+        sync: false
+      - key: STORE_URL
+        sync: false

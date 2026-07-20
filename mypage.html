@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>따뜻한 떡집 | 마이페이지</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css?v=135" />
+</head>
+<body class="mypage-page">
+  <header class="site-header" data-shared-header></header>
+  <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
+
+  <main class="mypage-shell" hidden data-mypage-shell>
+    <section class="mypage-hero">
+      <div class="mypage-hero-main">
+        <span>MY PAGE</span><h1><b data-member-name>회원</b>님, 반갑습니다.</h1>
+        <p>주문 현황과 회원 정보를 안전하게 관리하세요.</p>
+        <p class="mypage-member-since">가입일 <strong data-member-since>-</strong></p>
+      </div>
+    </section>
+
+    <nav class="mypage-nav" role="tablist" aria-label="마이페이지 메뉴">
+      <button type="button" role="tab" aria-selected="true" aria-controls="orders" data-mypage-tab="orders">주문 내역</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="inquiries" data-mypage-tab="inquiries">문의 내역 <b data-mypage-inquiry-count hidden>0</b></button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="profile" data-mypage-tab="profile">회원 정보</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="address" data-mypage-tab="address">배송지 관리</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="security" data-mypage-tab="security">계정 관리</button>
+    </nav>
+
+    <section class="mypage-section" id="orders" role="tabpanel" data-mypage-panel="orders">
+      <div class="mypage-section-head"><div><span>ORDERS</span><h2>내 주문</h2></div><p>접수대기 상태에서만 직접 취소할 수 있습니다.</p></div>
+      <div class="member-order-list" data-member-orders></div>
+      <div class="mypage-empty" data-orders-empty hidden><strong>아직 주문 내역이 없습니다.</strong><a href="menu.html">메뉴 보러 가기</a></div>
+    </section>
+
+    <section class="mypage-section" id="inquiries" role="tabpanel" data-mypage-panel="inquiries" hidden>
+      <div class="mypage-section-head"><div><span>INQUIRIES</span><h2>문의 내역</h2></div><p>관리자가 등록한 답변을 이곳에서 확인할 수 있습니다.</p></div>
+      <div class="mypage-inquiry-list" data-member-inquiries></div>
+      <div class="mypage-empty" data-inquiries-empty hidden><strong>아직 문의 내역이 없습니다.</strong><a href="menu.html#menu-list">문의할 상품 보기</a></div>
+    </section>
+
+    <div class="mypage-grid mypage-tab-panels">
+      <section class="mypage-section" id="profile" role="tabpanel" data-mypage-panel="profile" hidden>
+        <div class="mypage-section-head"><div><span>PROFILE</span><h2>회원 정보</h2></div></div>
+        <form class="mypage-form" data-profile-form>
+          <label>아이디<input name="username" readonly /></label>
+          <label>이메일<input name="email" type="email" readonly /></label>
+          <label>이름<input name="name" maxlength="50" required /></label>
+          <label>휴대폰 번호<input name="phone" inputmode="tel" required /></label>
+          <label class="mypage-check"><input name="marketingConsent" type="checkbox" /> 마케팅 정보 수신 동의</label>
+          <button type="submit">회원 정보 저장</button><p class="mypage-message" data-profile-message aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="mypage-section" id="address" role="tabpanel" data-mypage-panel="address" hidden>
+        <div class="mypage-section-head"><div><span>ADDRESS</span><h2>배송지 관리</h2></div><p>자주 사용하는 배송지를 안전하게 관리하세요.</p></div>
+        <form class="mypage-form" data-address-form>
+          <div class="mypage-form-row"><label>수령인<input name="recipientName" required /></label><label>연락처<input name="recipientPhone" required /></label></div>
+          <label>우편번호<div class="mypage-address-search"><input name="postalCode" maxlength="20" autocomplete="postal-code" readonly /><button type="button" data-mypage-address-search>주소 검색</button></div></label>
+          <label>주소<input name="address" maxlength="200" autocomplete="street-address" readonly required /></label>
+          <label>상세 주소<input name="addressDetail" maxlength="200" /></label>
+          <button type="submit">배송지 저장</button><p class="mypage-message" data-address-message aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
+
+    <section class="mypage-section" id="security" role="tabpanel" data-mypage-panel="security" hidden>
+      <div class="mypage-section-head"><div><span>SECURITY</span><h2>계정 관리</h2></div></div>
+      <div class="mypage-grid">
+        <form class="mypage-form" data-password-form>
+          <h3>비밀번호 변경</h3>
+          <label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" required /></label>
+          <label>새 비밀번호<input name="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <label>새 비밀번호 확인<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <button type="submit">비밀번호 변경</button><p class="mypage-message" data-password-message aria-live="polite"></p>
+        </form>
+        <div class="mypage-account-panel">
+          <div class="social-identity-panel"><div><span class="mypage-panel-kicker">SOCIAL ACCOUNT</span><h3>소셜 계정 연결 상태</h3></div><ul class="social-identity-list" data-social-identities></ul></div>
+          <div class="withdraw-box"><span class="mypage-panel-kicker">ACCOUNT WITHDRAWAL</span><h3>회원 탈퇴</h3><p>탈퇴하면 배송지와 소셜 계정 연결 정보가 삭제되며 복구할 수 없습니다. 진행 중인 주문이 있다면 주문 완료 후 탈퇴할 수 있습니다.</p><button type="button" data-withdraw-button>회원 탈퇴 진행</button></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="mypage-loading" data-mypage-loading>회원 정보를 불러오는 중입니다…</div>
+  <dialog class="order-detail-dialog" data-order-dialog><button class="dialog-close" type="button" data-dialog-close aria-label="닫기">×</button><div data-order-detail></div></dialog>
+  <footer class="site-footer" data-shared-footer></footer>
+  <script src="js/mypage-address.js?v=21"></script>
+  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="mypage.js?v=18"></script>
+  <script>
+    fetch("/api/users/me", { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        if (body?.user?.role !== "admin") return;
+        document.querySelectorAll("[data-admin-link]").forEach((link) => { link.hidden = false; });
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
