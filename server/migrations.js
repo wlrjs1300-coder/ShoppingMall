@@ -104,6 +104,66 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 9,
+    name: "order_item_quantity_unit",
+    up(db) {
+      const columns = new Set(db.prepare("PRAGMA table_info(order_items)").all().map((column) => column.name));
+      if (!columns.has("quantity_unit")) db.exec("ALTER TABLE order_items ADD COLUMN quantity_unit TEXT");
+      db.exec("UPDATE order_items SET quantity_unit = CASE WHEN quantity = CAST(quantity AS INTEGER) THEN 'pack' ELSE 'mal' END WHERE quantity_unit IS NULL OR quantity_unit = '';");
+      db.exec("UPDATE order_items SET quantity_unit = 'pack' WHERE quantity_unit IS NULL OR TRIM(quantity_unit) = '';");
+      db.exec("UPDATE order_items SET quantity_unit = CASE WHEN quantity = CAST(quantity AS INTEGER) THEN 'pack' ELSE 'mal' END WHERE quantity_unit NOT IN ('pack', 'mal');");
+    },
+  },
+  {
+    version: 10,
+    name: "repair_pending_mal_order_prices",
+    up(db) {
+      db.exec(`
+        UPDATE order_items
+        SET unit_price = (
+              SELECT ROUND(products.price * 32)
+              FROM products
+              WHERE products.id = order_items.product_id
+            ),
+            line_total = ROUND(quantity * (
+              SELECT products.price * 32
+              FROM products
+              WHERE products.id = order_items.product_id
+            ))
+        WHERE quantity_unit = 'mal'
+          AND product_id IS NOT NULL
+          AND EXISTS (
+            SELECT 1 FROM products
+            WHERE products.id = order_items.product_id
+              AND order_items.unit_price = products.price
+          )
+          AND order_id IN (
+            SELECT orders.id FROM orders
+            LEFT JOIN payments ON payments.order_id = orders.id
+            WHERE payments.status IS NULL OR payments.status IN ('PENDING', 'FAILED')
+          );
+
+        UPDATE orders
+        SET subtotal = (SELECT COALESCE(SUM(line_total), 0) FROM order_items WHERE order_items.order_id = orders.id),
+            total_amount = (SELECT COALESCE(SUM(line_total), 0) FROM order_items WHERE order_items.order_id = orders.id) + delivery_fee,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id IN (
+          SELECT DISTINCT order_id FROM order_items WHERE quantity_unit = 'mal'
+        )
+          AND id IN (
+            SELECT orders.id FROM orders
+            LEFT JOIN payments ON payments.order_id = orders.id
+            WHERE payments.status IS NULL OR payments.status IN ('PENDING', 'FAILED')
+          );
+
+        UPDATE payments
+        SET amount = (SELECT total_amount FROM orders WHERE orders.id = payments.order_id)
+        WHERE status IN ('PENDING', 'FAILED')
+          AND EXISTS (SELECT 1 FROM orders WHERE orders.id = payments.order_id);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {

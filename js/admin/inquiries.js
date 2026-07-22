@@ -1,6 +1,8 @@
 let adminInquiries = [];
 let adminInquiriesLoaded = false;
 let activeAdminInquiryId = "";
+let activeAdminInquiryPhotos = [];
+let activeAdminInquiryPhotoIndex = 0;
 
 function escapeInquiryHtml(value) {
   return String(value ?? "")
@@ -43,7 +45,7 @@ function syncInquirySummary() {
     answered: adminInquiries.filter((item) => item.status === "답변완료").length,
   };
   document.querySelectorAll('[data-admin-tab-count="inquiries"]').forEach((node) => {
-    node.textContent = String(window.adminInquirySummary.received);
+    node.textContent = String(window.adminInquirySummary.total);
   });
 }
 
@@ -100,6 +102,8 @@ function openAdminInquiryDetail(id) {
   const body = document.querySelector("[data-admin-inquiry-detail]");
   const headerStatus = document.querySelector("[data-admin-inquiry-header-status]");
   if (!item || !dialog || !body) return;
+  const photos = Array.isArray(item.photos) ? item.photos.slice(0, 3) : [];
+  activeAdminInquiryPhotos = photos;
   activeAdminInquiryId = id;
   if (headerStatus) {
     headerStatus.textContent = item.status || "접수";
@@ -107,10 +111,10 @@ function openAdminInquiryDetail(id) {
   }
   body.innerHTML = `
     <section class="admin-inquiry-hero">
-      <div class="admin-inquiry-hero-customer"><span class="admin-inquiry-eyebrow">CUSTOMER</span><strong>${escapeInquiryHtml(item.customer_name)}</strong><p>${escapeInquiryHtml(formatInquiryPhone(item.customer_phone))}</p></div>
+      <div class="admin-inquiry-hero-customer"><span class="admin-inquiry-eyebrow">CUSTOMER</span><strong>${escapeInquiryHtml(item.customer_name)}</strong><p>${escapeInquiryHtml(formatInquiryPhone(item.customer_phone))}</p><small class="admin-inquiry-id">접수번호 ${escapeInquiryHtml(item.id)}</small></div>
       <div class="admin-inquiry-hero-facts"><div><span>문의 상품</span><strong>${escapeInquiryHtml(item.product_name)}</strong></div><div><span>예상 수량</span><strong>${Number(item.quantity || 0).toLocaleString("ko-KR")}개</strong></div><div><span>희망 날짜</span><strong>${item.desired_date ? escapeInquiryHtml(item.desired_date) : "미정"}</strong></div><div><span>접수 일시</span><strong>${formatInquiryDate(item.created_at, true)}</strong></div></div>
     </section>
-    <section class="admin-inquiry-message"><div><span class="admin-inquiry-eyebrow">CUSTOMER MESSAGE</span><h3>문의 내용</h3><small>고객이 남긴 문의를 확인해 주세요.</small></div><p><span aria-hidden="true">“</span>${escapeInquiryHtml(item.message).replaceAll("\n", "<br>")}<span aria-hidden="true">”</span></p></section>
+    <section class="admin-inquiry-message"><div class="admin-inquiry-message-heading"><span class="admin-inquiry-eyebrow">CUSTOMER MESSAGE</span><h3>문의 내용</h3></div><div class="admin-inquiry-message-content ${photos.length ? "has-photo" : ""}">${photos.length ? `<button class="admin-inquiry-representative-photo" type="button" data-admin-inquiry-photo-index="0" aria-label="첨부 사진 ${photos.length}장 확대 보기"><img src="${escapeInquiryHtml(photos[0])}" alt="문의 대표 첨부 사진" /><span><b>사진 보기</b><small>${photos.length}장</small></span></button>` : ""}<p><span aria-hidden="true">“</span>${escapeInquiryHtml(item.message).replaceAll("\n", "<br>")}<span aria-hidden="true">”</span></p></div></section>
     <section class="admin-inquiry-response">
       <div class="admin-inquiry-response-head"><div><span class="admin-inquiry-eyebrow">RESPONSE</span><h3>답변 작성</h3><p>저장하면 문의 상태가 자동으로 답변완료로 변경됩니다.</p></div></div>
       <div class="admin-inquiry-response-grid"><label class="admin-inquiry-field"><span>고객 답변</span><textarea name="adminReply" rows="6" maxlength="2000" placeholder="문의에 대한 답변을 입력해 주세요.">${escapeInquiryHtml(item.admin_reply || "")}</textarea></label><label class="admin-inquiry-field admin-inquiry-memo-field"><span>관리 메모 <small>고객에게 공개되지 않습니다.</small></span><textarea name="adminMemo" rows="6" maxlength="500" placeholder="통화 내용이나 확인할 사항을 기록해 주세요.">${escapeInquiryHtml(item.admin_memo || "")}</textarea></label></div>
@@ -141,6 +145,41 @@ document.querySelector("[data-admin-inquiry-list]")?.addEventListener("keydown",
 });
 document.querySelector("[data-admin-inquiry-dialog]")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-admin-inquiry-close]")) closeAdminInquiryDetail();
+});
+const adminInquiryPhotoDialog = document.querySelector("[data-admin-inquiry-photo-dialog]");
+const adminInquiryPhotoImage = document.querySelector("[data-admin-inquiry-photo-image]");
+const adminInquiryPhotoCounter = document.querySelector("[data-admin-inquiry-photo-counter]");
+const renderAdminInquiryPhoto = (index) => {
+  if (!activeAdminInquiryPhotos.length || !adminInquiryPhotoImage) return;
+  activeAdminInquiryPhotoIndex = (index + activeAdminInquiryPhotos.length) % activeAdminInquiryPhotos.length;
+  adminInquiryPhotoImage.src = activeAdminInquiryPhotos[activeAdminInquiryPhotoIndex];
+  adminInquiryPhotoImage.alt = `문의 첨부 사진 ${activeAdminInquiryPhotoIndex + 1}`;
+  if (adminInquiryPhotoCounter) adminInquiryPhotoCounter.textContent = `${activeAdminInquiryPhotoIndex + 1} / ${activeAdminInquiryPhotos.length}`;
+  document.querySelectorAll("[data-admin-inquiry-photo-move]").forEach((button) => { button.hidden = activeAdminInquiryPhotos.length < 2; });
+};
+document.querySelector("[data-admin-inquiry-detail]")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-admin-inquiry-photo-index]");
+  if (!button || !adminInquiryPhotoDialog || !adminInquiryPhotoImage) return;
+  renderAdminInquiryPhoto(Number(button.dataset.adminInquiryPhotoIndex || 0));
+  adminInquiryPhotoDialog.showModal();
+});
+const closeAdminInquiryPhoto = () => {
+  if (adminInquiryPhotoDialog?.open) adminInquiryPhotoDialog.close();
+  if (adminInquiryPhotoImage) adminInquiryPhotoImage.removeAttribute("src");
+};
+document.querySelector("[data-admin-inquiry-photo-close]")?.addEventListener("click", closeAdminInquiryPhoto);
+document.querySelectorAll("[data-admin-inquiry-photo-move]").forEach((button) => {
+  button.addEventListener("click", () => renderAdminInquiryPhoto(activeAdminInquiryPhotoIndex + Number(button.dataset.adminInquiryPhotoMove)));
+});
+adminInquiryPhotoDialog?.addEventListener("click", (event) => {
+  if (event.target === adminInquiryPhotoDialog) closeAdminInquiryPhoto();
+});
+adminInquiryPhotoDialog?.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowLeft") renderAdminInquiryPhoto(activeAdminInquiryPhotoIndex - 1);
+  if (event.key === "ArrowRight") renderAdminInquiryPhoto(activeAdminInquiryPhotoIndex + 1);
+});
+adminInquiryPhotoDialog?.addEventListener("close", () => {
+  if (adminInquiryPhotoImage) adminInquiryPhotoImage.removeAttribute("src");
 });
 document.querySelector("[data-admin-inquiry-form]")?.addEventListener("submit", async (event) => {
   event.preventDefault();

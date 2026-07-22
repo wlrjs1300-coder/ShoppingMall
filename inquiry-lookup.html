@@ -7,26 +7,261 @@
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css?v=135" />
+  <style>
+    .inquiry-lookup-page .auth-page {
+      padding-block: clamp(42px, 6vw, 76px);
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-card {
+      width: min(1040px, calc(100% - 36px));
+      max-width: none;
+      padding: clamp(26px, 4vw, 42px);
+      border: 1px solid #efd9de;
+      border-radius: 22px;
+      background: #fffdfa;
+      box-shadow: 0 22px 60px rgba(77, 43, 51, 0.09);
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-intro {
+      display: grid;
+      justify-items: center;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-icon {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      margin-bottom: 15px;
+      border-radius: 16px;
+      color: var(--pink-deep);
+      background: #fff0f4;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-icon svg {
+      width: 25px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-kicker {
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-card h1 {
+      margin: 0 0 10px;
+      color: #38262b;
+      font-size: clamp(25px, 4vw, 32px);
+      line-height: 1.25;
+      letter-spacing: -0.035em;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-card .auth-card-desc {
+      max-width: 470px;
+      margin: 0;
+      color: #7b656b;
+      font-size: 14px;
+      line-height: 1.7;
+      word-break: keep-all;
+    }
+
+    .inquiry-lookup-page [data-inquiry-lookup-form] {
+      gap: 16px;
+      padding: 22px;
+      border: 1px solid #f0dee2;
+      border-radius: 16px;
+      background: #fff9fa;
+    }
+
+    @media (min-width: 700px) {
+      .inquiry-lookup-page [data-inquiry-lookup-form] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 18px;
+      }
+
+      .inquiry-lookup-page .inquiry-lookup-help,
+      .inquiry-lookup-page [data-inquiry-lookup-form] .primary-button,
+      .inquiry-lookup-page [data-inquiry-lookup-message] {
+        grid-column: 1 / -1;
+      }
+
+      .inquiry-lookup-page [data-inquiry-lookup-form] .primary-button {
+        width: min(360px, 100%);
+        justify-self: center;
+      }
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-input {
+      position: relative;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-input input {
+      height: 50px;
+      padding-right: 44px;
+      border-radius: 10px;
+      background: #fffdfa;
+      font-size: 14px;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-input svg {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      width: 19px;
+      height: 19px;
+      fill: none;
+      stroke: #bc8794;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-help {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      margin: -3px 0 0;
+      color: #927b81;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .inquiry-lookup-page .inquiry-lookup-help::before {
+      content: "i";
+      display: inline-grid;
+      flex: 0 0 16px;
+      place-items: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      color: #b24660;
+      background: #fbe8ed;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .inquiry-lookup-page [data-inquiry-lookup-form] .primary-button {
+      min-height: 50px;
+      margin-top: 2px;
+      border-radius: 11px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .inquiry-lookup-page [data-inquiry-lookup-form] .primary-button.is-loading {
+      cursor: wait;
+      opacity: 0.72;
+    }
+
+    .inquiry-lookup-page [data-inquiry-lookup-message] {
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      color: #b43d58;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .inquiry-lookup-page [data-inquiry-lookup-message]:empty { display: none; }
+
+    .inquiry-lookup-page .guest-inquiry-result {
+      margin-top: 24px;
+      padding: 24px;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 14px 36px rgba(75, 42, 50, 0.07);
+    }
+
+    .inquiry-lookup-page .guest-inquiry-result dl {
+      overflow: hidden;
+      margin: 18px 0;
+      border: 1px solid #f0e1e4;
+      border-radius: 12px;
+      background: #fffafa;
+    }
+
+    .inquiry-lookup-page .guest-inquiry-result dl div {
+      padding: 13px 14px;
+    }
+
+    .inquiry-lookup-page .guest-inquiry-result section {
+      padding: 18px;
+      border: 1px solid #f1e2e5;
+      background: #fff9fa;
+    }
+
+    .inquiry-lookup-page .guest-inquiry-result .guest-inquiry-answer {
+      border-color: #d5ebe2;
+      background: #f2faf6;
+    }
+    .inquiry-lookup-page .guest-inquiry-photos { display:flex; flex-wrap:wrap; gap:9px; margin-top:13px; }
+    .inquiry-lookup-page .guest-inquiry-photos button { padding:0; overflow:hidden; border:1px solid #ead5da; border-radius:11px; background:#f5e9ec; cursor:zoom-in; }
+    .inquiry-lookup-page .guest-inquiry-photos img { display:block; width:124px; height:104px; object-fit:cover; transition:transform .18s ease; }
+    .inquiry-lookup-page .guest-inquiry-photos button:hover img { transform:scale(1.04); }
+    .guest-inquiry-photo-dialog { width:min(760px,calc(100vw - 28px)); padding:0; overflow:hidden; border:0; border-radius:18px; background:#211a1c; box-shadow:0 24px 80px rgba(30,18,22,.4); }
+    .guest-inquiry-photo-dialog::backdrop { background:rgba(28,18,21,.78); backdrop-filter:blur(3px); }
+    .guest-inquiry-photo-dialog img { display:block; width:100%; max-height:78vh; object-fit:contain; }
+    .guest-inquiry-photo-dialog button { position:absolute; top:12px; right:12px; display:grid; width:40px; height:40px; place-items:center; border:1px solid rgba(255,255,255,.35); border-radius:50%; color:#fff; background:rgba(30,20,23,.72); font-size:22px; cursor:pointer; }
+
+    .inquiry-lookup-page .auth-switch {
+      margin-top: 22px;
+      color: #826d72;
+      font-size: 13px;
+    }
+
+    .inquiry-lookup-page .auth-switch a {
+      color: var(--pink-deep);
+      font-weight: 850;
+      text-underline-offset: 3px;
+    }
+
+    @media (max-width: 560px) {
+      .inquiry-lookup-page .inquiry-lookup-card { padding: 24px 18px; border-radius: 18px; }
+      .inquiry-lookup-page [data-inquiry-lookup-form] { padding: 17px 15px; }
+      .inquiry-lookup-page .guest-inquiry-result { padding: 18px 15px; }
+      .inquiry-lookup-page .guest-inquiry-result dl { grid-template-columns: 1fr; }
+      .inquiry-lookup-page .guest-inquiry-result dl div,
+      .inquiry-lookup-page .guest-inquiry-result dl div:first-child {
+        padding: 11px 13px;
+        border-top: 1px solid #f0e0e3;
+        border-left: 0;
+      }
+      .inquiry-lookup-page .guest-inquiry-result dl div:first-child { border-top: 0; }
+    }
+  </style>
 </head>
 <body class="inquiry-lookup-page">
   <header class="site-header" data-shared-header></header>
   <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
   <main class="auth-page">
     <section class="auth-card inquiry-lookup-card">
-      <span class="inquiry-lookup-kicker">GUEST INQUIRY</span>
-      <h1>비회원 문의조회</h1>
-      <p class="auth-card-desc">문의 접수번호와 접수할 때 입력한 연락처로 답변을 확인해 주세요.</p>
+      <div class="inquiry-lookup-intro">
+        <span class="inquiry-lookup-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span>
+        <span class="inquiry-lookup-kicker">GUEST INQUIRY</span>
+        <h1>비회원 문의조회</h1>
+        <p class="auth-card-desc">문의 접수번호와 접수할 때 입력한 연락처로 답변 상태를 확인할 수 있습니다.</p>
+      </div>
       <form data-inquiry-lookup-form>
-        <label><span>문의 접수번호</span><input name="id" type="text" placeholder="inquiry-로 시작하는 접수번호" autocomplete="off" required /></label>
-        <label><span>연락처</span><input name="phone" type="tel" placeholder="010-0000-0000" autocomplete="tel" required /></label>
+        <label class="inquiry-lookup-input"><span>문의 접수번호</span><input name="id" type="text" placeholder="inquiry-로 시작하는 접수번호" autocomplete="off" required /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v4H7zM5 5H3v16h18V5h-2M8 12h8M8 16h5"/></svg></label>
+        <label class="inquiry-lookup-input"><span>연락처</span><input name="phone" type="tel" placeholder="010-0000-0000" autocomplete="tel" inputmode="tel" required /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h3l1 5-2 1a15 15 0 0 0 6 6l1-2 5 1v3c0 2-2 4-4 4C9 20 4 15 3 7c0-2 2-4 4-4Z"/></svg></label>
+        <p class="inquiry-lookup-help">문의 접수 완료 화면에서 안내받은 접수번호를 입력해 주세요.</p>
         <button class="primary-button" type="submit">문의 조회하기</button>
         <p class="auth-message" data-inquiry-lookup-message role="status" aria-live="polite"></p>
       </form>
       <article class="guest-inquiry-result" data-inquiry-lookup-result hidden></article>
-      <p class="auth-switch">새 문의가 필요하신가요? <a href="menu.html#menu-list">메뉴 보러 가기</a></p>
+      <p class="auth-switch">새 문의가 필요하신가요? <a href="inquiry.html">문의 남기기</a></p>
     </section>
   </main>
   <footer class="site-footer" data-shared-footer></footer>
-  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="js/inquiry-lookup.js"></script>
+  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="js/inquiry-lookup.js?v=3"></script>
 </body>
 </html>

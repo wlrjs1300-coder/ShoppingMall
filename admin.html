@@ -16,7 +16,7 @@
   <body class="admin-page">
 
     <!-- 관리자 회원 권한 확인 화면 -->
-    <div class="admin-lock" data-admin-lock>
+    <div class="admin-lock is-checking" data-admin-lock aria-busy="true">
       <div class="admin-lock-card">
         <p class="section-kicker">ADMIN ACCESS</p>
         <h1>관리자 권한 확인</h1>
@@ -270,6 +270,7 @@
             <div data-admin-inquiry-detail></div>
           </form>
         </dialog>
+        <dialog class="admin-inquiry-photo-dialog" data-admin-inquiry-photo-dialog aria-label="문의 첨부 사진 확대 보기"><button class="admin-inquiry-photo-close" type="button" data-admin-inquiry-photo-close aria-label="확대 사진 닫기">×</button><button class="admin-inquiry-photo-move is-prev" type="button" data-admin-inquiry-photo-move="-1" aria-label="이전 사진">‹</button><img data-admin-inquiry-photo-image alt="" /><button class="admin-inquiry-photo-move is-next" type="button" data-admin-inquiry-photo-move="1" aria-label="다음 사진">›</button><span class="admin-inquiry-photo-counter" data-admin-inquiry-photo-counter aria-live="polite"></span></dialog>
 
         <!-- ─── 고객관리 패널 ─── -->
         <dialog class="admin-order-detail-dialog" data-admin-order-detail-dialog aria-labelledby="admin-order-detail-title">
@@ -778,7 +779,7 @@
     </aside>
 
     <script src="cart-utils.js"></script>
-    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js?v=4"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js"></script><script src="js/admin/dashboard.js?v=9"></script><script src="js/admin/orders.js?v=64"></script><script src="js/admin/customers.js?v=5"></script><script src="js/admin/inventory.js?v=20"></script><script src="js/admin/suppliers.js?v=9"></script><script src="js/admin/accounting.js?v=47"></script><script src="js/admin/inquiries.js?v=4"></script><script src="js/admin/events.js?v=68"></script><script src="js/auth.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js?v=4"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js"></script><script src="js/admin/dashboard.js?v=10"></script><script src="js/admin/orders.js?v=64"></script><script src="js/admin/customers.js?v=5"></script><script src="js/admin/inventory.js?v=20"></script><script src="js/admin/suppliers.js?v=9"></script><script src="js/admin/accounting.js?v=48"></script><script src="js/admin/inquiries.js?v=10"></script><script src="js/admin/events.js?v=69"></script><script src="js/auth.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");

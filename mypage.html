@@ -1,22 +1,453 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>따뜻한 떡집 | 마이페이지</title>
+  <title>쇼핑몰 | 마이페이지</title>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css?v=135" />
+  <style>
+    html:has(body.mypage-page .order-detail-dialog[open]),
+    html:has(body.mypage-page .return-request-dialog[open]),
+    html:has(body.mypage-page .review-write-dialog[open]) {
+      overflow: hidden;
+      scrollbar-gutter: stable;
+    }
+
+    body.mypage-page:has(.order-detail-dialog[open]),
+    body.mypage-page:has(.return-request-dialog[open]),
+    body.mypage-page:has(.review-write-dialog[open]) {
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    .mypage-page .order-detail-dialog[open],
+    .mypage-page .return-request-dialog[open],
+    .mypage-page .review-write-dialog[open],
+    .mypage-page .return-request-body {
+      overscroll-behavior: contain;
+    }
+
+    .mypage-page .mypage-profile-layout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .mypage-page .mypage-security-group {
+      display: contents;
+    }
+
+    .mypage-page .mypage-profile-layout > .mypage-form,
+    .mypage-page .mypage-security-group > .mypage-form {
+      height: 100%;
+      padding: 22px;
+      border: 1px solid #ecdce0;
+      border-radius: 16px;
+      background: #fffdfa;
+      box-sizing: border-box;
+    }
+
+    .mypage-page .mypage-profile-layout .mypage-form h3 {
+      margin: 0 0 4px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #f0e2e5;
+      font-size: 17px;
+    }
+
+    .mypage-page .mypage-profile-layout .mypage-account-panel {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+
+    .mypage-page .mypage-profile-layout .social-identity-panel,
+    .mypage-page .mypage-profile-layout .withdraw-box {
+      margin: 0;
+      padding: 20px 22px;
+      border: 1px solid #ecdce0;
+      border-radius: 16px;
+      background: #fffdfa;
+    }
+
+    .mypage-page .mypage-address-slots {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .mypage-page .mypage-address-slot {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 20px 22px;
+      border-radius: 16px;
+      background: #fffdfa;
+      box-shadow: 0 9px 24px rgba(82, 48, 57, 0.05);
+    }
+
+    .mypage-page .mypage-address-slot.is-selected {
+      border-color: #e9c5ce;
+      box-shadow: 0 9px 24px rgba(82, 48, 57, 0.07);
+    }
+
+    .mypage-page .mypage-address-slot-head {
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .mypage-page .mypage-address-slot-head strong {
+      font-size: 15px;
+      line-height: 1.4;
+      font-weight: 900;
+    }
+
+    .mypage-page .mypage-address-default-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 0 11px;
+      border: 1px solid #e8c9d1;
+      border-radius: 999px;
+      color: #ad4a61;
+      background: #fff9fa;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .mypage-page .mypage-address-default-button::before {
+      content: "☆";
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    .mypage-page .mypage-address-default-button:hover,
+    .mypage-page .mypage-address-default-button:focus-visible,
+    .mypage-page .mypage-address-default-button.is-active {
+      border-color: #edc5cf;
+      color: #bd3f5c;
+      background: #fff0f4;
+      box-shadow: inset 0 0 0 1px rgba(223, 79, 109, 0.04);
+      outline: none;
+    }
+
+    .mypage-page .mypage-address-default-button.is-active::before { content: "★"; color: #df4f6d; }
+
+    .mypage-page .mypage-address-default-button.is-active {
+      cursor: default;
+    }
+
+    .mypage-page .mypage-address-slot p {
+      margin: 3px 0;
+      line-height: 1.65;
+      word-break: keep-all;
+    }
+
+    .mypage-page .mypage-address-slot-actions {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #f0e2e5;
+      gap: 7px;
+    }
+
+    .mypage-page .mypage-address-slot-actions .order-action-tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 74px;
+      height: 36px;
+      padding: 0 13px;
+      border-color: #e5d6da;
+      border-radius: 9px;
+      color: #6f5960;
+      background: #fffdfa;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: none;
+    }
+
+    .mypage-page .mypage-address-slot-actions .order-action-tab svg {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .mypage-page .mypage-address-slot-actions .order-action-tab:hover {
+      border-color: #d79aa9;
+      color: #bd3d5a;
+      background: #fff8fa;
+    }
+
+    .mypage-page .mypage-address-slot-actions .order-action-tab.is-danger {
+      border-color: #ead9dd;
+      color: #a96877;
+      background: #fffafa;
+    }
+
+    .mypage-page .mypage-address-slot-actions .order-action-tab.is-danger:hover,
+    .mypage-page .mypage-address-slot-actions .order-action-tab.is-danger:focus-visible {
+      border-color: #dc8296;
+      color: #b73754;
+      background: #fff1f4;
+      outline: none;
+    }
+
+    .mypage-page .mypage-address-add {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 54px;
+      border: 1px dashed #deb8c2;
+      border-radius: 14px;
+      color: #bd405d;
+      background: #fff9fa;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .mypage-page .mypage-address-add b {
+      display: grid;
+      place-items: center;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--pink-deep);
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .mypage-page .mypage-address-add:hover,
+    .mypage-page .mypage-address-add:focus-visible {
+      border-color: var(--pink-deep);
+      background: #fff2f5;
+      outline: none;
+    }
+
+    .mypage-page [data-address-form] {
+      margin-top: 18px;
+      padding: 22px;
+      border: 1px solid #ecd8dd;
+      border-radius: 16px;
+      background: #fffdfa;
+    }
+
+    .mypage-page [data-address-form][hidden] { display: none; }
+    .mypage-page .mypage-address-form-head { display: flex; justify-content: space-between; gap: 14px; align-items: center; }
+    .mypage-page .mypage-address-form-head h3 { margin: 0; font-size: 17px; }
+    .mypage-page .mypage-address-form-actions { display: flex; justify-content: flex-end; gap: 9px; }
+    .mypage-page .mypage-address-form-actions button { min-width: 110px; }
+    .mypage-page .mypage-address-form-actions [data-address-form-cancel] { color: #6e565d; background: #fff; border: 1px solid #dfcdd2; }
+
+    .mypage-page .mypage-review-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .mypage-page .mypage-review-card {
+      padding: 20px 22px;
+      border: 1px solid #ebd9dd;
+      border-radius: 15px;
+      background: #fffdfa;
+    }
+
+    .mypage-page .mypage-review-card header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .mypage-page .mypage-review-card h3 { margin: 0 0 5px; font-size: 16px; }
+    .mypage-page .mypage-review-stars { color: #e5a52f; letter-spacing: 0.08em; }
+    .mypage-page .mypage-review-card time { color: #9a858a; font-size: 11px; white-space: nowrap; }
+    .mypage-page .mypage-review-card p { margin: 0; color: #665159; font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
+    .mypage-page .mypage-review-keywords { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 13px; }
+    .mypage-page .mypage-review-keywords span { display: inline-flex; align-items: center; min-height: 27px; padding: 0 9px; border: 1px solid #ecd2d9; border-radius: 999px; color: #b14660; background: #fff4f7; font-size: 10px; font-weight: 800; }
+    .mypage-page .mypage-review-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 150px)); gap: 8px; margin: 0 0 14px; }
+    .mypage-page .mypage-review-photos img { width: 100%; aspect-ratio: 1; border-radius: 10px; object-fit: cover; background: #f5e9ec; }
+    .mypage-page .mypage-inquiry-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .mypage-page .mypage-inquiry-photos img { width: 112px; height: 92px; border-radius: 10px; object-fit: cover; background: #f5e9ec; }
+    .mypage-page .mypage-inquiry-id { display: block; margin-top: 8px; color: #a08a90; font-size: 10px; line-height: 1.45; word-break: break-all; }
+    .mypage-page .mypage-content-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 15px; padding-top: 13px; border-top: 1px solid #f0e2e5; }
+    .mypage-page .mypage-content-actions button { min-height: 34px; padding: 0 13px; border: 1px solid #e2d1d5; border-radius: 9px; color: #705960; background: #fff; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; }
+    .mypage-page .mypage-content-actions button:hover { border-color: #d78fa0; color: #bd3e5b; background: #fff7f9; }
+    .mypage-page .mypage-content-actions button.is-danger { color: #ae6676; background: #fffafa; }
+    .mypage-page .mypage-content-actions button[disabled] { cursor: not-allowed; opacity: .45; }
+    .mypage-page .mypage-edit-dialog { width: min(520px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 20px; color: #3e2b30; background: #fffdfa; box-shadow: 0 26px 80px rgba(55, 29, 37, .25); }
+    .mypage-page .mypage-edit-dialog::backdrop { background: rgba(49, 31, 36, .42); backdrop-filter: blur(3px); }
+    .mypage-page .mypage-edit-dialog form { display: grid; gap: 15px; margin: 0; padding: 26px; }
+    .mypage-page .mypage-edit-dialog header { padding-bottom: 15px; border-bottom: 1px solid #efdee2; }
+    .mypage-page .mypage-edit-dialog h2 { margin: 0 0 5px; font-size: 20px; }
+    .mypage-page .mypage-edit-dialog header p { margin: 0; color: #887177; font-size: 12px; }
+    .mypage-page .mypage-edit-dialog label { display: grid; gap: 7px; color: #5c444b; font-size: 12px; font-weight: 850; }
+    .mypage-page .mypage-edit-dialog input,
+    .mypage-page .mypage-edit-dialog select,
+    .mypage-page .mypage-edit-dialog textarea { width: 100%; padding: 11px 12px; border: 1px solid #e7d3d8; border-radius: 9px; color: #3e2b30; background: #fff; font: inherit; outline: none; box-sizing: border-box; }
+    .mypage-page .mypage-edit-dialog textarea { min-height: 130px; resize: vertical; line-height: 1.65; }
+    .mypage-page .inquiry-edit-photos { display: grid; gap: 8px; }
+    .mypage-page .inquiry-edit-photos > div:first-child { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; color: #5c444b; font-size: 12px; font-weight: 850; }
+    .mypage-page .inquiry-edit-photos small { color: #9a8389; font-size: 10px; font-weight: 600; }
+    .mypage-page .inquiry-edit-photos .review-photo-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; overflow: visible; }
+    .mypage-page .inquiry-edit-photos .review-photo-add { flex: 0 0 104px; width: 104px; height: 86px; }
+    .mypage-page .inquiry-edit-photos .review-photo-preview { display: flex; flex: 1 1 320px; flex-wrap: wrap; gap: 8px; overflow: visible; }
+    .mypage-page .inquiry-edit-photos .review-photo-item,
+    .mypage-page .inquiry-edit-photos .review-photo-item img { width: 104px; height: 86px; }
+    .mypage-page .mypage-edit-dialog input:focus,
+    .mypage-page .mypage-edit-dialog select:focus,
+    .mypage-page .mypage-edit-dialog textarea:focus { border-color: var(--pink-deep); box-shadow: 0 0 0 3px rgba(223,79,109,.1); }
+    .mypage-page .mypage-edit-dialog-actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 9px; margin-top: 3px; }
+    .mypage-page .mypage-edit-dialog-actions button { min-height: 45px; border: 1px solid #e4d0d5; border-radius: 10px; color: #715b61; background: #fff; font: inherit; font-weight: 850; cursor: pointer; }
+    .mypage-page .mypage-edit-dialog-actions button[type="submit"] { border-color: var(--pink-deep); color: #fff; background: var(--pink-deep); }
+    .mypage-page .return-request-dialog { width: min(720px, calc(100% - 28px)); max-height: min(88vh, 820px); padding: 0; overflow: hidden; border: 0; border-radius: 22px; color: #3e2b30; background: #fffdfa; box-shadow: 0 30px 90px rgba(52, 27, 35, .28); }
+    .mypage-page .return-request-dialog::backdrop { background: rgba(45, 28, 33, .48); backdrop-filter: blur(4px); }
+    .mypage-page .return-request-form { margin: 0; }
+    .mypage-page .return-request-head { position: relative; display: flex; gap: 11px; align-items: center; padding: 15px 24px 14px; border-bottom: 1px solid #efdee2; background: linear-gradient(145deg, #fff7f9, #fffdfa); }
+    .mypage-page .return-request-head-icon { display: grid; flex: 0 0 38px; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: #c94361; background: #ffe9ef; }
+    .mypage-page .return-request-head-icon svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .mypage-page .return-request-head span { color: #c34a65; font-size: 10px; font-weight: 900; letter-spacing: .13em; }
+    .mypage-page .return-request-head h2 { margin: 2px 0 0; font-size: 19px; letter-spacing: -.03em; }
+    .mypage-page .return-request-close { position: absolute; top: 13px; right: 17px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid #ead6db; border-radius: 50%; color: #7c646a; background: #fff; font-size: 19px; cursor: pointer; }
+    .mypage-page .return-request-body { display: grid; gap: 14px; max-height: calc(92vh - 70px); padding: 17px 24px 20px; overflow-y: auto; }
+    .mypage-page .return-order-summary { display: flex; justify-content: space-between; gap: 18px; padding: 15px 17px; border: 1px solid #efdee2; border-radius: 13px; background: #fff9fa; }
+    .mypage-page .return-order-summary span { display: block; margin-bottom: 4px; color: #9a7d84; font-size: 10px; font-weight: 850; }
+    .mypage-page .return-order-summary strong { display: block; color: #49343a; font-size: 13px; }
+    .mypage-page .return-order-summary div:last-child { text-align: right; }
+    .mypage-page .return-order-products { overflow: hidden; border: 1px solid #efdee2; border-radius: 14px; background: #fff; }
+    .mypage-page .return-order-products .return-order-summary { margin: 0; padding: 15px 17px; border: 0; border-bottom: 1px solid #efdee2; border-radius: 0; background: #fff8fa; }
+    .mypage-page .return-order-products-body { display: grid; gap: 10px; padding: 16px; }
+    .mypage-page .return-request-section { display: grid; gap: 10px; }
+    .mypage-page .return-request-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .mypage-page .return-request-section-title strong { font-size: 14px; }
+    .mypage-page .return-request-section-title small { color: #9b8288; font-size: 10px; }
+    .mypage-page .return-type-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .mypage-page .return-type-tabs label { cursor: pointer; }
+    .mypage-page .return-type-tabs input { position: absolute; opacity: 0; pointer-events: none; }
+    .mypage-page .return-type-tabs span { display: grid; place-items: center; min-height: 46px; border: 1px solid #e7d4d9; border-radius: 11px; color: #6e555c; background: #fff; font-size: 13px; font-weight: 850; transition: .16s ease; }
+    .mypage-page .return-type-tabs input:checked + span { border-color: var(--pink-deep); color: #c83e5d; background: #fff0f4; box-shadow: inset 0 0 0 1px rgba(223,79,109,.08); }
+    .mypage-page .return-item-list { display: grid; gap: 8px; }
+    .mypage-page .return-item-option { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 11px; min-height: 54px; padding: 10px 13px; border: 1px solid #ead9dd; border-radius: 11px; background: #fff; cursor: pointer; }
+    .mypage-page .return-item-option:has(input:checked) { border-color: #e49aae; background: #fff7f9; }
+    .mypage-page .return-item-option input { width: 17px; height: 17px; accent-color: var(--pink-deep); }
+    .mypage-page .return-item-option strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+    .mypage-page .return-item-option span { color: #8a7177; font-size: 11px; white-space: nowrap; }
+    .mypage-page .return-request-fields { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .mypage-page .return-request-fields label { display: grid; gap: 7px; color: #5e474d; font-size: 12px; font-weight: 850; }
+    .mypage-page .return-request-fields select,
+    .mypage-page .return-request-fields textarea { width: 100%; padding: 11px 12px; border: 1px solid #e6d3d8; border-radius: 10px; color: #443137; background: #fff; font: inherit; outline: none; box-sizing: border-box; }
+    .mypage-page .return-request-fields textarea { min-height: 68px; max-height: 90px; resize: vertical; line-height: 1.5; }
+    .mypage-page .return-request-fields select:focus,
+    .mypage-page .return-request-fields textarea:focus { border-color: var(--pink-deep); box-shadow: 0 0 0 3px rgba(223,79,109,.1); }
+    .mypage-page .return-request-notice { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 10px; padding: 13px 15px; border-radius: 11px; color: #665158; background: #f8f4f1; font-size: 11px; line-height: 1.65; }
+    .mypage-page .return-request-notice b { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; color: #9a6941; background: #f0dfcf; }
+    .mypage-page .return-request-notice p { margin: 0; }
+    .mypage-page .return-request-notice strong { display: block; margin-bottom: 2px; color: #564148; font-size: 12px; }
+    .mypage-page .return-request-message { min-height: 0; margin: -8px 0 0; color: #bd3f5b; font-size: 11px; text-align: center; }
+    .mypage-page .return-request-message:empty { display: none; }
+    .mypage-page .return-request-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 9px; }
+    .mypage-page .return-request-actions button { min-height: 47px; border: 1px solid #e4d1d6; border-radius: 11px; color: #715a61; background: #fff; font: inherit; font-weight: 900; cursor: pointer; }
+    .mypage-page .return-request-actions button[type="submit"] { border-color: var(--pink-deep); color: #fff; background: linear-gradient(135deg,#e65f7f,#df4f6d); box-shadow: 0 10px 24px rgba(223,79,109,.2); }
+    .mypage-page .review-write-dialog { width: min(640px, calc(100% - 28px)); height: min(92vh, 860px); max-height: min(92vh, 860px); padding: 0; overflow: hidden; border: 0; border-radius: 22px; color: #3e2b30; background: #fffdfa; box-shadow: 0 30px 90px rgba(52,27,35,.28); }
+    .mypage-page .review-write-dialog::backdrop { background: rgba(45,28,33,.48); backdrop-filter: blur(4px); }
+    .mypage-page .review-write-form { display: flex; flex-direction: column; height: 100%; margin: 0; }
+    .mypage-page .review-write-head { position: relative; display: flex; align-items: center; gap: 12px; padding: 19px 24px 17px; border-bottom: 1px solid #efdee2; background: linear-gradient(145deg,#fff7f9,#fffdfa); }
+    .mypage-page .review-write-head-icon { display: grid; flex: 0 0 42px; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: #c94361; background: #ffe9ef; }
+    .mypage-page .review-write-head-icon svg { width: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .mypage-page .review-write-head span { color: #c34a65; font-size: 10px; font-weight: 900; letter-spacing: .13em; }
+    .mypage-page .review-write-head h2 { margin: 2px 0 0; font-size: 21px; letter-spacing: -.03em; }
+    .mypage-page .review-write-close { position: absolute; top: 17px; right: 18px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid #ead6db; border-radius: 50%; color: #7c646a; background: #fff; font-size: 20px; cursor: pointer; }
+    .mypage-page .review-write-body { display: grid; flex: 1; align-content: start; gap: 18px; min-height: 0; padding: 22px 24px 26px; overflow-y: auto; overscroll-behavior: contain; }
+    .mypage-page .review-product-summary { display: grid; grid-template-columns: 62px minmax(0,1fr) auto; align-items: center; gap: 13px; padding: 12px; border: 1px solid #eedce1; border-radius: 14px; background: #fff9fa; }
+    .mypage-page .review-product-summary img { width: 62px; height: 62px; border-radius: 11px; object-fit: cover; background: #f6eaed; }
+    .mypage-page .review-product-summary small { display: block; margin-bottom: 4px; color: #9b7e85; font-size: 10px; font-weight: 800; }
+    .mypage-page .review-product-summary strong { display: block; overflow: hidden; color: #49343a; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+    .mypage-page .review-product-summary > span { color: #8d747a; font-size: 11px; white-space: nowrap; }
+    .mypage-page .review-rating-section { display: grid; justify-items: center; gap: 8px; padding: 17px; border: 1px solid #f0dfe3; border-radius: 14px; background: #fff; text-align: center; }
+    .mypage-page .review-rating-section > strong { font-size: 14px; }
+    .mypage-page .review-rating-section > p { margin: 0; color: #91797f; font-size: 11px; }
+    .mypage-page .review-star-picker { display: flex; flex-direction: row-reverse; justify-content: center; gap: 5px; }
+    .mypage-page .review-star-picker input { position: absolute; opacity: 0; pointer-events: none; }
+    .mypage-page .review-star-picker label { color: #e8dadd; font-size: 35px; line-height: 1; cursor: pointer; transition: color .14s ease, transform .14s ease; }
+    .mypage-page .review-star-picker label:hover,
+    .mypage-page .review-star-picker label:hover ~ label,
+    .mypage-page .review-star-picker input:checked ~ label { color: #efb13d; }
+    .mypage-page .review-star-picker label:hover { transform: translateY(-2px); }
+    .mypage-page .review-keyword-section { display: grid; gap: 9px; }
+    .mypage-page .review-keyword-section > strong,
+    .mypage-page .review-content-head strong { font-size: 13px; }
+    .mypage-page .review-keywords { display: flex; flex-wrap: wrap; gap: 7px; }
+    .mypage-page .review-keywords label { cursor: pointer; }
+    .mypage-page .review-keywords input { position: absolute; opacity: 0; pointer-events: none; }
+    .mypage-page .review-keywords span { display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border: 1px solid #e7d6da; border-radius: 999px; color: #765e65; background: #fff; font-size: 11px; font-weight: 800; }
+    .mypage-page .review-keywords input:checked + span { border-color: #e19aae; color: #bd3e5b; background: #fff1f5; }
+    .mypage-page .review-content-section { display: grid; gap: 8px; }
+    .mypage-page .review-content-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .mypage-page .review-content-head span { color: #9a8389; font-size: 10px; }
+    .mypage-page .review-content-section textarea { width: 100%; min-height: 112px; padding: 13px 14px; border: 1px solid #e5d2d7; border-radius: 11px; color: #443137; background: #fff; font: inherit; font-size: 13px; line-height: 1.65; resize: vertical; outline: none; box-sizing: border-box; }
+    .mypage-page .review-content-section textarea:focus { border-color: var(--pink-deep); box-shadow: 0 0 0 3px rgba(223,79,109,.1); }
+    .mypage-page .review-photo-section { display: grid; gap: 9px; }
+    .mypage-page .review-photo-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .mypage-page .review-photo-head strong { font-size: 13px; }
+    .mypage-page .review-photo-head span { color: #9a8389; font-size: 10px; }
+    .mypage-page .review-photo-tools { display: grid; grid-template-columns: 112px minmax(0,1fr); gap: 9px; align-items: stretch; }
+    .mypage-page .review-photo-add { display: grid; place-items: center; align-content: center; width: 112px; height: 92px; gap: 5px; border: 1px dashed #dcaeba; border-radius: 11px; color: #bd405d; background: #fff7f9; box-sizing: border-box; cursor: pointer; }
+    .mypage-page .review-photo-add b { font-size: 25px; line-height: 1; font-weight: 500; }
+    .mypage-page .review-photo-add span { font-size: 11px; font-weight: 850; }
+    .mypage-page .review-photo-add input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .mypage-page .review-photo-preview { display: grid; grid-auto-flow: column; grid-auto-columns: 112px; justify-content: start; gap: 8px; min-width: 0; overflow-x: auto; }
+    .mypage-page .review-photo-preview:empty { display: none; }
+    .mypage-page .review-photo-item { position: relative; width: 112px; height: 92px; min-width: 0; }
+    .mypage-page .review-photo-item img { width: 112px; height: 92px; border-radius: 10px; object-fit: cover; background: #f5e9ec; }
+    .mypage-page .review-photo-item button { position: absolute; top: 5px; right: 5px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: rgba(49,31,36,.72); font-size: 15px; cursor: pointer; }
+    .mypage-page .review-write-message { min-height: 0; margin: -8px 0 0; color: #bd3f5b; font-size: 11px; text-align: center; }
+    .mypage-page .review-write-message:empty { display: none; }
+    .mypage-page .review-write-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 9px; }
+    .mypage-page .review-write-actions button { min-height: 47px; border: 1px solid #e4d1d6; border-radius: 11px; color: #715a61; background: #fff; font: inherit; font-weight: 900; cursor: pointer; }
+    .mypage-page .review-write-actions button[type="submit"] { border-color: var(--pink-deep); color: #fff; background: linear-gradient(135deg,#e65f7f,#df4f6d); box-shadow: 0 10px 24px rgba(223,79,109,.2); }
+    @media (max-width: 620px) {
+      .mypage-page .return-request-head { padding: 14px 18px 13px; }
+      .mypage-page .return-request-body { padding: 15px 16px 17px; }
+      .mypage-page .return-request-fields { grid-template-columns: 1fr; }
+      .mypage-page .return-order-summary { display: grid; }
+      .mypage-page .return-order-summary div:last-child { text-align: left; }
+    }
+    .mypage-page [data-reviews-empty] span { display: block; margin-top: 8px; color: #8b757b; font-size: 13px; }
+
+    @media (max-width: 900px) {
+      .mypage-page .mypage-profile-layout,
+      .mypage-page .mypage-profile-layout .mypage-account-panel,
+      .mypage-page .mypage-address-slots { grid-template-columns: 1fr; }
+      .mypage-page .mypage-address-slot { min-height: 0; }
+    }
+  </style>
 </head>
 <body class="mypage-page">
   <header class="site-header" data-shared-header></header>
-  <div class="event-ticker" aria-label="이벤트 안내" data-shared-ticker></div>
+  <div class="event-ticker" aria-label="긴급 공지" data-shared-ticker></div>
 
   <main class="mypage-shell" hidden data-mypage-shell>
     <section class="mypage-hero">
       <div class="mypage-hero-main">
-        <span>MY PAGE</span><h1><b data-member-name>회원</b>님, 반갑습니다.</h1>
-        <p>주문 현황과 회원 정보를 안전하게 관리하세요.</p>
+        <span>MY PAGE</span><h1><b data-member-name>회원</b>님, 안녕하세요.</h1>
+        <p>원하는 주문을 편안하게 조회하고 관리하세요.</p>
         <p class="mypage-member-since">가입일 <strong data-member-since>-</strong></p>
       </div>
     </section>
@@ -26,69 +457,133 @@
       <button type="button" role="tab" aria-selected="false" aria-controls="inquiries" data-mypage-tab="inquiries">문의 내역 <b data-mypage-inquiry-count hidden>0</b></button>
       <button type="button" role="tab" aria-selected="false" aria-controls="profile" data-mypage-tab="profile">회원 정보</button>
       <button type="button" role="tab" aria-selected="false" aria-controls="address" data-mypage-tab="address">배송지 관리</button>
-      <button type="button" role="tab" aria-selected="false" aria-controls="security" data-mypage-tab="security">계정 관리</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="reviews" data-mypage-tab="reviews">내가 작성한 리뷰</button>
     </nav>
 
     <section class="mypage-section" id="orders" role="tabpanel" data-mypage-panel="orders">
-      <div class="mypage-section-head"><div><span>ORDERS</span><h2>내 주문</h2></div><p>접수대기 상태에서만 직접 취소할 수 있습니다.</p></div>
+      <div class="mypage-section-head"><div><span>ORDERS</span><h2>주문 내역</h2></div><p>최근 주문 내역과 진행 상태를 한눈에 확인할 수 있습니다.</p></div>
       <div class="member-order-list" data-member-orders></div>
-      <div class="mypage-empty" data-orders-empty hidden><strong>아직 주문 내역이 없습니다.</strong><a href="menu.html">메뉴 보러 가기</a></div>
+      <div class="order-date-pagination" data-order-date-pagination hidden></div>
+      <div class="mypage-empty" data-orders-empty hidden><strong>주문 내역이 아직 없습니다.</strong><a href="menu.html">상품 둘러보기</a></div>
     </section>
 
     <section class="mypage-section" id="inquiries" role="tabpanel" data-mypage-panel="inquiries" hidden>
-      <div class="mypage-section-head"><div><span>INQUIRIES</span><h2>문의 내역</h2></div><p>관리자가 등록한 답변을 이곳에서 확인할 수 있습니다.</p></div>
+      <div class="mypage-section-head"><div><span>INQUIRIES</span><h2>문의 내역</h2></div><p>답변이 필요한 문의를 쉽게 관리하고 확인하세요.</p></div>
       <div class="mypage-inquiry-list" data-member-inquiries></div>
-      <div class="mypage-empty" data-inquiries-empty hidden><strong>아직 문의 내역이 없습니다.</strong><a href="menu.html#menu-list">문의할 상품 보기</a></div>
+      <div class="mypage-empty" data-inquiries-empty hidden><strong>문의 내역이 아직 없습니다.</strong><a href="menu.html#menu-list">상품 문의하기</a></div>
     </section>
 
     <div class="mypage-grid mypage-tab-panels">
       <section class="mypage-section" id="profile" role="tabpanel" data-mypage-panel="profile" hidden>
-        <div class="mypage-section-head"><div><span>PROFILE</span><h2>회원 정보</h2></div></div>
-        <form class="mypage-form" data-profile-form>
-          <label>아이디<input name="username" readonly /></label>
-          <label>이메일<input name="email" type="email" readonly /></label>
-          <label>이름<input name="name" maxlength="50" required /></label>
-          <label>휴대폰 번호<input name="phone" inputmode="tel" required /></label>
-          <label class="mypage-check"><input name="marketingConsent" type="checkbox" /> 마케팅 정보 수신 동의</label>
-          <button type="submit">회원 정보 저장</button><p class="mypage-message" data-profile-message aria-live="polite"></p>
-        </form>
+        <div class="mypage-section-head"><div><span>PROFILE & SECURITY</span><h2>회원 정보</h2></div><p>기본 정보와 계정 보안을 한곳에서 관리하세요.</p></div>
+        <div class="mypage-profile-layout">
+          <form class="mypage-form" data-profile-form>
+            <h3>기본 정보</h3>
+            <label>아이디<input name="username" readonly /></label>
+            <label>이메일<input name="email" type="email" readonly /></label>
+            <label>이름<input name="name" maxlength="50" required /></label>
+            <label>연락처<input name="phone" inputmode="tel" required /></label>
+            <label class="mypage-check"><input name="marketingConsent" type="checkbox" /> 마케팅 정보 수신 동의</label>
+            <button type="submit">회원 정보 저장</button><p class="mypage-message" data-profile-message aria-live="polite"></p>
+          </form>
+          <div class="mypage-security-group">
+            <form class="mypage-form" data-password-form>
+              <h3>비밀번호 변경</h3>
+              <label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" required /></label>
+              <label>새 비밀번호<input name="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+              <label>새 비밀번호 확인<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+              <button type="submit">비밀번호 변경</button><p class="mypage-message" data-password-message aria-live="polite"></p>
+            </form>
+            <div class="mypage-account-panel">
+              <div class="social-identity-panel"><div><span class="mypage-panel-kicker">SOCIAL ACCOUNT</span><h3>소셜 계정 연동</h3></div><ul class="social-identity-list" data-social-identities></ul></div>
+              <div class="withdraw-box"><span class="mypage-panel-kicker">ACCOUNT WITHDRAWAL</span><h3>회원 탈퇴</h3><p>탈퇴하면 배송지와 소셜 계정 연결 정보가 모두 삭제되며 복구할 수 없습니다.</p><button type="button" data-withdraw-button>회원 탈퇴 진행</button></div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section class="mypage-section" id="address" role="tabpanel" data-mypage-panel="address" hidden>
-        <div class="mypage-section-head"><div><span>ADDRESS</span><h2>배송지 관리</h2></div><p>자주 사용하는 배송지를 안전하게 관리하세요.</p></div>
-        <form class="mypage-form" data-address-form>
-          <div class="mypage-form-row"><label>수령인<input name="recipientName" required /></label><label>연락처<input name="recipientPhone" required /></label></div>
-          <label>우편번호<div class="mypage-address-search"><input name="postalCode" maxlength="20" autocomplete="postal-code" readonly /><button type="button" data-mypage-address-search>주소 검색</button></div></label>
+    <section class="mypage-section" id="address" role="tabpanel" data-mypage-panel="address" hidden>
+        <div class="mypage-section-head"><div><span>ADDRESS</span><h2>배송지 관리</h2></div><p>기본 배송지 정보를 안전하게 관리할 수 있습니다.</p></div>
+        <div class="mypage-address-slots" data-address-slots></div>
+        <form class="mypage-form" data-address-form hidden>
+          <div class="mypage-address-form-head"><h3 data-address-form-title>배송지 추가</h3></div>
+          <div class="mypage-form-row"><label>수령인<input name="recipientName" required /></label><label>수령인 연락처<input name="recipientPhone" required /></label></div>
+          <label>우편번호<div class="mypage-address-search"><input name="postalCode" maxlength="20" autocomplete="postal-code" readonly /><button type="button" data-mypage-address-search>우편번호 찾기</button></div></label>
           <label>주소<input name="address" maxlength="200" autocomplete="street-address" readonly required /></label>
           <label>상세 주소<input name="addressDetail" maxlength="200" /></label>
-          <button type="submit">배송지 저장</button><p class="mypage-message" data-address-message aria-live="polite"></p>
+          <div class="mypage-address-form-actions"><button type="button" data-address-form-cancel>취소</button><button type="submit">배송지 저장</button></div><p class="mypage-message" data-address-message aria-live="polite"></p>
         </form>
       </section>
     </div>
 
-    <section class="mypage-section" id="security" role="tabpanel" data-mypage-panel="security" hidden>
-      <div class="mypage-section-head"><div><span>SECURITY</span><h2>계정 관리</h2></div></div>
-      <div class="mypage-grid">
-        <form class="mypage-form" data-password-form>
-          <h3>비밀번호 변경</h3>
-          <label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" required /></label>
-          <label>새 비밀번호<input name="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
-          <label>새 비밀번호 확인<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
-          <button type="submit">비밀번호 변경</button><p class="mypage-message" data-password-message aria-live="polite"></p>
-        </form>
-        <div class="mypage-account-panel">
-          <div class="social-identity-panel"><div><span class="mypage-panel-kicker">SOCIAL ACCOUNT</span><h3>소셜 계정 연결 상태</h3></div><ul class="social-identity-list" data-social-identities></ul></div>
-          <div class="withdraw-box"><span class="mypage-panel-kicker">ACCOUNT WITHDRAWAL</span><h3>회원 탈퇴</h3><p>탈퇴하면 배송지와 소셜 계정 연결 정보가 삭제되며 복구할 수 없습니다. 진행 중인 주문이 있다면 주문 완료 후 탈퇴할 수 있습니다.</p><button type="button" data-withdraw-button>회원 탈퇴 진행</button></div>
-        </div>
-      </div>
+    <section class="mypage-section" id="reviews" role="tabpanel" data-mypage-panel="reviews" hidden>
+      <div class="mypage-section-head"><div><span>MY REVIEWS</span><h2>내가 작성한 리뷰</h2></div><p>작성한 상품 리뷰를 한곳에서 확인할 수 있습니다.</p></div>
+      <div class="mypage-review-list" data-member-reviews></div>
+      <div class="mypage-empty" data-reviews-empty hidden><strong>작성한 리뷰가 아직 없습니다.</strong><span>배송 또는 픽업이 완료된 주문에서 리뷰를 작성할 수 있습니다.</span></div>
     </section>
   </main>
 
-  <div class="mypage-loading" data-mypage-loading>회원 정보를 불러오는 중입니다…</div>
+  <div class="mypage-loading" data-mypage-loading>회원 정보 불러오는 중입니다.</div>
   <dialog class="order-detail-dialog" data-order-dialog><button class="dialog-close" type="button" data-dialog-close aria-label="닫기">×</button><div data-order-detail></div></dialog>
+  <dialog class="mypage-edit-dialog" data-inquiry-edit-dialog>
+    <form data-inquiry-edit-form>
+      <header><h2>문의 내용 수정</h2><p>답변 전인 문의만 수정할 수 있습니다.</p></header>
+      <input type="hidden" name="id" />
+      <label>예상 수량<input type="number" name="quantity" min="1" max="9999" required /></label>
+      <label>희망 날짜<input type="date" name="desiredDate" /></label>
+      <label>문의 내용<textarea name="message" maxlength="1000" required></textarea></label>
+      <section class="inquiry-edit-photos"><div><strong>첨부 사진 <small>(선택)</small></strong><small>최대 3장 · 장당 5MB 이하</small></div><div class="review-photo-tools"><label class="review-photo-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple data-inquiry-edit-photo-input /><b aria-hidden="true">＋</b><span>사진 추가</span></label><div class="review-photo-preview" data-inquiry-edit-photo-preview></div></div></section>
+      <p class="mypage-message" data-inquiry-edit-message aria-live="polite"></p>
+      <div class="mypage-edit-dialog-actions"><button type="button" data-inquiry-edit-cancel>취소</button><button type="submit">수정 저장</button></div>
+    </form>
+  </dialog>
+  <dialog class="mypage-edit-dialog" data-review-edit-dialog>
+    <form data-review-edit-form>
+      <header><h2>리뷰 수정</h2><p data-review-edit-product>작성한 리뷰를 수정합니다.</p></header>
+      <input type="hidden" name="id" />
+      <label>별점<select name="rating" required><option value="5">★★★★★ 5점</option><option value="4">★★★★☆ 4점</option><option value="3">★★★☆☆ 3점</option><option value="2">★★☆☆☆ 2점</option><option value="1">★☆☆☆☆ 1점</option></select></label>
+      <label>리뷰 내용<textarea name="content" maxlength="1000" required></textarea></label>
+      <p class="mypage-message" data-review-edit-message aria-live="polite"></p>
+      <div class="mypage-edit-dialog-actions"><button type="button" data-review-edit-cancel>취소</button><button type="submit">수정 저장</button></div>
+    </form>
+  </dialog>
+  <dialog class="return-request-dialog" data-return-request-dialog>
+    <form class="return-request-form" data-return-request-form>
+      <header class="return-request-head">
+        <span class="return-request-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7H4v4M4 11c1-4 5-7 9-7 5 0 9 4 9 9s-4 9-9 9c-3 0-6-2-8-4"/><path d="M10 9h6v6h-6z"/></svg></span>
+        <div><span>EXCHANGE & RETURN</span><h2>교환·반품 신청</h2></div>
+        <button class="return-request-close" type="button" data-return-request-close aria-label="닫기">×</button>
+      </header>
+      <div class="return-request-body">
+        <section class="return-order-products">
+          <div class="return-order-summary"><div><span>주문번호</span><strong data-return-order-id>-</strong></div><div><span>주문일</span><strong data-return-order-date>-</strong></div></div>
+          <div class="return-order-products-body"><div class="return-request-section-title"><strong>신청 상품</strong><small>교환 또는 반품할 상품을 선택해 주세요.</small></div><div class="return-item-list" data-return-item-list></div></div>
+        </section>
+        <section class="return-request-section"><div class="return-request-section-title"><strong>신청 유형</strong><small>원하시는 처리 방법을 선택해 주세요.</small></div><div class="return-type-tabs"><label><input type="radio" name="requestType" value="exchange" checked /><span>교환 신청</span></label><label><input type="radio" name="requestType" value="return" /><span>반품 신청</span></label></div></section>
+        <div class="return-request-fields"><label>신청 사유<select name="reason" required><option value="">사유를 선택해 주세요.</option><option>상품이 파손되었어요</option><option>주문한 상품과 달라요</option><option>상품 상태가 좋지 않아요</option><option>수량이 부족해요</option><option>단순 변심</option><option>기타</option></select></label><label>상세 내용<textarea name="details" maxlength="500" placeholder="상품 상태와 요청사항을 자세히 적어 주세요." required></textarea></label></div>
+        <div class="return-request-notice"><b aria-hidden="true">i</b><p><strong>신청 전 확인해 주세요</strong>신선식품 특성상 단순 변심에 의한 교환·반품은 제한될 수 있습니다. 상품 이상은 수령 후 가능한 한 빠르게 접수해 주세요. 접수 후 담당자가 회수 또는 재배송 일정을 안내드립니다.</p></div>
+        <p class="return-request-message" data-return-request-message role="status" aria-live="polite"></p>
+        <div class="return-request-actions"><button type="button" data-return-request-cancel>취소</button><button type="submit">신청 접수하기</button></div>
+      </div>
+    </form>
+  </dialog>
+  <dialog class="review-write-dialog" data-review-write-dialog>
+    <form class="review-write-form" data-review-write-form>
+      <header class="review-write-head"><span class="review-write-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg></span><div><span>PRODUCT REVIEW</span><h2>리뷰 작성</h2></div><button class="review-write-close" type="button" data-review-write-close aria-label="닫기">×</button></header>
+      <div class="review-write-body">
+        <div class="review-product-summary"><img data-review-product-image src="assets/logo.svg" alt="" /><div><small>리뷰 상품</small><strong data-review-product-name>-</strong></div><span data-review-order-date>-</span></div>
+        <section class="review-rating-section"><strong>상품은 어떠셨나요?</strong><div class="review-star-picker" aria-label="별점 선택"><input id="review-star-5" type="radio" name="rating" value="5" required /><label for="review-star-5" aria-label="5점">★</label><input id="review-star-4" type="radio" name="rating" value="4" /><label for="review-star-4" aria-label="4점">★</label><input id="review-star-3" type="radio" name="rating" value="3" /><label for="review-star-3" aria-label="3점">★</label><input id="review-star-2" type="radio" name="rating" value="2" /><label for="review-star-2" aria-label="2점">★</label><input id="review-star-1" type="radio" name="rating" value="1" /><label for="review-star-1" aria-label="1점">★</label></div><p data-review-rating-label>별점을 선택해 주세요.</p></section>
+        <section class="review-keyword-section"><strong>어떤 점이 좋았나요? <small>(선택)</small></strong><div class="review-keywords"><label><input type="checkbox" name="keyword" value="맛이 좋아요" /><span>맛이 좋아요</span></label><label><input type="checkbox" name="keyword" value="포장이 깔끔해요" /><span>포장이 깔끔해요</span></label><label><input type="checkbox" name="keyword" value="신선해요" /><span>신선해요</span></label><label><input type="checkbox" name="keyword" value="선물하기 좋아요" /><span>선물하기 좋아요</span></label><label><input type="checkbox" name="keyword" value="응대가 친절해요" /><span>응대가 친절해요</span></label></div></section>
+        <section class="review-photo-section"><div class="review-photo-head"><strong>사진 첨부 <small>(선택)</small></strong><span>최대 3장 · 장당 5MB 이하</span></div><div class="review-photo-tools"><label class="review-photo-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple data-review-photo-input /><b aria-hidden="true">＋</b><span>사진 추가</span></label><div class="review-photo-preview" data-review-photo-preview></div></div></section>
+        <section class="review-content-section"><div class="review-content-head"><strong>상세 후기</strong><span><b data-review-character-count>0</b>/500자</span></div><textarea name="content" maxlength="500" placeholder="상품의 맛, 포장, 수령 경험을 솔직하게 알려주세요." required></textarea></section>
+        <p class="review-write-message" data-review-write-message role="status" aria-live="polite"></p>
+        <div class="review-write-actions"><button type="button" data-review-write-cancel>취소</button><button type="submit">리뷰 등록하기</button></div>
+      </div>
+    </form>
+  </dialog>
   <footer class="site-footer" data-shared-footer></footer>
   <script src="js/mypage-address.js?v=21"></script>
-  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="mypage.js?v=18"></script>
+  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="mypage.js?v=43"></script>
   <script>
     fetch("/api/users/me", { credentials: "same-origin" })
       .then((response) => response.ok ? response.json() : null)
@@ -100,3 +595,4 @@
   </script>
 </body>
 </html>
+

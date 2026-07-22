@@ -1,4 +1,4 @@
-// ─── 장바구니 (비회원도 사용할 수 있도록 브라우저에 저장) ─────────
+﻿// ─── 장바구니 (비회원도 사용할 수 있도록 브라우저에 저장) ─────────
 const CART_STORAGE_KEY = "tteokShoppingCart";
 const GUEST_CHECKOUT_KEY = "tteokGuestCheckout";
 const GUEST_CUSTOMER_KEY = "tteokGuestCustomer";
@@ -70,7 +70,6 @@ async function addToCart(item) {
     return false;
   }
   writeCart(cartUtils.addItem(readCart(), item));
-  showInlineNotice(`${item.name}을(를) 장바구니에 담았습니다.`);
   return true;
 }
 
@@ -96,6 +95,7 @@ if (document.body.classList.contains("cart-page")) requirePurchaseAccess("cart.h
 
 const cartList = document.querySelector("[data-cart-list]");
 if (cartList) {
+  const formatQuantity = (item) => `${Number(item.quantity || 0).toLocaleString("ko-KR")} ${item.quantityUnit === "pack" ? "팩" : "말"}`;
   const totalCount = document.querySelector("[data-cart-total-count]");
   const subtotalPrice = document.querySelector("[data-cart-subtotal-price]");
   const totalPrice = document.querySelector("[data-cart-total-price]");
@@ -107,14 +107,6 @@ if (cartList) {
   const deleteSelected = document.querySelector("[data-cart-delete-selected]");
   const orderButton = document.querySelector("[data-cart-order-button]");
   const orderCount = document.querySelector("[data-cart-order-count]");
-
-  const offerCartUndo = (previousCart, message) => {
-    AppUI.toast(message, { actionLabel: "실행 취소", duration: 7000, onAction: () => {
-      writeCart(previousCart);
-      renderCart();
-      AppUI.toast("삭제한 상품을 복원했습니다.", "success");
-    }});
-  };
 
   const renderCart = () => {
     const cart = readCart();
@@ -148,11 +140,11 @@ if (cartList) {
         <label class="cart-item-check"><input type="checkbox" data-cart-select ${item.selected === false ? "" : "checked"} aria-label="${escapeHtml(item.name)} 선택" /></label>
         <div class="cart-item-main">
           <div class="cart-item-image">${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="" />` : `<span>따뜻한<br />떡집</span>`}</div>
-          <div class="cart-item-copy"><span>${escapeHtml(item.category || "떡")}</span><h2>${escapeHtml(item.name)}</h2><p>단가 ${Number(item.price).toLocaleString("ko-KR")}원</p></div>
+          <div class="cart-item-copy"><span>${escapeHtml(item.category || "떡")}</span><h2>${escapeHtml(item.name)}</h2><p>단가 ${Number(item.price).toLocaleString("ko-KR")}원 (${formatQuantity(item)})</p></div>
         </div>
         <div class="cart-item-actions">
           <div class="cart-quantity" aria-label="${escapeHtml(item.name)} 수량">
-            <button type="button" data-cart-decrease aria-label="수량 줄이기">−</button><output>${Number(item.quantity)}</output><button type="button" data-cart-increase aria-label="수량 늘리기">+</button>
+            <button type="button" data-cart-decrease aria-label="수량 줄이기">−</button><output>${formatQuantity(item)}</output><button type="button" data-cart-increase aria-label="수량 늘리기">+</button>
           </div>
           <strong>${(Number(item.price) * Number(item.quantity)).toLocaleString("ko-KR")}원</strong>
           <button class="cart-remove" type="button" data-cart-remove>삭제</button>
@@ -161,29 +153,44 @@ if (cartList) {
     `).join("");
   };
 
-  cartList.addEventListener("click", (event) => {
+  cartList.addEventListener("click", async (event) => {
     const row = event.target.closest("[data-cart-id]");
     if (!row) return;
     const cart = readCart();
     const item = cart.find((entry) => entry.id === row.dataset.cartId);
     if (!item) return;
     let nextCart = cart;
-    if (event.target.closest("[data-cart-increase]")) nextCart = cartUtils.setQuantity(nextCart, item.id, item.quantity + 1);
-    if (event.target.closest("[data-cart-decrease]")) nextCart = cartUtils.setQuantity(nextCart, item.id, item.quantity - 1);
+    const step = item.quantityUnit === "pack" ? 1 : 0.5;
+    if (event.target.closest("[data-cart-increase]")) nextCart = cartUtils.setQuantity(nextCart, item.id, item.quantity + step, item.quantityUnit);
+    if (event.target.closest("[data-cart-decrease]")) nextCart = cartUtils.setQuantity(nextCart, item.id, item.quantity - step, item.quantityUnit);
     if (event.target.matches("[data-cart-select]")) nextCart = cartUtils.setSelected(nextCart, item.id, event.target.checked);
     const removed = event.target.closest("[data-cart-remove]");
-    if (removed) nextCart = cartUtils.removeItem(nextCart, item.id);
+    if (removed) {
+      event.preventDefault();
+      if (!await AppUI.confirm(`${item.name}을(를) 장바구니에서 삭제할까요?`, {
+        title: "상품 삭제",
+        tone: "danger",
+        icon: "🗑️",
+        confirmText: "삭제",
+        cancelText: "취소",
+      })) return;
+      nextCart = cartUtils.removeItem(nextCart, item.id, item.quantityUnit);
+    }
     writeCart(nextCart);
     renderCart();
-    if (removed) offerCartUndo(cart, `${item.name}을(를) 삭제했습니다.`);
   });
 
   clearButton?.addEventListener("click", async () => {
     const readCartBeforeClear = readCart();
-    if (!await AppUI.confirm("장바구니의 모든 상품을 삭제할까요?")) return;
+    if (!await AppUI.confirm("장바구니의 모든 상품을 삭제할까요?", {
+      title: "장바구니 비우기",
+      tone: "danger",
+      icon: "🗑",
+      confirmText: "비우기",
+      cancelText: "아니요",
+    })) return;
     writeCart([]);
     renderCart();
-    offerCartUndo(readCartBeforeClear, "장바구니 상품을 모두 삭제했습니다.");
   });
 
   selectAll?.addEventListener("change", () => {
@@ -196,10 +203,15 @@ if (cartList) {
     const cart = readCart();
     const selectedCount = cart.filter((item) => item.selected !== false).length;
     if (!selectedCount) return;
-    if (!await AppUI.confirm(`선택한 ${selectedCount}개 상품을 삭제할까요?`)) return;
+    if (!await AppUI.confirm(`선택한 ${selectedCount}개 상품을 삭제할까요?`, {
+      title: "선택 상품 삭제",
+      tone: "danger",
+      icon: "🗑",
+      confirmText: "삭제",
+      cancelText: "취소",
+    })) return;
     writeCart(cartUtils.removeSelected(cart));
     renderCart();
-    offerCartUndo(cart, `선택한 ${selectedCount}개 상품을 삭제했습니다.`);
   });
 
   orderButton?.addEventListener("click", (event) => {
@@ -243,6 +255,9 @@ if (checkoutRoot) {
   const checkoutPostalCodeInput = checkoutAddress?.querySelector('[name="postalCode"]');
   const checkoutAddressDetailInput = checkoutAddress?.querySelector('[name="addressDetail"]');
   const checkoutAddressSearch = checkoutAddress?.querySelector("[data-checkout-address-search]");
+  const checkoutAddressModes = [...(checkoutAddress?.querySelectorAll('input[name="addressMode"]') || [])];
+  const checkoutDefaultAddressOption = checkoutAddress?.querySelector("[data-checkout-default-address]");
+  const checkoutDirectAddress = checkoutAddress?.querySelector("[data-checkout-direct-address]");
   const checkoutSubmit = checkoutRoot.querySelector("[data-checkout-submit]");
   const checkoutStatus = checkoutRoot.querySelector("[data-checkout-status]");
   const checkoutComplete = checkoutRoot.querySelector("[data-checkout-complete]");
@@ -251,6 +266,7 @@ if (checkoutRoot) {
   const validationList = validationDialog?.querySelector("[data-checkout-validation-list]");
   const pendingCheckoutKey = "tteokPendingCheckout";
   let checkoutSelection = [];
+  let checkoutDefaultAddress = null;
   const getCheckoutFulfillment = () => checkoutForm?.querySelector('[name="fulfillmentType"]:checked')?.value || "pickup";
 
   const setCheckoutAddressState = () => {
@@ -258,11 +274,6 @@ if (checkoutRoot) {
     if (checkoutAddress) checkoutAddress.hidden = !isDelivery;
     if (checkoutAddressInput) {
       checkoutAddressInput.required = Boolean(isDelivery);
-      if (!isDelivery) {
-        checkoutAddressInput.value = "";
-        if (checkoutPostalCodeInput) checkoutPostalCodeInput.value = "";
-        if (checkoutAddressDetailInput) checkoutAddressDetailInput.value = "";
-      }
     }
     if (onsitePayment) {
       onsitePayment.disabled = !isDelivery ? false : true;
@@ -271,6 +282,20 @@ if (checkoutRoot) {
         onsitePayment.checked = false;
         checkoutForm.querySelector('input[name="paymentMethod"][value="card"]')?.click();
       }
+    }
+  };
+
+  const setCheckoutAddressMode = (mode) => {
+    const useDefault = mode === "default" && checkoutDefaultAddress;
+    if (checkoutDirectAddress) checkoutDirectAddress.hidden = Boolean(useDefault);
+    if (useDefault) {
+      if (checkoutPostalCodeInput) checkoutPostalCodeInput.value = checkoutDefaultAddress.postalCode || "";
+      if (checkoutAddressInput) checkoutAddressInput.value = checkoutDefaultAddress.address || "";
+      if (checkoutAddressDetailInput) checkoutAddressDetailInput.value = checkoutDefaultAddress.addressDetail || "";
+    } else {
+      if (checkoutPostalCodeInput) checkoutPostalCodeInput.value = "";
+      if (checkoutAddressInput) checkoutAddressInput.value = "";
+      if (checkoutAddressDetailInput) checkoutAddressDetailInput.value = "";
     }
   };
 
@@ -384,7 +409,7 @@ if (checkoutRoot) {
     checkoutItems.innerHTML = checkoutSelection.map((item) => `
       <article class="checkout-item">
         <div class="checkout-item-image">${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="" />` : ""}</div>
-        <div><span>${escapeHtml(item.category || "떡")}</span><h3>${escapeHtml(item.name)}</h3><p>${Number(item.price).toLocaleString("ko-KR")}원 × ${item.quantity}개</p></div>
+        <div><span>${escapeHtml(item.category || "떡")}</span><h3>${escapeHtml(item.name)}</h3><p>${Number(item.price).toLocaleString("ko-KR")}원 × ${Number(item.quantity).toLocaleString("ko-KR")} ${item.quantityUnit === "pack" ? "팩" : "말"}</p></div>
         <strong>${(Number(item.price) * item.quantity).toLocaleString("ko-KR")}원</strong>
       </article>`).join("");
     checkoutItemCount.textContent = `${summary.selectedItemCount}개`;
@@ -427,9 +452,24 @@ if (checkoutRoot) {
       if (user?.name && !checkoutForm.elements.customer.value) checkoutForm.elements.customer.value = user.name;
       if (user?.phone && !checkoutForm.elements.phone.value) checkoutForm.elements.phone.value = user.phone;
     } catch {}
+    try {
+      const response = await fetch(`${API_BASE}/users/me/address`, { credentials: "same-origin" });
+      if (!response.ok) return;
+      const data = await response.json();
+      checkoutDefaultAddress = data.address || null;
+      if (!checkoutDefaultAddress || !checkoutDefaultAddressOption) return;
+      checkoutDefaultAddressOption.hidden = false;
+      const name = checkoutDefaultAddressOption.querySelector("[data-checkout-default-address-name]");
+      const text = checkoutDefaultAddressOption.querySelector("[data-checkout-default-address-text]");
+      if (name) name.textContent = checkoutDefaultAddress.addressName || "대표 배송지";
+      if (text) text.textContent = `[${checkoutDefaultAddress.postalCode || "우편번호 없음"}] ${checkoutDefaultAddress.address || ""} ${checkoutDefaultAddress.addressDetail || ""}`.trim();
+      const defaultMode = checkoutDefaultAddressOption.querySelector('input[value="default"]');
+      if (defaultMode) { defaultMode.checked = true; setCheckoutAddressMode("default"); }
+    } catch {}
   };
 
   checkoutFulfillments.forEach((field) => field.addEventListener("change", setCheckoutAddressState));
+  checkoutAddressModes.forEach((field) => field.addEventListener("change", () => setCheckoutAddressMode(field.value)));
   setCheckoutAddressState();
   const dateInput = checkoutForm?.elements.pickupDate;
   if (dateInput) {
@@ -448,7 +488,7 @@ if (checkoutRoot) {
 
     const formData = new FormData(checkoutForm);
     const payload = {
-      items: checkoutSelection.map((item) => ({ productId: item.id, quantity: item.quantity })),
+      items: checkoutSelection.map((item) => ({ productId: item.id, quantity: item.quantity, quantityUnit: item.quantityUnit || "pack" })),
       customer: String(formData.get("customer") || "").trim(),
       phone: String(formData.get("phone") || "").trim(),
       fulfillmentType: String(formData.get("fulfillmentType") || "pickup"),
@@ -492,13 +532,13 @@ if (checkoutRoot) {
         throw new Error(result.error || "주문을 접수하지 못했습니다.");
       }
 
-      const orderedIds = new Set(checkoutSelection.map((item) => item.id));
-      writeCart(cartUtils.removeItems(readCart(), [...orderedIds]));
       localStorage.removeItem(pendingCheckoutKey);
       if (result.paymentUrl) {
         window.location.href = result.paymentUrl;
         return;
       }
+      const orderedIds = new Set(checkoutSelection.map((item) => item.id));
+      writeCart(cartUtils.removeItems(readCart(), [...orderedIds]));
       checkoutForm.hidden = true;
       checkoutComplete.hidden = false;
       checkoutRoot.querySelector("[data-checkout-complete-id]").textContent = result.checkoutId;

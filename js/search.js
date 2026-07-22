@@ -1,27 +1,32 @@
-const headerSearchForm = document.querySelector(".header-search");
-const headerSearchInput = headerSearchForm?.querySelector('input[type="search"]');
-const RECENT_SEARCH_KEY = "tteokRecentSearches";
-const SEARCH_SAVE_ENABLED_KEY = "tteokSearchSaveEnabled";
-const recommendedSearches = ["증편", "답례떡", "인절미", "백설기", "꿀떡", "찰떡", "수수팥떡", "앙금설기", "가래떡", "단체주문"];
+(() => {
+  const headerSearchForm = document.querySelector(".header-search");
+  const headerSearchInput = headerSearchForm?.querySelector('input[type="search"]');
+  if (!headerSearchForm || !headerSearchInput) return;
 
-function readRecentSearches() {
-  try {
-    const values = JSON.parse(localStorage.getItem(RECENT_SEARCH_KEY) || "[]");
-    return Array.isArray(values) ? values.slice(0, 6) : [];
-  } catch {
-    return [];
+  const RECENT_SEARCH_KEY = "tteokRecentSearches";
+  const SEARCH_SAVE_ENABLED_KEY = "tteokSearchSaveEnabled";
+  const recommendedSearches = ["증편", "송편", "인절미", "백설기", "꿀떡", "찰떡", "수수팥떡", "단체주문"];
+  const html = (value) => typeof escapeHtml === "function"
+    ? escapeHtml(String(value ?? ""))
+    : String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+
+  function readRecentSearches() {
+    try {
+      const values = JSON.parse(localStorage.getItem(RECENT_SEARCH_KEY) || "[]");
+      return Array.isArray(values) ? values.slice(0, 6) : [];
+    } catch {
+      return [];
+    }
   }
-}
 
-function saveRecentSearch(query) {
-  if (localStorage.getItem(SEARCH_SAVE_ENABLED_KEY) === "false") return;
-  const normalized = String(query || "").trim();
-  if (!normalized) return;
-  const next = [normalized, ...readRecentSearches().filter((item) => item !== normalized)].slice(0, 6);
-  localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(next));
-}
+  function saveRecentSearch(query) {
+    if (localStorage.getItem(SEARCH_SAVE_ENABLED_KEY) === "false") return;
+    const normalized = String(query || "").trim();
+    if (!normalized) return;
+    const next = [normalized, ...readRecentSearches().filter((item) => item !== normalized)].slice(0, 6);
+    localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(next));
+  }
 
-if (headerSearchForm && headerSearchInput) {
   const searchPanel = document.createElement("div");
   searchPanel.className = "header-search-panel";
   searchPanel.id = "header-search-panel";
@@ -60,7 +65,7 @@ if (headerSearchForm && headerSearchInput) {
       <section class="search-panel-section recent-searches">
         <div class="search-panel-heading"><h2>최근 검색어</h2></div>
         ${recent.length
-          ? `<div class="recent-search-list">${recent.map((item) => `<div class="recent-search-item"><button type="button" data-search-query="${escapeHtml(item)}"><span>${escapeHtml(item)}</span></button><button class="recent-search-remove" type="button" data-remove-recent="${escapeHtml(item)}" aria-label="${escapeHtml(item)} 최근 검색어 삭제">×</button></div>`).join("")}</div>`
+          ? `<div class="recent-search-list">${recent.map((item) => `<div class="recent-search-item"><button type="button" data-search-query="${html(item)}"><span>${html(item)}</span></button><button class="recent-search-remove" type="button" data-remove-recent="${html(item)}" aria-label="${html(item)} 최근 검색어 삭제">×</button></div>`).join("")}</div>`
           : `<p class="search-panel-empty">최근 검색어가 없습니다.</p>`}
         <div class="recent-search-controls">
           <button type="button" data-clear-searches ${recent.length ? "" : "disabled"}>전체 삭제</button>
@@ -69,7 +74,7 @@ if (headerSearchForm && headerSearchInput) {
       </section>
       <section class="search-panel-section popular-searches">
         <div class="search-panel-heading"><h2>추천 검색어</h2><span>따뜻한 떡집 추천</span></div>
-        <ol>${recommendedSearches.map((item, index) => `<li><button type="button" data-search-query="${escapeHtml(item)}"><b>${index + 1}</b><span>${escapeHtml(item)}</span></button></li>`).join("")}</ol>
+        <ol>${recommendedSearches.map((item, index) => `<li><button type="button" data-search-query="${html(item)}"><b>${index + 1}</b><span>${html(item)}</span></button></li>`).join("")}</ol>
       </section>`;
   };
 
@@ -124,4 +129,4 @@ if (headerSearchForm && headerSearchInput) {
     if (!headerSearchForm.contains(event.target)) closeSearchPanel();
   });
   headerSearchForm.addEventListener("submit", () => saveRecentSearch(headerSearchInput.value));
-}
+})();

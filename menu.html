@@ -14,6 +14,120 @@
     <link rel="apple-touch-icon" href="assets/logo.svg" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="manifest" href="manifest.json" />
+    <style>
+      .menu-page .product-price-lines {
+        display: flex;
+        align-items: flex-start;
+        gap: clamp(18px, 2vw, 30px);
+        margin: 10px 0 0;
+      }
+
+      .menu-page .product-price-set {
+        display: grid;
+        grid-template-rows: auto auto;
+        justify-items: start;
+        align-content: start;
+        row-gap: 3px;
+        min-width: 0;
+      }
+
+      .menu-page .product-price-set .product-unit-label {
+        color: #826b71;
+        font-size: 12px;
+        line-height: 1.4;
+        font-weight: 750;
+        letter-spacing: -0.015em;
+        white-space: nowrap;
+      }
+
+      .menu-page .product-price-set .product-unit-price {
+        display: block;
+        margin: 0;
+        color: var(--pink-deep);
+        font-size: 16px;
+        line-height: 1.3;
+        font-weight: 900;
+        letter-spacing: -0.025em;
+        white-space: nowrap;
+      }
+
+      .menu-page .food-card {
+        font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+        cursor: pointer;
+      }
+
+      .menu-page .food-card .food-card-body {
+        min-width: 0;
+      }
+
+      .menu-page .food-card .food-badge {
+        margin-bottom: 7px;
+        color: #b43e59;
+        font-size: 12px;
+        line-height: 1.35;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+
+      .menu-page .food-card h3 {
+        margin: 0 0 7px;
+        color: #342429;
+        font-size: 19px;
+        line-height: 1.35;
+        font-weight: 850;
+        letter-spacing: -0.03em;
+      }
+
+      .menu-page .food-card p {
+        margin: 0 0 12px;
+        color: #725e64;
+        font-size: 14px;
+        line-height: 1.6;
+        font-weight: 550;
+        letter-spacing: -0.015em;
+      }
+
+      .menu-page .small-food-card {
+        min-height: 142px;
+      }
+
+      .menu-page .small-food-card .food-card-body {
+        justify-content: center;
+        padding: 14px 16px 14px 12px;
+      }
+
+      .menu-page .small-food-card h3 {
+        margin-bottom: 4px;
+        font-size: 17px;
+        line-height: 1.4;
+      }
+
+      .menu-page .small-food-card .food-badge {
+        margin-bottom: 4px;
+        font-size: 11px;
+      }
+
+      .menu-page .small-food-card p {
+        display: none;
+      }
+
+      .menu-page .food-card:hover h3,
+      .menu-page .food-card:focus-visible h3 {
+        color: var(--pink-deep);
+      }
+
+      .menu-page .food-card:focus-visible {
+        outline: 3px solid rgba(223, 79, 109, 0.22);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 560px) {
+        .menu-page .product-price-lines { gap: 14px; }
+        .menu-page .product-price-set .product-unit-label { font-size: 11px; }
+        .menu-page .product-price-set .product-unit-price { font-size: 14px; }
+        .menu-page .small-food-card .food-card-body { padding-right: 10px; }
+      }
+    </style>
   </head>
   <body class="menu-page">
     <header class="site-header" data-shared-header></header>
@@ -145,7 +259,7 @@
       </form>
     </aside>
     <script src="cart-utils.js"></script>
-    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js"></script><script src="js/auth.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js?v=27"></script><script src="js/auth.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");

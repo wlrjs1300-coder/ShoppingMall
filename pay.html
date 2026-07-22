@@ -11,63 +11,91 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #faf8f5;
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color:#382a2e;
+      background: radial-gradient(circle at 50% 0,#fff 0,#fff9fa 42%,#f8f4f2 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px 16px;
+      padding: 38px 16px;
     }
     .pay-card {
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      border:1px solid #f0dfe3;
+      border-radius: 24px;
+      box-shadow: 0 24px 70px rgba(83,49,58,.13);
       width: 100%;
-      max-width: 480px;
+      max-width: 610px;
       overflow: hidden;
     }
     .pay-header {
-      background: linear-gradient(135deg, #f78fa3 0%, #df4f6d 100%);
-      color: #fff;
-      padding: 24px;
-      text-align: center;
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+      color:#382a2e;
+      padding:26px 32px;
+      border-bottom:1px solid #f1dfe3;
+      background:linear-gradient(135deg,#fff 0%,#fff7f9 100%);
+      text-align:left;
     }
-    .pay-header h1 { font-size: 1.2rem; font-weight: 700; }
-    .pay-header p { font-size: 0.85rem; opacity: .7; margin-top: 4px; }
-    .pay-body { padding: 24px; }
+    .pay-header small { display:block; margin-bottom:5px; color:#df4f6d; font-size:.66rem; font-weight:900; letter-spacing:.15em; }
+    .pay-header h1 { font-size: 1.35rem; font-weight: 900; letter-spacing:-.04em; }
+    .pay-header p { margin-top:6px; color:#8b747a; font-size: .78rem; }
+    .pay-security { display:flex; align-items:center; gap:7px; padding:9px 12px; border:1px solid #edd5db; border-radius:999px; color:#765e65; background:#fff; font-size:.7rem; font-weight:800; white-space:nowrap; }
+    .pay-security svg { width:15px; height:15px; fill:none; stroke:#df4f6d; stroke-width:2; }
+    .pay-body { padding: 30px 32px 32px; }
     .order-summary {
-      background: #faf8f5;
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 20px;
+      border:1px solid #eee0e3;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 26px;
+      background:#fffdfd;
     }
-    .order-summary h2 { font-size: 0.8rem; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .05em; }
-    .order-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; }
-    .order-row:last-child { margin-bottom: 0; border-top: 1px solid #e8e0d6; padding-top: 10px; margin-top: 6px; }
-    .order-row:last-child strong { font-size: 1.05rem; color: #df4f6d; }
-    .order-label { color: #666; }
+    .order-summary h2 { margin-bottom:14px; color:#382a2e; font-size:.92rem; font-weight:900; }
+    .order-row { display:flex; justify-content:space-between; align-items:flex-start; gap:28px; margin-bottom:10px; font-size:.82rem; }
+    .order-row > :last-child { max-width:70%; text-align:right; font-weight:750; }
+    .order-row:last-child { align-items:center; margin:16px 0 0; padding-top:16px; border-top:1px solid #eadde0; }
+    .order-row:last-child strong { color:#df4f6d; font-size:1.3rem; font-weight:900; }
+    .order-label { color:#8b747a; }
+    .payment-section-title { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .payment-section-title h2 { font-size:.94rem; font-weight:900; }
+    .payment-section-title small { color:#a08b91; font-size:.68rem; }
     #payment-method { margin-bottom: 8px; }
-    .direct-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+    .direct-methods { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-bottom:16px; }
     .direct-methods label { cursor: pointer; }
     .direct-methods input { position: absolute; opacity: 0; }
-    .direct-methods span { display: grid; min-height: 46px; place-items: center; padding: 8px; border: 1px solid #eadde0; border-radius: 9px; color: #68545a; background: #fff; font-size: .82rem; font-weight: 700; }
-    .direct-methods input:checked + span { color: #df4f6d; border-color: #df4f6d; background: #fff2f5; box-shadow: 0 0 0 2px rgba(223,79,109,.08); }
-    .payment-guide { margin: 0 0 16px; padding: 11px 13px; border-radius: 9px; color: #806970; background: #faf5f6; font-size: .78rem; line-height: 1.55; }
+    .direct-methods span { display:grid; min-height:54px; place-items:center; padding:9px; border:1px solid #eadde0; border-radius:12px; color:#68545a; background:#fff; font-size:.8rem; font-weight:800; transition:.16s ease; }
+    .direct-methods label:hover span { border-color:#dfa7b4; background:#fffafb; }
+    .direct-methods input:checked + span { color:#df4f6d; border-color:#df4f6d; background:#fff2f5; box-shadow:0 6px 18px rgba(223,79,109,.1); }
+    .payment-guide { margin:0 0 20px; padding:17px 18px; border:1px solid #f0e1e5; border-radius:14px; color:#806970; background:#fff9fa; font-size:.76rem; line-height:1.6; }
+    .payment-guide strong { display:block; margin-bottom:4px; color:#49383d; font-size:.82rem; }
+    .payment-guide p { margin:0; }
+    .payment-easy-list { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
+    .payment-easy-list span { display:inline-flex; align-items:center; min-height:28px; padding:0 10px; border:1px solid #eadde0; border-radius:7px; color:#4f4145; background:#fff; font-size:.7rem; font-weight:800; }
+    .payment-easy-list .is-kakao { border-color:#f1dc45; color:#3b3424; background:#fff8bc; }
+    .payment-easy-list .is-ssg { border-color:#e7ccd3; color:#c83255; }
+    .payment-easy-list .is-naver { border-color:#bfe8cd; color:#168a46; background:#f2fff6; }
+    .payment-easy-list .is-samsung { border-color:#cfd8ee; color:#284a93; background:#f5f8ff; }
+    .payment-easy-list .is-payco { border-color:#f0c9ce; color:#d63c4e; background:#fff6f7; }
+    .payment-guide-note { display:block; margin-top:9px; color:#9a858b; font-size:.66rem; line-height:1.45; }
     #agreement { margin-bottom: 20px; }
     #pay-btn {
       width: 100%;
+      min-height:56px;
       padding: 15px;
       background: linear-gradient(145deg, #f78fa3, #df4f6d);
       color: #fff;
       border: none;
-      border-radius: 10px;
+      border-radius: 13px;
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
       transition: opacity .15s;
     }
-    #pay-btn:hover { opacity: .88; }
+    #pay-btn:hover { box-shadow:0 10px 24px rgba(223,79,109,.23); transform:translateY(-1px); }
     #pay-btn:disabled { background: #bbb; cursor: not-allowed; }
     .result-box { padding: 32px 24px; text-align: center; }
     .result-icon { font-size: 3rem; margin-bottom: 16px; }
@@ -78,13 +106,14 @@
     #loading { padding: 40px; text-align: center; color: #888; }
     .error-box { padding: 32px 24px; text-align: center; color: #c0392b; }
     .retry-btn { margin-top: 20px; padding: 12px 22px; border: 1px solid #df4f6d; border-radius: 9px; background: #fff; color: #df4f6d; font-weight: 700; cursor: pointer; }
+    @media(max-width:560px){body{padding:0;background:#fff}.pay-card{min-height:100vh;border:0;border-radius:0;box-shadow:none}.pay-header{padding:22px 20px}.pay-security{display:none}.pay-body{padding:24px 20px}.direct-methods{grid-template-columns:1fr}.order-row>:last-child{max-width:64%}}
   </style>
 </head>
 <body>
 <div class="pay-card">
   <div class="pay-header">
-    <h1>따뜻한 떡집</h1>
-    <p>안전한 결제를 진행합니다</p>
+    <div><small>SECURE CHECKOUT</small><h1>따뜻한 떡집 결제</h1><p>주문 내용을 확인하고 결제 방법을 선택해 주세요.</p></div>
+    <span class="pay-security"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>안전한 결제</span>
   </div>
 
   <div id="loading">결제 정보를 불러오는 중…</div>
@@ -97,6 +126,7 @@
       <div class="order-row"><span class="order-label">주문자</span><span id="info-customer">-</span></div>
       <div class="order-row"><span class="order-label">결제 금액</span><strong id="info-amount">-</strong></div>
     </div>
+    <div class="payment-section-title"><h2>결제 방법</h2><small>원하는 방법을 선택해 주세요</small></div>
     <div id="payment-method"></div>
     <div id="agreement"></div>
     <button id="pay-btn" disabled>결제하기</button>
@@ -209,43 +239,7 @@
 
   async function initWidget(clientKey, info) {
     if (typeof TossPayments !== "function") throw new Error("결제 모듈을 불러오지 못했습니다. 네트워크 상태를 확인해 주세요.");
-    if (!/^(?:test|live)_gck_/.test(clientKey)) {
-      await initDirectPayment(clientKey, info);
-      return;
-    }
-    const tossPayments = TossPayments(clientKey);
-    const widgets = tossPayments.widgets({ customerKey: orderId });
-
-    await widgets.setAmount({ currency: "KRW", value: info.amount });
-
-    await Promise.all([
-      widgets.renderPaymentMethods({ selector: "#payment-method", variantKey: "DEFAULT" }),
-      widgets.renderAgreement({ selector: "#agreement", variantKey: "AGREEMENT" }),
-    ]);
-
-    const payBtn = document.getElementById("pay-btn");
-    payBtn.disabled = false;
-
-    const baseUrl = location.href.split("?")[0];
-    payBtn.addEventListener("click", async () => {
-      payBtn.disabled = true;
-      payBtn.textContent = "결제 진행 중…";
-      try {
-        await widgets.requestPayment({
-          orderId,
-          orderName: info.orderName || "따뜻한 떡집 주문",
-          customerName: info.customerName || undefined,
-          successUrl: `${baseUrl}?step=success&orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken || "")}`,
-          failUrl: `${baseUrl}?step=fail&orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken || "")}`,
-        });
-      } catch (err) {
-        payBtn.disabled = false;
-        payBtn.textContent = "결제하기";
-        if (err.code !== "USER_CANCEL") {
-          AppUI.alert(err.message || "결제 중 오류가 발생했습니다.");
-        }
-      }
-    });
+    await initDirectPayment(clientKey, info);
   }
 
   async function initDirectPayment(clientKey, info) {
@@ -258,13 +252,26 @@
     }
     const payment = tossPayments.payment({ customerKey });
     const methodRoot = document.getElementById("payment-method");
-    const preferred = info.paymentMethod === "transfer" ? "TRANSFER" : "CARD";
+    const preferred = info.paymentMethod === "transfer" ? "TRANSFER" : info.paymentMethod === "mobile" ? "MOBILE_PHONE" : "CARD";
     const methods = [
       ["CARD", "카드·간편결제"],
       ["TRANSFER", "계좌이체"],
       ["MOBILE_PHONE", "휴대폰 결제"],
     ];
-    methodRoot.innerHTML = `<div class="direct-methods">${methods.map(([value, label]) => `<label><input type="radio" name="directPaymentMethod" value="${value}" ${value === preferred ? "checked" : ""}><span>${label}</span></label>`).join("")}</div><p class="payment-guide">카드·간편결제를 선택하면 토스 결제창에서 카드 또는 지원되는 간편결제를 고를 수 있습니다.</p>`;
+    methodRoot.innerHTML = `<div class="direct-methods">${methods.map(([value, label]) => `<label><input type="radio" name="directPaymentMethod" value="${value}" ${value === preferred ? "checked" : ""}><span>${label}</span></label>`).join("")}</div><div class="payment-guide" data-payment-guide></div>`;
+    const paymentGuide = methodRoot.querySelector("[data-payment-guide]");
+    const updatePaymentGuide = () => {
+      const selected = methodRoot.querySelector('input[name="directPaymentMethod"]:checked')?.value || "CARD";
+      if (selected === "CARD") {
+        paymentGuide.innerHTML = `<strong>카드와 간편결제를 함께 지원합니다</strong><p>결제하기를 누른 뒤 토스 결제창에서 일반 카드 또는 원하는 간편결제를 선택해 주세요.</p><div class="payment-easy-list" aria-label="지원 간편결제"><span class="is-kakao">카카오페이</span><span class="is-naver">네이버페이</span><span class="is-samsung">삼성페이</span><span class="is-payco">PAYCO</span><span class="is-ssg">SSG PAY</span><span>토스페이</span></div><small class="payment-guide-note">간편결제 노출 여부는 상점 계약 및 접속 기기 환경에 따라 달라질 수 있습니다.</small>`;
+      } else if (selected === "TRANSFER") {
+        paymentGuide.innerHTML = `<strong>실시간 계좌이체</strong><p>결제창에서 이용할 은행을 선택하고 계좌 인증을 진행합니다.</p>`;
+      } else {
+        paymentGuide.innerHTML = `<strong>휴대폰 결제</strong><p>통신사와 휴대폰 번호를 확인한 뒤 본인 인증을 진행합니다.</p>`;
+      }
+    };
+    methodRoot.addEventListener("change", updatePaymentGuide);
+    updatePaymentGuide();
     document.getElementById("agreement").hidden = true;
     const payBtn = document.getElementById("pay-btn");
     payBtn.disabled = false;

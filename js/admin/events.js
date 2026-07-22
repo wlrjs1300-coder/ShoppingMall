@@ -971,7 +971,10 @@ setAdminTab("orders");
 if (document.querySelector(".admin-sidebar-nav")) {
   // 이미 로그인된 상태라면 API에서 최신 데이터를 불러와 갱신
   if (hasAdminAccess() && getApiToken()) {
-    loadFromApi().then(() => renderAdminDashboard());
+    Promise.all([
+      loadFromApi(),
+      typeof loadAdminInquiries === "function" ? loadAdminInquiries({ force: true }) : Promise.resolve(),
+    ]).then(() => renderAdminDashboard());
   }
 
   requestNotificationPermission().then(() => {

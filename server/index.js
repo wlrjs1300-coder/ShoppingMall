@@ -24,13 +24,21 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: "6mb" }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, ".."), {
   etag: true,
   maxAge: process.env.NODE_ENV === "production" ? "1h" : 0,
   setHeaders(res, filePath) {
     if (/\.html$|sw\.js$/.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === ".html") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+    } else if (ext === ".css") {
+      res.setHeader("Content-Type", "text/css; charset=utf-8");
+    } else if (ext === ".js") {
+      res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+    }
   },
 }));
 

@@ -313,15 +313,58 @@ router.post("/admin-session", requireCustomerAuth, (req, res) => {
   res.json({ token });
 });
 
+function getMemberOrderStatusHistory(orderId) {
+  return db.prepare(`
+    SELECT previous_status, next_status, created_at
+    FROM order_status_history
+    WHERE order_id = ?
+    ORDER BY created_at ASC
+  `).all(orderId);
+}
+
+function applyMemberOrderHistory(order) {
+  const statusHistory = getMemberOrderStatusHistory(order.id);
+  if (!statusHistory.length) return order;
+  const entries = statusHistory.map((entry) => ({
+    previousStatus: entry.previous_status,
+    nextStatus: entry.next_status,
+    createdAt: entry.created_at,
+  }));
+  const latest = String(statusHistory[statusHistory.length - 1]?.next_status || "").trim();
+  return {
+    ...order,
+    workflowStatus: latest || order.workflowStatus,
+    statusHistory: entries,
+  };
+}
+
 function rowToMemberOrder(row, includeAddress = false) {
-  const items = db.prepare(`SELECT product_id, product_name, unit_price, quantity, line_total
-    FROM order_items WHERE order_id=? ORDER BY id ASC`).all(row.id).map((item) => ({
-    productId: item.product_id, productName: item.product_name, unitPrice: item.unit_price,
-    quantity: item.quantity, lineTotal: item.line_total,
+  const items = db.prepare(`
+    SELECT
+      oi.product_id,
+      oi.product_name,
+      oi.unit_price,
+      oi.quantity,
+      oi.quantity_unit,
+      oi.line_total,
+      p.image_url
+    FROM order_items oi
+    LEFT JOIN products p ON p.id = oi.product_id
+    WHERE oi.order_id=?
+    ORDER BY oi.id ASC
+  `).all(row.id).map((item) => ({
+    productId: item.product_id,
+    productName: item.product_name,
+    unitPrice: item.unit_price,
+    quantity: item.quantity,
+    quantityUnit: item.quantity_unit || "pack",
+    lineTotal: item.line_total,
+    productImage: item.image_url || null,
   }));
   const result = {
     id: row.id, items, productSummary: items.length ? `${items[0].productName}${items.length > 1 ? ` 외 ${items.length - 1}건` : ""}` : "상품 없음",
     totalAmount: row.total_amount, status: row.status, fulfillmentType: row.fulfillment_type,
+    paymentStatus: row.payment_status, workflowStatus: row.workflow_status,
     pickupDate: row.pickup_date, pickupTime: row.pickup_time, memo: row.memo,
     createdAt: row.created_at, updatedAt: row.updated_at,
     cancelable: CANCELABLE_ORDER_STATUSES.has(row.status),
@@ -333,13 +376,13 @@ function rowToMemberOrder(row, includeAddress = false) {
 // 아래 /me/* API는 URL의 회원 ID를 신뢰하지 않고 인증 쿠키의 req.user.id만 사용한다.
 router.get("/me/orders", requireCustomerAuth, (req, res) => {
   const rows = db.prepare("SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC").all(req.user.id);
-  res.json({ orders: rows.map((row) => rowToMemberOrder(row)) });
+  res.json({ orders: rows.map((row) => applyMemberOrderHistory(rowToMemberOrder(row))) });
 });
 
 router.get("/me/orders/:orderId", requireCustomerAuth, (req, res) => {
   const order = db.prepare("SELECT * FROM orders WHERE id=? AND user_id=?").get(req.params.orderId, req.user.id);
   if (!order) return res.status(404).json({ error: "주문을 찾을 수 없습니다." });
-  res.json({ order: rowToMemberOrder(order, true) });
+  res.json({ order: applyMemberOrderHistory(rowToMemberOrder(order, true)) });
 });
 
 router.post("/me/orders/:orderId/cancel", requireCustomerAuth, (req, res) => {

@@ -38,6 +38,7 @@ db.exec(`
     product_name TEXT NOT NULL,
     unit_price INTEGER NOT NULL,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
+    quantity_unit TEXT NOT NULL DEFAULT 'pack',
     line_total INTEGER NOT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id)
@@ -292,6 +293,7 @@ ensureColumn("user_accounts", "login_locked_until", "login_locked_until TEXT");
 ensureColumn("user_accounts", "role", "role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin'))");
 ensureColumn("orders", "guest_password_hash", "guest_password_hash TEXT");
 ensureColumn("orders", "guest_address", "guest_address TEXT");
+ensureColumn("order_items", "quantity_unit", "quantity_unit TEXT NOT NULL DEFAULT 'pack'");
 
 // 과거 버전에서 평문으로 저장한 인증번호도 서버 시작 즉시 해시로 전환한다.
 // 이후 code 컬럼에는 원문 대신 고정 표식만 남긴다.
@@ -345,6 +347,7 @@ function migrateOrdersToOrderItems() {
         product_name TEXT NOT NULL,
         unit_price INTEGER NOT NULL,
         quantity INTEGER NOT NULL CHECK (quantity > 0),
+        quantity_unit TEXT NOT NULL DEFAULT 'pack',
         line_total INTEGER NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
@@ -364,8 +367,8 @@ function migrateOrdersToOrderItems() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertItem = db.prepare(`
-      INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, line_total)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, quantity_unit, line_total)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const [orderId, rows] of grouped) {
       const first = rows[0];
@@ -384,7 +387,7 @@ function migrateOrdersToOrderItems() {
       );
       items.forEach((item, index) => insertItem.run(
         `item-${orderId}-${index + 1}`, orderId, item.row.product_id || null,
-        item.row.product || "상품", item.unitPrice, item.quantity, item.lineTotal,
+        item.row.product || "상품", item.unitPrice, item.quantity, item.quantity === Math.floor(item.quantity) ? "pack" : "mal", item.lineTotal,
       ));
     }
     db.exec("DROP TABLE orders_legacy");
@@ -408,6 +411,7 @@ ensureColumn("product_inquiries", "responded_at", "responded_at TEXT");
 ensureColumn("product_inquiries", "updated_at", "updated_at TEXT");
 ensureColumn("product_inquiries", "user_id", "user_id TEXT");
 ensureColumn("product_inquiries", "customer_read_at", "customer_read_at TEXT");
+ensureColumn("product_inquiries", "photos_json", "photos_json TEXT");
 db.exec("CREATE INDEX IF NOT EXISTS idx_product_inquiries_user_id ON product_inquiries(user_id, created_at DESC)");
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_username ON user_accounts(username)");
 

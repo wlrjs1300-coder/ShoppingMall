@@ -24,9 +24,31 @@ function productPriceLabel(product) {
     : "상담 후 안내";
 }
 
+function productPriceLines(product) {
+  if (product.purchaseType !== "direct" || Number(product.price) <= 0) return `<strong>${productPriceLabel(product)}</strong>`;
+  const packPrice = Number(product.price);
+  const packWeight = Number(product.unitWeightGrams || 250);
+  const malPrice = Math.round(packPrice * (8000 / packWeight));
+  return `<div class="product-price-lines" aria-label="단위별 판매가">
+    <span class="product-price-set"><span class="product-unit-label">1팩 ${packWeight.toLocaleString("ko-KR")}g</span><strong class="product-unit-price">${packPrice.toLocaleString("ko-KR")}원</strong></span>
+    <span class="product-price-set"><span class="product-unit-label">반말</span><strong class="product-unit-price">${Math.round(malPrice / 2).toLocaleString("ko-KR")}원</strong></span>
+    <span class="product-price-set"><span class="product-unit-label">한말</span><strong class="product-unit-price">${malPrice.toLocaleString("ko-KR")}원</strong></span>
+  </div>`;
+}
+
+function homeProductPrice(product) {
+  if (product.purchaseType !== "direct" || Number(product.price) <= 0) {
+    return `<div class="home-card-consult"><strong>상담 후 안내</strong><span>구성과 수량을 맞춰드려요</span></div>`;
+  }
+  const packWeight = Number(product.unitWeightGrams || 250);
+  return `<div class="home-card-price" aria-label="1팩 ${packWeight.toLocaleString("ko-KR")}그램 ${Number(product.price).toLocaleString("ko-KR")}원부터, 말 단위 가격은 상세 페이지에서 확인">
+    <span>1팩 · ${packWeight.toLocaleString("ko-KR")}g</span>
+    <strong>${Number(product.price).toLocaleString("ko-KR")}원부터</strong>
+    <small>반말·한말 가격은 상세에서 확인</small>
+  </div>`;
+}
+
 function productCardHtml(product, featured = false) {
-  const priceLabel = productPriceLabel(product);
-  const buttonLabel = product.purchaseType === "direct" ? "담기" : "문의하기";
   return `
     <article class="${featured ? "food-card" : "menu-item food-card small-food-card"}"
       tabindex="0" role="link" aria-label="${escapeHtml(product.name)} 상세 보기"
@@ -40,9 +62,7 @@ function productCardHtml(product, featured = false) {
         <span class="food-badge">${escapeHtml(product.category)}</span>
         <h3>${escapeHtml(product.name)}</h3>
         <p>${escapeHtml(product.description || "상품 설명을 준비하고 있습니다.")}</p>
-        ${product.unitWeightGrams ? `<small class="product-unit-weight">1팩 · ${Number(product.unitWeightGrams).toLocaleString("ko-KR")}g</small>` : ""}
-        <strong>${priceLabel}</strong>
-        <button class="${featured ? "card-button" : "menu-add"} add-interest" type="button">${buttonLabel}</button>
+        ${productPriceLines(product)}
       </div>
     </article>`;
 }
@@ -52,7 +72,7 @@ function homeProductCardHtml(product, badge, badgeClass = "") {
     <a class="food-card home-best-card" data-product-id="${escapeHtml(product.id)}" href="product.html?id=${encodeURIComponent(product.id)}">
       <span class="ribbon-badge ${badgeClass}">${escapeHtml(badge)}</span>
       <div class="food-card-image"><img src="${escapeHtml(product.imageUrl)}" alt="" loading="lazy" /></div>
-      <div class="food-card-body"><h3>${escapeHtml(product.name)}</h3>${product.unitWeightGrams ? `<small class="product-unit-weight">1팩 · ${Number(product.unitWeightGrams).toLocaleString("ko-KR")}g</small>` : ""}<strong>${productPriceLabel(product)}</strong></div>
+      <div class="food-card-body"><h3>${escapeHtml(product.name)}</h3>${homeProductPrice(product)}</div>
     </a>`;
 }
 

@@ -101,11 +101,19 @@ test("존재하지 않거나 판매 중지된 상품은 주문할 수 없다", a
   db.prepare("UPDATE products SET status = 'active' WHERE id = 'injeolmi'").run();
 });
 
-test("수량은 1~99 사이의 정수만 허용한다", async () => {
-  for (const quantity of [0, 1.5, 100, "두 개"]) {
+test("수량은 0.5 단위로 0.5~99까지만 허용된다", async () => {
+  for (const quantity of [0, 0.3, 100, "두 개"]) {
     const response = await request(app).post("/api/orders").send(validOrder({ quantity }));
     assert.equal(response.status, 400, `quantity=${quantity}`);
   }
+});
+
+test("반말/한말(0.5 단위) 주문도 생성된다", async () => {
+  const response = await request(app).post("/api/orders").send(validOrder({ quantity: 0.5, quantityUnit: "mal" }));
+  assert.equal(response.status, 201);
+  const totalQuantity = response.body.quantity;
+  assert.equal(totalQuantity, 0.5);
+  assert.equal(response.body.totalAmount, 56000);
 });
 
 test("잘못된 연락처와 과도하게 긴 이름·메모를 거부한다", async () => {

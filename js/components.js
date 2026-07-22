@@ -39,5 +39,32 @@
     header.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeNavigation(); toggle.focus(); } });
     document.addEventListener("click", (event) => { if (!header.contains(event.target)) closeNavigation(); });
   });
+  if (!document.querySelector(".scroll-to-top")) {
+    const scrollButton = document.createElement("button");
+    scrollButton.className = "global-scroll-to-top";
+    scrollButton.type = "button";
+    scrollButton.setAttribute("aria-label", "맨 위로 이동");
+    scrollButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg>';
+    document.body.appendChild(scrollButton);
+    const updateScrollButton = () => scrollButton.classList.toggle("is-visible", window.scrollY > 260);
+    window.addEventListener("scroll", updateScrollButton, { passive:true });
+    scrollButton.addEventListener("click", () => window.scrollTo({ top:0, behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
+    updateScrollButton();
+  }
+  window.showHeaderCartNotice = (productName = "상품") => {
+    document.querySelector(".header-cart-notice")?.remove();
+    const cartLink = [...document.querySelectorAll('.header-text-link[href="cart.html"]')].at(-1);
+    if (!cartLink) return;
+    const rect = cartLink.getBoundingClientRect();
+    const notice = document.createElement("div");
+    notice.className = "header-cart-notice";
+    notice.setAttribute("role", "status");
+    notice.innerHTML = `<span class="header-cart-notice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6zM8 8a4 4 0 0 1 8 0"/><path d="m9 14 2 2 4-5"/></svg></span><div><small>장바구니 담기 완료</small><strong>${String(productName).replace(/[<>]/g, "")}</strong><p>장바구니에 상품이 추가되었습니다.</p></div><a href="cart.html">장바구니 보기</a>`;
+    notice.style.top = `${Math.round(rect.bottom + 12)}px`;
+    notice.style.right = `${Math.max(16, Math.round(window.innerWidth - rect.right))}px`;
+    document.body.appendChild(notice);
+    requestAnimationFrame(() => notice.classList.add("is-visible"));
+    window.setTimeout(() => { notice.classList.remove("is-visible"); window.setTimeout(() => notice.remove(), 180); }, 2600);
+  };
   applySiteInfo();
 })();

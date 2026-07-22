@@ -665,7 +665,7 @@ function setAdminTab(tabName) {
   });
 
   updateAdminSummaryCards(tabName);
-  if (tabName === "inquiries" && typeof loadAdminInquiries === "function") loadAdminInquiries();
+  if (tabName === "inquiries" && typeof loadAdminInquiries === "function") loadAdminInquiries({ force: true });
   if (tabName === "accounting") requestAccountingChartResize();
 }
 

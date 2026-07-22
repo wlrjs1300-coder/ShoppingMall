@@ -7,7 +7,151 @@
     <meta name="description" content="따뜻한 떡집 메뉴의 구성과 가격을 확인하세요." />
     <meta name="theme-color" content="#fff3f7" />
     <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=21" />
+    <style>
+      .product-page .product-detail-price-panel {
+        margin: 2px 0 20px;
+        padding: 18px 20px 20px;
+        border: 1px solid #f1d9df;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #fff 0%, #fff9fa 100%);
+        box-shadow: 0 10px 28px rgba(125, 74, 85, 0.06);
+      }
+
+      .product-page .product-detail-price-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .product-page .product-detail-price-heading > span {
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .product-page .product-detail-price-heading > small {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .product-page .product-detail-unit-prices {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        overflow: hidden;
+        border: 1px solid #f3e1e5;
+        border-radius: 14px;
+        background: #fff;
+      }
+
+      .product-page .product-detail-unit-price {
+        display: grid;
+        align-content: center;
+        justify-items: start;
+        min-width: 0;
+        min-height: 76px;
+        padding: 13px 16px;
+        box-sizing: border-box;
+      }
+
+      .product-page .product-detail-unit-price + .product-detail-unit-price {
+        border-left: 1px solid #f3e1e5;
+      }
+
+      .product-page .product-detail-unit-price > span {
+        margin-bottom: 5px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.3;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+
+      .product-page .product-detail-unit-price > strong {
+        margin: 0;
+        color: var(--pink-deep);
+        font-size: clamp(15px, 1.25vw, 19px);
+        line-height: 1.2;
+        font-weight: 900;
+        letter-spacing: -0.025em;
+        white-space: nowrap;
+      }
+
+      .product-page .product-detail-unit-price.is-pack {
+        background: #fff8fa;
+      }
+
+      .product-page .product-detail-consult-price {
+        display: block;
+        color: var(--pink-deep);
+        font-size: 20px;
+      }
+
+      .product-page .scroll-to-top {
+        position: fixed;
+        z-index: 50;
+        right: clamp(18px, 2.5vw, 40px);
+        bottom: clamp(18px, 3vw, 36px);
+        display: grid;
+        place-items: center;
+        width: 52px;
+        height: 52px;
+        padding: 0;
+        border: 1px solid #f0cfd7;
+        border-radius: 50%;
+        color: var(--pink-deep);
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 12px 30px rgba(100, 55, 65, 0.16);
+        backdrop-filter: blur(8px);
+        cursor: pointer;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(12px);
+        transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease,
+          color 180ms ease, background 180ms ease, border-color 180ms ease;
+      }
+
+      .product-page .scroll-to-top.is-visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .product-page .scroll-to-top:hover {
+        border-color: var(--pink-deep);
+        color: #fff;
+        background: var(--pink-deep);
+      }
+
+      .product-page .scroll-to-top:focus-visible {
+        outline: 3px solid rgba(223, 79, 109, 0.24);
+        outline-offset: 3px;
+      }
+
+      .product-page .scroll-to-top svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media (max-width: 560px) {
+        .product-page .product-detail-price-panel { padding: 15px; }
+        .product-page .product-detail-unit-prices { grid-template-columns: 1fr; }
+        .product-page .product-detail-unit-price { min-height: 64px; }
+        .product-page .product-detail-unit-price + .product-detail-unit-price {
+          border-top: 1px solid #f3e1e5;
+          border-left: 0;
+        }
+        .product-page .scroll-to-top { width: 46px; height: 46px; }
+      }
+    </style>
   </head>
   <body class="product-page">
     <header class="site-header" data-shared-header></header>
@@ -18,24 +162,60 @@
       <section class="product-detail-layout" data-product-detail aria-live="polite">
         <div class="product-detail-loading" role="status">메뉴 정보를 불러오고 있습니다.</div>
       </section>
-      <section class="product-detail-guide" aria-label="주문 안내">
-        <article>
-          <div class="product-guide-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M9 13h14l-1.5 12h-11z"/><path d="M12 13V9a4 4 0 0 1 8 0v4M16 5V2M8 7 6 5M24 7l2-2"/></svg></div>
-          <div><span>01 · FRESH</span><strong>당일 생산</strong><p>주문 일정에 맞춰 정성껏 준비합니다.</p></div>
-        </article>
-        <article>
-          <div class="product-guide-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m5 11 11-6 11 6-11 6z"/><path d="M5 11v12l11 6 11-6V11M16 17v12M10 8l11 6"/></svg></div>
-          <div><span>02 · PACKAGE</span><strong>안전한 포장</strong><p>떡의 모양과 신선함을 지켜 포장합니다.</p></div>
-        </article>
-        <article>
-          <div class="product-guide-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M3 8h17v15H3zM20 13h5l4 5v5h-9z"/><circle cx="9" cy="24" r="3"/><circle cx="24" cy="24" r="3"/><path d="M20 18h9"/></svg></div>
-          <div><span>03 · DELIVERY</span><strong>픽업·배송 상담</strong><p>상품별 가능한 수령 방법을 안내합니다.</p></div>
-        </article>
+      <section class="product-content" data-product-content>
+        <div class="product-content-tabs" role="tablist" aria-label="상품 상세 메뉴">
+          <button type="button" role="tab" aria-selected="true" aria-controls="product-description-panel" data-product-tab="description">상품 설명</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="product-review-panel" tabindex="-1" data-product-tab="reviews">상품 리뷰 <span data-review-count>0</span></button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="product-qna-panel" tabindex="-1" data-product-tab="qna">Q&amp;A <span data-qna-count>0</span></button>
+        </div>
+
+        <section class="product-content-panel" id="product-description-panel" role="tabpanel" data-product-panel="description">
+          <div class="product-story">
+            <div class="product-story-media"><figure><img data-product-story-image src="assets/tteok-hero.png" alt="" loading="lazy" /><figcaption>주문 일정에 맞춰 정성스럽게 준비합니다.</figcaption></figure></div>
+            <div class="product-story-copy"><span>PRODUCT STORY</span><h2 data-product-story-title>정성껏 준비한 떡입니다</h2><p data-product-story-description>상품 정보를 불러오고 있습니다.</p><p data-product-story-detail>재료 본연의 맛과 떡 고유의 식감을 살려 편안하게 즐길 수 있도록 만들었습니다.</p><dl><div><dt>제작</dt><dd>주문 일정에 맞춘 당일 생산</dd></div><div><dt>보관</dt><dd>수령 후 당일 섭취 또는 밀봉 냉동 보관</dd></div><div><dt>수령</dt><dd>매장 픽업 또는 배송 가능 여부 안내</dd></div></dl></div>
+          </div>
+          <section class="product-origin-table" aria-label="원재료 및 원산지 정보"><header><div><span>INGREDIENT ORIGIN</span><h3>원재료·원산지 정보</h3></div><p>상품에 사용되는 주요 원재료의 원산지를 확인해 주세요.</p></header><div class="product-origin-grid" data-product-origin-list><div><dt>멥쌀</dt><dd>국내산</dd></div><div><dt>소금</dt><dd>국내산</dd></div><div><dt>설탕</dt><dd>외국산</dd></div></div><p class="product-origin-note">※ 원재료 수급 상황에 따라 원산지가 변경될 수 있으며, 변경 시 상품 표시사항을 통해 안내드립니다.</p></section>
+          <div class="product-promise-grid" aria-label="상품 제작과 수령 안내">
+            <article><span>01</span><div><strong>신선하게 만듭니다</strong><p>미리 만들어 오래 보관하지 않고 선택한 수령 일정에 맞춰 생산합니다.</p></div></article>
+            <article><span>02</span><div><strong>정성껏 포장합니다</strong><p>이동 중 모양이 흐트러지지 않도록 상품 특성에 맞는 방식으로 포장합니다.</p></div></article>
+            <article><span>03</span><div><strong>수령 방법을 안내합니다</strong><p>상품과 지역에 따라 가능한 픽업·배송 방법을 주문 단계에서 확인할 수 있습니다.</p></div></article>
+          </div>
+          <div class="product-process-block">
+            <div class="product-process-heading"><span>ORDER PROCESS</span><h3>주문은 이렇게 진행됩니다</h3></div>
+            <div class="product-process product-order-process">
+              <article><span class="product-process-icon"><svg viewBox="0 0 64 64"><path d="M13 15h38v38H13zM21 25h22M21 34h15M21 43h10"/><path d="M23 15V9h18v6"/></svg></span><small>01</small><strong>상품 선택</strong><p>구매 단위와 수량을 선택합니다.</p></article>
+              <article><span class="product-process-icon"><svg viewBox="0 0 64 64"><path d="M12 18h40v34H12zM12 28h40"/><circle cx="21" cy="40" r="3"/><path d="M29 40h15"/></svg></span><small>02</small><strong>주문·결제</strong><p>수령 방법과 일정을 확인합니다.</p></article>
+              <article><span class="product-process-icon"><svg viewBox="0 0 64 64"><path d="m11 23 21-11 21 11-21 11zM11 23v25l21 11 21-11V23M32 34v25"/></svg></span><small>03</small><strong>당일 생산</strong><p>일정에 맞춰 신선하게 만듭니다.</p></article>
+              <article><span class="product-process-icon"><svg viewBox="0 0 64 64"><path d="M9 20h32v29H9zM41 30h9l8 10v9H41z"/><circle cx="20" cy="50" r="6"/><circle cx="49" cy="50" r="6"/></svg></span><small>04</small><strong>픽업·배송</strong><p>안전하게 포장해 전달합니다.</p></article>
+            </div>
+          </div>
+          <div class="product-process-block is-delivery">
+            <div class="product-process-heading"><span>DELIVERY PROCESS</span><h3>배송 진행 상태를 확인하세요</h3></div>
+            <div class="product-delivery-flow">
+              <span><b>1</b><strong>주문 완료</strong></span><i></i><span><b>2</b><strong>접수 완료</strong></span><i></i><span><b>3</b><strong>배송 출발</strong></span><i></i><span><b>4</b><strong>배송 완료</strong></span>
+            </div>
+            <p>마이페이지의 배송조회에서 단계별 처리 시간과 현재 상태를 확인할 수 있습니다.</p>
+            <div class="product-delivery-safety"><span class="product-delivery-safety-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M12 24 32 13l20 11v25L32 59 12 49zM12 24l20 11 20-11M32 35v24"/><path d="M24 17v-5h16v5M23 43l6 6 12-14"/></svg></span><div><strong>신선 식품을 안전하고 위생적으로 전달합니다</strong><p>생산 후 외부 오염을 막도록 식품용 포장재로 밀봉하고, 상품이 흔들리거나 눌리지 않도록 한 번 더 고정해 포장합니다. 배송 직전까지 청결한 환경에서 보관하며, 수령 후에는 포장을 확인한 뒤 바로 드시거나 밀봉하여 냉동 보관해 주세요.</p></div></div>
+          </div>
+        </section>
+
+        <section class="product-content-panel" id="product-review-panel" role="tabpanel" data-product-panel="reviews" hidden>
+          <header class="product-section-heading is-row"><div><span>REAL REVIEW</span><h2>상품 리뷰</h2><p>직접 구매한 고객의 솔직한 후기를 확인해 보세요.</p></div><div class="product-review-score"><strong data-review-average>0.0</strong><span aria-hidden="true">★★★★★</span><small><b data-review-count-summary>0</b>개의 리뷰</small></div></header>
+          <div class="product-review-list" data-product-review-list></div>
+        </section>
+
+        <section class="product-content-panel" id="product-qna-panel" role="tabpanel" data-product-panel="qna" hidden>
+          <header class="product-section-heading is-row"><div><span>PRODUCT Q&amp;A</span><h2>상품 문의</h2><p>상품에 대해 궁금한 내용을 확인하거나 문의를 남겨주세요.</p></div><a class="primary-button product-qna-write" data-product-qna-write href="inquiry.html">상품 문의하기</a></header>
+          <div class="product-qna-list" data-product-qna-list><p class="product-content-empty">문의 내역을 불러오고 있습니다.</p></div>
+        </section>
       </section>
     </main>
 
+    <button class="scroll-to-top" type="button" aria-label="맨 위로 이동" title="맨 위로">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg>
+    </button>
     <footer class="site-footer" data-shared-footer></footer>
     <script src="cart-utils.js"></script>
-    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/auth.js"></script><script src="js/product-detail.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=4"></script><script src="js/search.js?v=2"></script><script src="js/cart.js?v=6"></script><script src="js/auth.js"></script><script src="js/product-detail.js?v=34"></script>
   </body>
 </html>

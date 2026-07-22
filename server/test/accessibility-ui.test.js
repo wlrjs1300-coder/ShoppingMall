@@ -24,11 +24,11 @@ test("검색 패널은 키보드 이동, ESC, 최근 검색어 개별 삭제를 
   assert.doesNotMatch(source, /인기 검색어/);
 });
 
-test("장바구니 삭제는 실행 취소를 제공한다", () => {
+test("장바구니 삭제 후 실행 취소 알림을 표시하지 않는다", () => {
   const source = read("js/cart.js");
-  assert.match(source, /offerCartUndo/);
-  assert.match(source, /actionLabel: "실행 취소"/);
-  assert.match(source, /writeCart\(previousCart\)/);
+  assert.doesNotMatch(source, /offerCartUndo/);
+  assert.doesNotMatch(source, /actionLabel: "실행 취소"/);
+  assert.match(source, /cartUtils\.removeItem/);
 });
 
 test("폼 오류와 모달에 접근성 포커스 처리가 연결되어 있다", () => {

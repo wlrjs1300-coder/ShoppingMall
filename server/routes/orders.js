@@ -29,7 +29,24 @@ const STATUS_TRANSITIONS = {
   픽업완료: [], 배송완료: [], 취소: [], 주문취소: [],
 };
 const MAX_QUANTITY = 99;
+const ORDER_ITEM_QUANTITY_STEP = 0.5;
 const IDEMPOTENCY_KEY_RE = /^[A-Za-z0-9._:-]{8,128}$/;
+const DEFAULT_QUANTITY_UNIT = "pack";
+
+function parseQuantityUnit(value, quantity = null) {
+  if (value === "mal" || value === "pack") return value;
+  const rawQuantity = Number(quantity);
+  if (Number.isFinite(rawQuantity) && rawQuantity % 1 !== 0) return "mal";
+  return DEFAULT_QUANTITY_UNIT;
+}
+
+function getQuantityStep(unit) {
+  return unit === "mal" ? ORDER_ITEM_QUANTITY_STEP : 1;
+}
+
+function getQuantityMin(unit) {
+  return unit === "mal" ? ORDER_ITEM_QUANTITY_STEP : 1;
+}
 
 function getActorLabel(req) {
   if (!req?.admin) return "admin";
@@ -71,7 +88,7 @@ function validateCustomerFields(body) {
   const pickupDate = typeof body?.pickupDate === "string" ? body.pickupDate.trim() : "";
   const pickupTime = typeof body?.pickupTime === "string" ? body.pickupTime.trim() : "";
   const memo = typeof body?.memo === "string" ? body.memo.trim() : "";
-  const paymentMethod = ["card", "transfer", "onsite"].includes(body?.paymentMethod) ? body.paymentMethod : "onsite";
+  const paymentMethod = ["card", "transfer", "mobile", "onsite"].includes(body?.paymentMethod) ? body.paymentMethod : "onsite";
   if (!customer || customer.length > 50) return { error: "주문자 이름을 확인해 주세요." };
   if (!isValidPhone(phone)) return { error: "연락처 형식이 올바르지 않습니다." };
   if (!fulfillmentType) return { error: "수령 방식을 확인해 주세요." };
@@ -96,18 +113,30 @@ function createCheckoutPayment(order, paymentMethod, now) {
   return `pay.html?orderId=${encodeURIComponent(order.id)}&token=${encodeURIComponent(linkToken)}`;
 }
 
+
 function normalizeItems(items) {
-  if (!Array.isArray(items) || !items.length || items.length > 30) return { error: "주문 상품은 1개 이상 30개 이하로 선택해 주세요." };
+  if (!Array.isArray(items) || !items.length || items.length > 30) {
+    return { error: '주문 상품은 1개 이상 30개 이하로 넣어 주세요.' };
+  }
   const seen = new Set();
   const normalized = [];
   for (const item of items) {
     const productId = typeof item?.productId === "string" ? item.productId.trim() : "";
-    const quantity = Number(item?.quantity);
-    if (!productId || productId.length > 100) return { error: "상품을 선택해 주세요." };
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) return { error: `수량은 1개 이상 ${MAX_QUANTITY}개 이하로 입력해 주세요.` };
-    if (seen.has(productId)) return { error: "같은 상품이 중복되어 있습니다." };
+    const rawQuantity = Number(item?.quantity);
+    const quantityUnit = parseQuantityUnit(item?.quantityUnit, rawQuantity);
+    const step = getQuantityStep(quantityUnit);
+    const minQuantity = getQuantityMin(quantityUnit);
+    if (!productId || productId.length > 100) return { error: '상품을 다시 확인해 주세요.' };
+    if (!Number.isFinite(rawQuantity) || rawQuantity < minQuantity || rawQuantity > MAX_QUANTITY) {
+      return { error: `${quantityUnit === "mal" ? "말은" : "팩은"} ${minQuantity}~${MAX_QUANTITY} 단위로 입력해 주세요.` };
+    }
+    const quantity = Math.round(rawQuantity / step) * step;
+    if (Math.abs(quantity - rawQuantity) > 1e-8) {
+      return { error: `${quantityUnit === "mal" ? "말은 0.5 단위" : "팩은 정수"}로 입력해 주세요.` };
+    }
+    if (seen.has(productId)) return { error: '하나의 상품은 한번만 입력해 주세요.' };
     seen.add(productId);
-    normalized.push({ productId, quantity });
+    normalized.push({ productId, quantity, quantityUnit });
   }
   return { data: normalized };
 }
@@ -119,9 +148,11 @@ function getOrderItems(orderId) {
     productName: item.product_name,
     unitPrice: item.unit_price,
     quantity: item.quantity,
+    quantityUnit: item.quantity_unit || DEFAULT_QUANTITY_UNIT,
     lineTotal: item.line_total,
   }));
 }
+
 
 function rowToOrder(row) {
   const items = getOrderItems(row.id);
@@ -197,9 +228,9 @@ function insertHeader(fields) {
 
 function insertItem(orderId, item, index) {
   db.prepare(`
-    INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, line_total)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(`item-${orderId}-${index + 1}`, orderId, item.productId || null, item.productName, item.unitPrice, item.quantity, item.lineTotal);
+    INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, quantity_unit, line_total)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(`item-${orderId}-${index + 1}`, orderId, item.productId || null, item.productName, item.unitPrice, item.quantity, item.quantityUnit || DEFAULT_QUANTITY_UNIT, item.lineTotal);
 }
 
 function addStatusHistory(orderId, previousStatus, nextStatus, changedBy = "system", createdAt = new Date().toISOString(), reason = null) {
@@ -217,8 +248,16 @@ function addAuditLog({ category, message, action, entityId, previousValue, nextV
 function createOrder({ id, userId, customerData, products, requestedItems, memo, createdAt, guestData = null }) {
   const items = requestedItems.map((requested, index) => {
     const product = products[index];
-    const unitPrice = Number(product.price);
-    return { productId: product.id, productName: product.name, unitPrice, quantity: requested.quantity, lineTotal: unitPrice * requested.quantity };
+    const unitPrice = requested.quantityUnit === "mal" ? Math.round(Number(product.price) * 32) : Number(product.price);
+    const quantity = requested.quantity;
+    return {
+      productId: product.id,
+      productName: product.name,
+      quantityUnit: requested.quantityUnit || DEFAULT_QUANTITY_UNIT,
+      unitPrice,
+      quantity,
+      lineTotal: Math.round(unitPrice * quantity),
+    };
   });
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
   insertHeader({
@@ -252,7 +291,7 @@ router.get("/:id/history", requireAuth, (req, res) => {
 
 router.post("/", publicOrderLimiter, optionalCustomerAuth, (req, res) => {
   const customer = validateCustomerFields(req.body);
-  const items = normalizeItems([{ productId: req.body?.productId, quantity: req.body?.quantity }]);
+  const items = normalizeItems([{ productId: req.body?.productId, quantity: req.body?.quantity, quantityUnit: req.body?.quantityUnit }]);
   if (customer.error || items.error) return res.status(400).json({ error: customer.error || items.error });
   const product = db.prepare("SELECT id, name, price FROM products WHERE id = ? AND status = 'active'").get(items.data[0].productId);
   if (!product || product.price === null) return res.status(404).json({ error: "주문 가능한 상품을 찾을 수 없습니다." });
@@ -348,7 +387,11 @@ router.post("/guest/lookup", publicOrderLimiter, (req, res) => {
 router.post("/admin", requireAuth, (req, res) => {
   const now = new Date().toISOString();
   const id = typeof req.body.id === "string" && req.body.id ? req.body.id : `order-${crypto.randomUUID()}`;
-  const quantity = Math.max(1, Math.min(MAX_QUANTITY, Number(req.body.quantity) || 1));
+  const parsedQuantity = Number(req.body.quantity);
+  const quantityUnit = parseQuantityUnit(req.body.quantityUnit, parsedQuantity);
+  const step = getQuantityStep(quantityUnit);
+  const minQuantity = getQuantityMin(quantityUnit);
+  const quantity = Number.isFinite(parsedQuantity) ? Math.min(MAX_QUANTITY, Math.max(minQuantity, Math.round(parsedQuantity / step) * step)) : minQuantity;
   const unitPrice = Math.max(0, Number(req.body.unitPrice || 0));
   const status = ORDER_STATUSES.has(req.body.status) ? req.body.status : ORDER_STATUS;
   const paymentStatus = PAYMENT_STATUSES.has(req.body.paymentStatus) ? req.body.paymentStatus : "결제대기";
@@ -359,12 +402,19 @@ router.post("/admin", requireAuth, (req, res) => {
       id, customer: String(req.body.customer || "고객"), phone: String(req.body.phone || ""),
       fulfillmentType: req.body.fulfillmentType === "delivery" ? "delivery" : "pickup",
       deliveryAddress: req.body.deliveryAddress, pickupDate: req.body.pickupDate, pickupTime: req.body.pickupTime,
-      subtotal: unitPrice * quantity, totalAmount: unitPrice * quantity, cost: Math.max(0, Number(req.body.cost || 0)),
+      subtotal: Math.round(unitPrice * quantity), totalAmount: Math.round(unitPrice * quantity), cost: Math.max(0, Number(req.body.cost || 0)),
       status, paymentStatus, amountStatus: req.body.amountStatus === "pending" || unitPrice === 0 ? "pending" : "confirmed",
       workflowStatus: WORKFLOW_STATUSES.has(req.body.workflowStatus) ? req.body.workflowStatus : (paymentStatus === "결제완료" ? "접수대기" : "결제대기"),
       logisticsStatus: req.body.logisticsStatus, memo: req.body.memo, createdAt: now,
     });
-    insertItem(id, { productId: null, productName: String(req.body.product || "상품"), unitPrice, quantity, lineTotal: unitPrice * quantity }, 0);
+    insertItem(id, {
+      productId: null,
+      productName: String(req.body.product || "상품"),
+      quantityUnit,
+      unitPrice,
+      quantity,
+      lineTotal: Math.round(unitPrice * quantity),
+    }, 0);
     addStatusHistory(id, null, status, getActorLabel(req), now);
     db.exec("COMMIT");
   } catch (error) {
@@ -508,9 +558,15 @@ router.put("/:id", requireAuth, (req, res) => {
     if (items.length === 1 && (req.body.product !== undefined || req.body.unitPrice !== undefined || req.body.quantity !== undefined)) {
       const productName = String(req.body.product ?? items[0].productName);
       const unitPrice = Math.max(0, Number(req.body.unitPrice ?? items[0].unitPrice));
-      const quantity = Math.max(1, Math.min(MAX_QUANTITY, Number(req.body.quantity ?? items[0].quantity)));
-      db.prepare("UPDATE order_items SET product_name=?, unit_price=?, quantity=?, line_total=? WHERE id=?")
-        .run(productName, unitPrice, quantity, unitPrice * quantity, items[0].id);
+      const normalizedQuantity = Number(req.body.quantity ?? items[0].quantity);
+      const requestedQuantityUnit = parseQuantityUnit(req.body.quantityUnit ?? items[0].quantityUnit, normalizedQuantity ?? items[0].quantity);
+      const requestedQuantityStep = getQuantityStep(requestedQuantityUnit);
+      const requestedQuantityMin = getQuantityMin(requestedQuantityUnit);
+      const quantity = Number.isFinite(normalizedQuantity)
+        ? Math.min(MAX_QUANTITY, Math.max(requestedQuantityMin, Math.round(normalizedQuantity / requestedQuantityStep) * requestedQuantityStep))
+        : requestedQuantityMin;
+      db.prepare("UPDATE order_items SET product_name=?, unit_price=?, quantity=?, quantity_unit=?, line_total=? WHERE id=?")
+        .run(productName, unitPrice, quantity, requestedQuantityUnit, Math.round(unitPrice * quantity), items[0].id);
     }
     const subtotal = db.prepare("SELECT COALESCE(SUM(line_total), 0) AS total FROM order_items WHERE order_id = ?").get(existing.id).total;
     const nextStatus = req.body.status === undefined ? existing.status : (ORDER_STATUSES.has(req.body.status) ? req.body.status : null);

@@ -11,6 +11,38 @@ if (inquiryForm) {
   const calendarTitle = inquiryForm.querySelector("[data-calendar-title]");
   const calendarDays = inquiryForm.querySelector("[data-calendar-days]");
   const productId = new URLSearchParams(window.location.search).get("product") || "";
+  const productSelect = inquiryForm.elements.productId;
+  const productNameInput = inquiryForm.elements.productName;
+  const productPicker = inquiryForm.querySelector("[data-product-picker]");
+  const productTrigger = inquiryForm.querySelector("[data-product-trigger]");
+  const productOptions = inquiryForm.querySelector("[data-product-options]");
+  const productLabel = inquiryForm.querySelector("[data-product-label]");
+  const productCategory = inquiryForm.querySelector("[data-product-category]");
+  const photoInput = inquiryForm.querySelector("[data-inquiry-photo-input]");
+  const photoPreview = inquiryForm.querySelector("[data-inquiry-photo-preview]");
+  let inquiryPhotos = [];
+  const renderPhotoPreview = () => {
+    if (!photoPreview) return;
+    photoPreview.innerHTML = inquiryPhotos.map((photo, index) => `<div class="inquiry-photo-item"><img src="${photo}" alt="문의 첨부 사진 ${index + 1}" /><button type="button" data-inquiry-photo-remove="${index}" aria-label="첨부 사진 ${index + 1} 삭제">×</button></div>`).join("");
+  };
+  const compressPhoto = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("사진을 불러오지 못했습니다."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("지원하지 않는 사진 파일입니다."));
+      image.onload = () => {
+        const scale = Math.min(1, 960 / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/webp", 0.75));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
   const formatLocalDate = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -20,6 +52,29 @@ if (inquiryForm) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   let calendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  photoInput?.addEventListener("change", async () => {
+    status.textContent = "";
+    const available = 3 - inquiryPhotos.length;
+    const files = [...(photoInput.files || [])].slice(0, Math.max(available, 0));
+    if (!files.length && available <= 0) status.textContent = "사진은 최대 3장까지 첨부할 수 있습니다.";
+    for (const file of files) {
+      if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+        status.textContent = "사진은 JPG, PNG, WEBP 형식의 5MB 이하 파일만 첨부할 수 있습니다.";
+        continue;
+      }
+      try { inquiryPhotos.push(await compressPhoto(file)); }
+      catch (error) { status.textContent = error.message; }
+    }
+    photoInput.value = "";
+    renderPhotoPreview();
+  });
+  photoPreview?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-inquiry-photo-remove]");
+    if (!button) return;
+    inquiryPhotos.splice(Number(button.dataset.inquiryPhotoRemove), 1);
+    renderPhotoPreview();
+  });
 
   const updateDateDisplay = () => {
     if (!desiredDate.value) {
@@ -121,14 +176,62 @@ if (inquiryForm) {
   setQuantity(quantityInput.value);
   updateDateDisplay();
 
-  fetch(`${API_BASE}/products/${encodeURIComponent(productId)}`)
+  const syncSelectedProduct = () => {
+    const option = productSelect.selectedOptions[0];
+    productNameInput.value = option?.dataset.productName || "";
+    productLabel.textContent = option?.dataset.productName || "문의할 상품을 선택해 주세요.";
+    productCategory.textContent = option?.dataset.category || "상품 선택";
+    productOptions.querySelectorAll("[data-product-id]").forEach((button) => {
+      const selected = button.dataset.productId === productSelect.value;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-selected", String(selected));
+    });
+  };
+
+  const closeProductPicker = () => {
+    productOptions.hidden = true;
+    productTrigger.setAttribute("aria-expanded", "false");
+  };
+
+  productTrigger.addEventListener("click", () => {
+    const willOpen = productOptions.hidden;
+    productOptions.hidden = !willOpen;
+    productTrigger.setAttribute("aria-expanded", String(willOpen));
+  });
+  productOptions.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-product-id]");
+    if (!button) return;
+    productSelect.value = button.dataset.productId;
+    syncSelectedProduct();
+    closeProductPicker();
+    productTrigger.focus();
+  });
+  document.addEventListener("click", (event) => {
+    if (!productPicker.contains(event.target)) closeProductPicker();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !productOptions.hidden) {
+      closeProductPicker();
+      productTrigger.focus();
+    }
+  });
+
+  productSelect.addEventListener("change", syncSelectedProduct);
+  fetch(`${API_BASE}/products`, { cache: "no-store" })
     .then((response) => response.ok ? response.json() : Promise.reject())
-    .then(({ product }) => {
-      inquiryForm.elements.productId.value = product.id;
-      inquiryForm.elements.productName.value = product.name;
+    .then(({ products }) => {
+      const items = Array.isArray(products) ? products : [];
+      productSelect.innerHTML = `<option value="">문의할 상품을 선택해 주세요.</option>${items.map((product) => `<option value="${escapeHtml(product.id)}" data-product-name="${escapeHtml(product.name)}" data-category="${escapeHtml(product.category || "기타")}">${escapeHtml(product.name)}</option>`).join("")}`;
+      productOptions.innerHTML = items.map((product) => `<button class="inquiry-product-option" type="button" role="option" aria-selected="false" data-product-id="${escapeHtml(product.id)}"><span><small>${escapeHtml(product.category || "기타")}</small><strong>${escapeHtml(product.name)}</strong></span><b aria-hidden="true">✓</b></button>`).join("");
+      productSelect.disabled = false;
+      productTrigger.disabled = false;
+      if (productId && items.some((product) => product.id === productId)) productSelect.value = productId;
+      syncSelectedProduct();
     })
     .catch(() => {
-      status.textContent = "문의할 상품을 찾지 못했습니다. 메뉴에서 다시 선택해 주세요.";
+      productSelect.innerHTML = '<option value="">상품 목록을 불러오지 못했습니다.</option>';
+      productLabel.textContent = "상품 목록을 불러오지 못했습니다.";
+      status.textContent = "상품 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
       submitButton.disabled = true;
     });
 
@@ -136,8 +239,14 @@ if (inquiryForm) {
     event.preventDefault();
     status.classList.remove("is-success");
     status.textContent = "";
+    if (!productSelect.value) {
+      status.textContent = "문의할 상품을 먼저 선택해 주세요.";
+      productTrigger.focus();
+      return;
+    }
     if (!inquiryForm.checkValidity()) return inquiryForm.reportValidity();
     const data = Object.fromEntries(new FormData(inquiryForm));
+    data.photos = [...inquiryPhotos];
     try {
       const response = await fetch(`${API_BASE}/inquiries`, {
         method: "POST",

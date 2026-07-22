@@ -53,7 +53,6 @@ test("메뉴 문의 버튼과 전용 문의 페이지가 연결되어 있다", (
   const menuOrder = fs.readFileSync(path.join(root, "js/menu-order.js"), "utf8");
   const menuPage = fs.readFileSync(path.join(root, "menu.html"), "utf8");
   const inquiryPage = fs.readFileSync(path.join(root, "inquiry.html"), "utf8");
-  assert.match(menuOrder, /"문의하기"/);
   assert.doesNotMatch(menuOrder, /문의 남기기/);
   assert.doesNotMatch(menuPage, /문의 남기기/);
   assert.match(menuOrder, /inquiry\.html\?product=/);

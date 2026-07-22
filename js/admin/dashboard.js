@@ -304,8 +304,15 @@ function setAdminFeedback(message) {
 }
 
 function unlockAdmin() {
+  adminLock?.classList.remove("is-checking");
   adminLock?.classList.add("is-unlocked");
   adminLock?.setAttribute("aria-hidden", "true");
+  adminLock?.setAttribute("aria-busy", "false");
+}
+
+function showAdminLoginRequired() {
+  adminLock?.classList.remove("is-checking");
+  adminLock?.setAttribute("aria-busy", "false");
 }
 
 function lockAdmin() {
@@ -318,7 +325,9 @@ function lockAdmin() {
   if (adminLockMessage) adminLockMessage.textContent = "관리자 화면을 잠갔습니다.";
   adminLockForm?.reset();
   adminLock?.classList.remove("is-unlocked");
+  adminLock?.classList.remove("is-checking");
   adminLock?.setAttribute("aria-hidden", "false");
+  adminLock?.setAttribute("aria-busy", "false");
   adminLockForm?.querySelector("input")?.focus();
 }
 
@@ -343,13 +352,19 @@ async function bootstrapMemberAdminAccess() {
     const response = await fetch("/api/users/admin-session", { method: "POST", credentials: "same-origin" });
     if (!response.ok) {
       if (hasAdminAccess() && getApiToken()) unlockAdmin();
-      else if (adminLockMessage) adminLockMessage.textContent = response.status === 403
-        ? "현재 계정에는 관리자 권한이 없습니다."
-        : "관리자 계정으로 로그인해 주세요.";
+      else {
+        showAdminLoginRequired();
+        if (adminLockMessage) adminLockMessage.textContent = response.status === 403
+          ? "현재 계정에는 관리자 권한이 없습니다."
+          : "관리자 계정으로 로그인해 주세요.";
+      }
       return;
     }
     const result = await response.json();
-    if (!result.token) return;
+    if (!result.token) {
+      showAdminLoginRequired();
+      return;
+    }
     setApiToken(result.token);
     grantAdminAccess();
     unlockAdmin();
@@ -357,6 +372,10 @@ async function bootstrapMemberAdminAccess() {
     renderAdminDashboard();
   } catch {
     if (hasAdminAccess() && getApiToken()) unlockAdmin();
+    else {
+      showAdminLoginRequired();
+      if (adminLockMessage) adminLockMessage.textContent = "관리자 로그인 정보를 확인하지 못했습니다.";
+    }
   }
 }
 
