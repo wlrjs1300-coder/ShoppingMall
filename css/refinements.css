@@ -320,7 +320,7 @@ body:not(.admin-page) h1,
 body:not(.admin-page) h2,
 body:not(.admin-page) h3 {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
 }
 
 button,

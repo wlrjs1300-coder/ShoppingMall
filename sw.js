@@ -1,4 +1,4 @@
-const CACHE_NAME = "tteokjip-v39"; // 외부 주소 검색 스크립트는 서비스 워커 처리 대상에서 제외
+const CACHE_NAME = "tteokjip-v40"; // 외부 주소 검색 스크립트는 서비스 워커 처리 대상에서 제외
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
