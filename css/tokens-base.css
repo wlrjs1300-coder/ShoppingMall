@@ -83,6 +83,10 @@ a {
   overflow: hidden;
 }
 
+[data-shared-ticker] {
+  display: none !important;
+}
+
 .event-ticker-inner {
   display: flex;
   align-items: center;
@@ -452,7 +456,7 @@ a {
   display: grid;
   grid-template-columns: 248px 1fr;
   width: 100%;
-  min-height: calc(100vh - 174px);
+  min-height: calc(100vh - 136px);
   margin: 0;
   background: rgba(255, 255, 255, 0.96);
   border: 0;
@@ -574,7 +578,7 @@ a {
 .hero-slides {
   position: relative;
   height: 100%;
-  min-height: calc(100vh - 174px);
+  min-height: calc(100vh - 136px);
 }
 
 .hero-slide {
