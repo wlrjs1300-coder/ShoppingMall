@@ -1,10 +1,16 @@
 (function initSharedComponents() {
-  const tickerItems = ["🎉 명절 송편 예약, 지금 신청하면 안심입니다 · 수량 한정", "🎁 답례떡·단체주문 상담 시 시식 쿠폰 증정", "👶 백일·돌잡이 떡 상담, 이번 달 예약 마감 임박", "🚚 동탄 지역 당일 픽업 가능 · 전화 상담 환영"];
+  const tickerItems = [
+    { tag: "예약", text: "명절 송편은 수량 한정으로 예약을 받고 있습니다" },
+    { tag: "혜택", text: "답례떡·단체주문 상담 시 시식 쿠폰을 드립니다" },
+    { tag: "행사", text: "백일·돌 떡은 일정에 맞춰 여유 있게 상담해 주세요" },
+    { tag: "수령", text: "동탄 지역 매장 픽업과 배송 상담이 가능합니다" },
+  ];
+  const renderTickerItems = () => [...tickerItems, ...tickerItems].map((item, index) => `<span class="event-ticker-item" ${index >= tickerItems.length ? 'aria-hidden="true"' : ""}><em>${item.tag}</em><b>${item.text}</b></span>`).join("");
   document.querySelectorAll(".event-ticker-track").forEach((track) => {
-    track.innerHTML = [...tickerItems, ...tickerItems].map((item, index) => `<span ${index >= tickerItems.length ? 'aria-hidden="true"' : ""}>${item}</span>`).join("");
+    track.innerHTML = renderTickerItems();
   });
   document.querySelectorAll("[data-shared-ticker]").forEach((ticker) => {
-    ticker.innerHTML = `<span class="event-ticker-label">EVENT</span><div class="event-ticker-viewport"><div class="event-ticker-track">${[...tickerItems, ...tickerItems].map((item, index) => `<span ${index >= tickerItems.length ? 'aria-hidden="true"' : ""}>${item}</span>`).join("")}</div></div>`;
+    ticker.innerHTML = `<div class="event-ticker-inner"><span class="event-ticker-label"><i aria-hidden="true"></i><span>SHOP NEWS</span></span><div class="event-ticker-viewport"><div class="event-ticker-track">${renderTickerItems()}</div></div></div>`;
   });
   document.querySelectorAll(".site-footer").forEach((footer) => {
     footer.dataset.sharedComponent = "footer";

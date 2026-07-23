@@ -2411,6 +2411,10 @@ body.admin-page .admin-main {
   .event-ticker-track {
     animation: none;
   }
+
+  .event-ticker-track .event-ticker-item:not(:first-child) {
+    display: none;
+  }
 }
 
 .admin-toolbar {
