@@ -427,6 +427,384 @@
   display: none;
 }
 
+.find-username-page .auth-page,
+.password-recovery-page .auth-page {
+  padding: 48px 20px 72px;
+}
+
+.find-username-card {
+  width: min(100%, 660px);
+  max-width: 660px;
+  gap: 26px;
+  padding: 40px;
+  border: 1px solid #f0d7dc;
+  border-radius: 22px;
+  background: rgba(255, 253, 250, .98);
+  box-shadow: 0 24px 65px rgba(91, 54, 64, .1);
+}
+
+.find-username-card [hidden] {
+  display: none !important;
+}
+
+.find-username-head {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  gap: 19px;
+  align-items: center;
+}
+
+.find-username-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.find-username-icon {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  color: var(--pink-deep);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #fff0f4, #ffe4eb);
+}
+
+.find-username-icon svg {
+  width: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.find-username-head small {
+  color: var(--pink-deep);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .15em;
+}
+
+.find-username-card .find-username-head h1 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 30px;
+}
+
+.find-username-card .auth-card-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.find-username-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  list-style: none;
+  background: #fff;
+}
+
+.find-username-steps li {
+  display: grid;
+  gap: 3px;
+  padding: 15px 10px;
+  color: #a18b91;
+  border-left: 1px solid var(--line);
+  text-align: center;
+}
+
+.find-username-steps li:first-child { border-left: 0; }
+.find-username-steps li.is-active { color: var(--pink-deep); background: #fff3f6; }
+.find-username-steps li.is-complete { color: #597b68; background: #f1faf5; }
+.find-username-steps b { font-size: 11px; }
+.find-username-steps span { font-size: 13px; font-weight: 800; }
+
+.password-recovery-steps {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.find-username-fields {
+  display: grid;
+  gap: 19px;
+  padding: 24px;
+  border: 1px solid #f1dde1;
+  border-radius: 14px;
+  background: #fff9fa;
+}
+
+.find-username-card .auth-inline-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 10px;
+}
+
+.find-username-card .auth-inline-button {
+  min-height: 50px;
+  padding: 0 16px;
+  border-radius: 9px;
+  white-space: nowrap;
+}
+
+.find-username-card input {
+  min-height: 50px;
+  padding-right: 15px !important;
+  padding-left: 15px !important;
+  font-size: 14px !important;
+  background: #fff !important;
+}
+
+.find-username-card form > .primary-button {
+  min-height: 54px;
+  font-size: 15px;
+  border-radius: 12px;
+  box-shadow: 0 13px 28px rgba(223, 79, 109, .2);
+}
+
+.find-username-card form > .primary-button:disabled {
+  color: #a99197;
+  background: #eee6e8;
+  box-shadow: none;
+}
+
+.find-username-result {
+  padding: 22px;
+  border: 1px solid #efcbd4;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff8fa, #fff);
+  text-align: center;
+}
+
+.find-username-result > p {
+  margin: 10px 0 16px;
+  color: var(--pink-deep);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.find-username-back {
+  margin-top: 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.find-username-back a {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.signup-page .auth-page {
+  padding: 48px 20px 72px;
+}
+
+.signup-recovery-card {
+  width: min(100%, 860px);
+  max-width: 860px;
+  gap: 26px;
+  padding: 40px;
+  border: 1px solid #f0d7dc;
+  border-radius: 22px;
+  background: rgba(255, 253, 250, .98);
+  box-shadow: 0 24px 65px rgba(91, 54, 64, .1);
+}
+
+.signup-recovery-card [hidden] {
+  display: none !important;
+}
+
+.signup-recovery-head {
+  max-width: 700px;
+}
+
+.signup-recovery-head small {
+  color: var(--pink-deep);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .15em;
+}
+
+.signup-recovery-card .signup-recovery-head h1 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 30px;
+}
+
+.signup-recovery-card .auth-card-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.signup-recovery-steps {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.signup-recovery-card > form {
+  gap: 18px;
+}
+
+.signup-form-section {
+  display: grid;
+  gap: 19px;
+  padding: 24px;
+  border: 1px solid #f1dde1;
+  border-radius: 15px;
+  background: #fff9fa;
+}
+
+.signup-form-section-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0dde1;
+}
+
+.signup-form-section-head > b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--pink-deep);
+  border-radius: 11px;
+  background: #ffe8ee;
+  font-size: 11px;
+}
+
+.signup-form-section-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.signup-form-section-head strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.signup-form-section-head span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.signup-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+  align-items: start;
+}
+
+.signup-recovery-card .auth-field-with-button {
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 9px;
+}
+
+.signup-recovery-card input {
+  min-height: 50px;
+  padding-right: 15px !important;
+  padding-left: 15px !important;
+  font-size: 14px !important;
+  background: #fff !important;
+}
+
+.signup-recovery-card .auth-inline-button {
+  min-height: 50px;
+  padding: 0 13px;
+  border-radius: 9px;
+  white-space: nowrap;
+}
+
+.signup-recovery-card .auth-code-row {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.signup-agreement-section {
+  background: #fff;
+}
+
+.signup-recovery-card .auth-agree-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.signup-recovery-card form > .primary-button {
+  min-height: 54px;
+  margin-top: 2px;
+  border-radius: 12px;
+  font-size: 15px;
+  box-shadow: 0 13px 28px rgba(223, 79, 109, .2);
+}
+
+.signup-step-actions {
+  display: grid;
+  grid-template-columns: minmax(150px, .42fr) minmax(220px, 1fr);
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.signup-step-actions.is-end {
+  grid-template-columns: minmax(240px, 1fr);
+}
+
+.signup-step-actions button {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.signup-step-actions .primary-button {
+  border: 0;
+  box-shadow: 0 12px 25px rgba(223, 79, 109, .18);
+}
+
+.signup-step-actions .secondary-button {
+  background: #fff;
+}
+
+@media (max-width: 720px) {
+  .signup-page .auth-page { padding: 24px 14px 48px; }
+  .signup-recovery-card { padding: 24px 18px; border-radius: 18px; }
+  .signup-recovery-head { grid-template-columns: 48px 1fr; gap: 12px; }
+  .signup-recovery-head .find-username-icon { width: 48px; height: 48px; border-radius: 14px; }
+  .signup-recovery-card .signup-recovery-head h1 { font-size: 22px; }
+  .signup-form-section { padding: 17px 15px; }
+  .signup-form-grid { grid-template-columns: 1fr; }
+  .signup-recovery-card .auth-field-with-button { grid-template-columns: minmax(0, 1fr) 112px; }
+  .signup-step-actions,
+  .signup-step-actions.is-end { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .find-username-page .auth-page,
+  .password-recovery-page .auth-page { padding: 24px 14px 48px; }
+  .find-username-card { padding: 23px 18px; border-radius: 18px; }
+  .find-username-head { grid-template-columns: 48px 1fr; gap: 12px; }
+  .find-username-icon { width: 48px; height: 48px; border-radius: 14px; }
+  .find-username-card .find-username-head h1 { font-size: 22px; }
+  .find-username-fields { padding: 15px; }
+  .find-username-card .auth-inline-field { grid-template-columns: 1fr; }
+}
+
 .social-login {
   display: grid;
   gap: 11px;

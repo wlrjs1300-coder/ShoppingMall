@@ -77,17 +77,15 @@ if (signupForm) {
   const addressInput = signupForm.querySelector('input[name="address"]');
   const addressDetailInput = signupForm.querySelector('input[name="addressDetail"]');
   addressSearchButton?.addEventListener("click", () => {
-    if (typeof daum === "undefined" || !daum.Postcode) {
-      signupMessage.textContent = "주소 검색 서비스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    if (!window.PostcodeModal) {
+      signupMessage.textContent = "주소 검색 화면을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.";
       return;
     }
-    new daum.Postcode({
-      oncomplete(data) {
-        postalCodeInput.value = data.zonecode;
-        addressInput.value = data.roadAddress || data.jibunAddress || data.address || "";
-        addressDetailInput?.focus();
-      },
-    }).open();
+    window.PostcodeModal.open((data) => {
+      postalCodeInput.value = data.zonecode;
+      addressInput.value = data.address;
+      addressDetailInput?.focus();
+    });
   });
 
   // 휴대폰 인증 (회원가입 필수 단계)
@@ -307,6 +305,97 @@ if (signupForm) {
   passwordInput?.addEventListener("input", checkPasswordMatch);
   passwordConfirmInput?.addEventListener("input", checkPasswordMatch);
 
+  const signupSections = [...signupForm.querySelectorAll("[data-signup-step]")];
+  const signupStepIndicators = [...document.querySelectorAll(".signup-recovery-steps li")];
+  let activeSignupStep = 0;
+
+  function setSignupStep(nextStep) {
+    activeSignupStep = Math.max(0, Math.min(nextStep, signupSections.length - 1));
+    signupSections.forEach((section, index) => { section.hidden = index !== activeSignupStep; });
+    signupStepIndicators.forEach((indicator, index) => {
+      indicator.classList.toggle("is-active", index === activeSignupStep);
+      indicator.classList.toggle("is-complete", index < activeSignupStep);
+    });
+    signupMessage.textContent = "";
+    document.querySelector(".signup-recovery-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => {
+      signupSections[activeSignupStep]?.querySelector("input:not([type='checkbox']):not([readonly])")?.focus({ preventScroll: true });
+    }, 250);
+  }
+
+  function validateSignupStep(step) {
+    clearSignupFieldErrors();
+    const data = new FormData(signupForm);
+    if (step === 0) {
+      const name = String(data.get("name") || "").trim();
+      const username = String(data.get("username") || "").trim().toLowerCase();
+      const phoneDigits = String(data.get("phone") || "").replace(/\D/g, "");
+      const email = String(data.get("email") || "").trim().toLowerCase();
+      if (!name || name.length > 50) {
+        showSignupFieldError(signupForm.elements.namedItem("name"), "이름을 입력해 주세요.");
+        return false;
+      }
+      if (!/^[a-z0-9_]{4,20}$/.test(username)) {
+        showSignupFieldError(signupForm.elements.namedItem("username"), "아이디는 영문 소문자, 숫자, 밑줄을 사용해 4~20자로 입력해 주세요.");
+        return false;
+      }
+      if (checkedUsername !== username) {
+        showSignupFieldError(signupForm.elements.namedItem("username"), "아이디 중복 확인을 완료해 주세요.", { focusTarget: usernameCheckButton });
+        return false;
+      }
+      if (!/^01[0-9]{8,9}$/.test(phoneDigits)) {
+        showSignupFieldError(phoneInput, "올바른 휴대폰 번호를 입력해 주세요.");
+        return false;
+      }
+      if (!phoneVerified || phoneDigits !== verifiedPhoneDigits) {
+        showSignupFieldError(phoneInput, "휴대폰 인증을 완료해 주세요.", { focusTarget: sendCodeButton });
+        return false;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showSignupFieldError(signupForm.elements.namedItem("email"), "올바른 이메일 주소를 입력해 주세요.");
+        return false;
+      }
+      if (checkedEmail !== email) {
+        showSignupFieldError(signupForm.elements.namedItem("email"), "이메일 중복 확인을 완료해 주세요.", { focusTarget: emailCheckButton });
+        return false;
+      }
+      return true;
+    }
+    if (step === 1) {
+      const address = String(data.get("address") || "").trim();
+      const addressDetail = String(data.get("addressDetail") || "").trim();
+      const password = String(data.get("password") || "");
+      const passwordConfirm = String(data.get("passwordConfirm") || "");
+      const passwordBytes = new TextEncoder().encode(password).length;
+      if (!address) {
+        showSignupFieldError(addressInput, "주소 검색을 눌러 배송지 주소를 입력해 주세요.", { focusTarget: addressSearchButton });
+        return false;
+      }
+      if (addressDetail.length > 200) {
+        showSignupFieldError(addressDetailInput, "상세 주소는 200자 이내로 입력해 주세요.");
+        return false;
+      }
+      if (password.length < 8 || passwordBytes > 72) {
+        showSignupFieldError(passwordInput, "비밀번호는 8자 이상, 72바이트 이내로 입력해 주세요.");
+        return false;
+      }
+      if (password !== passwordConfirm) {
+        showSignupFieldError(passwordConfirmInput, "비밀번호가 일치하지 않습니다.");
+        return false;
+      }
+      return true;
+    }
+    return true;
+  }
+
+  signupForm.querySelectorAll("[data-signup-next]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (validateSignupStep(activeSignupStep)) setSignupStep(activeSignupStep + 1);
+    });
+  });
+  signupForm.querySelectorAll("[data-signup-prev]").forEach((button) => {
+    button.addEventListener("click", () => setSignupStep(activeSignupStep - 1));
+  });
   function clearSignupFieldErrors() {
     signupForm.querySelectorAll(".auth-submit-field-error").forEach((message) => message.remove());
     signupForm.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.removeAttribute("aria-invalid"));
@@ -490,6 +579,123 @@ document.querySelectorAll('input[type="password"]').forEach((input) => {
 });
 
 // ─── 비밀번호 찾기 / 재설정 ──────────────────────────────────
+const findUsernameForm = document.querySelector("[data-find-username-form]");
+if (findUsernameForm) {
+  const message = findUsernameForm.querySelector("[data-find-username-message]");
+  const result = findUsernameForm.querySelector("[data-find-username-result]");
+  const usernameText = findUsernameForm.querySelector("[data-found-username]");
+  const phoneInput = findUsernameForm.querySelector("[data-find-phone]");
+  const codeInput = findUsernameForm.querySelector("[data-find-code]");
+  const codeField = findUsernameForm.querySelector("[data-find-code-field]");
+  const codeMessage = findUsernameForm.querySelector("[data-find-code-message]");
+  const sendCodeButton = findUsernameForm.querySelector("[data-find-send-code]");
+  const verifyCodeButton = findUsernameForm.querySelector("[data-find-verify-code]");
+  const submitButton = findUsernameForm.querySelector("[data-find-submit]");
+  const steps = [...document.querySelectorAll(".find-username-steps li")];
+  let verifiedPhone = "";
+  const setFindUsernameStep = (activeIndex) => {
+    steps.forEach((step, index) => {
+      step.classList.toggle("is-active", index === activeIndex);
+      step.classList.toggle("is-complete", index < activeIndex);
+    });
+  };
+
+  phoneInput.addEventListener("input", () => {
+    if (phoneInput.value.replace(/\D/g, "") !== verifiedPhone) {
+      verifiedPhone = "";
+      submitButton.disabled = true;
+    }
+  });
+
+  sendCodeButton.addEventListener("click", async () => {
+    const phone = phoneInput.value.replace(/\D/g, "");
+    codeMessage.textContent = "";
+    if (!/^01\d{8,9}$/.test(phone)) {
+      codeMessage.textContent = "휴대폰 번호를 정확히 입력해 주세요.";
+      return;
+    }
+    sendCodeButton.disabled = true;
+    try {
+      const response = await fetch("/api/phone/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "인증번호를 발송하지 못했습니다.");
+      codeField.hidden = false;
+      codeMessage.textContent = "인증번호를 발송했습니다. 5분 이내에 입력해 주세요.";
+      setFindUsernameStep(1);
+      codeInput.focus();
+    } catch (error) {
+      codeMessage.textContent = error.message;
+    } finally {
+      sendCodeButton.disabled = false;
+    }
+  });
+
+  verifyCodeButton.addEventListener("click", async () => {
+    const phone = phoneInput.value.replace(/\D/g, "");
+    const code = codeInput.value.trim();
+    codeMessage.textContent = "";
+    if (!/^\d{6}$/.test(code)) {
+      codeMessage.textContent = "6자리 인증번호를 입력해 주세요.";
+      return;
+    }
+    verifyCodeButton.disabled = true;
+    try {
+      const response = await fetch("/api/phone/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, code }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.verified) throw new Error(payload.error || "인증번호를 확인해 주세요.");
+      verifiedPhone = phone;
+      phoneInput.readOnly = true;
+      codeInput.readOnly = true;
+      sendCodeButton.disabled = true;
+      submitButton.disabled = false;
+      codeMessage.textContent = "휴대폰 인증이 완료되었습니다.";
+      setFindUsernameStep(2);
+    } catch (error) {
+      codeMessage.textContent = error.message;
+    } finally {
+      verifyCodeButton.disabled = false;
+    }
+  });
+
+  findUsernameForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(findUsernameForm);
+    const name = String(data.get("name") || "").trim();
+    const phone = String(data.get("phone") || "").replace(/\D/g, "");
+    message.textContent = "";
+    result.hidden = true;
+    if (!name || phone !== verifiedPhone) {
+      message.textContent = "이름을 입력하고 휴대폰 인증을 완료해 주세요.";
+      return;
+    }
+    submitButton.disabled = true;
+    try {
+      const response = await fetch("/api/users/find-username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "아이디를 찾지 못했습니다.");
+      usernameText.textContent = payload.username;
+      result.hidden = false;
+      setFindUsernameStep(2);
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+}
+
 const passwordResetRequestForm = document.querySelector("[data-password-reset-request-form]");
 if (passwordResetRequestForm) {
   const message = passwordResetRequestForm.querySelector("[data-password-reset-request-message]");
@@ -709,11 +915,12 @@ if (guestOrderForm) {
   const safeNext = /^(?:[a-z0-9-]+\.html)(?:[?#].*)?$/i.test(nextParam) ? nextParam : "menu.html#menu-list";
 
   guestOrderForm.querySelector("[data-guest-address-search]")?.addEventListener("click", () => {
-    if (typeof daum === "undefined" || !daum.Postcode) {
+    const Postcode = window.kakao?.Postcode || window.daum?.Postcode;
+    if (!Postcode) {
       message.textContent = "주소 검색 서비스를 불러오지 못했습니다.";
       return;
     }
-    new daum.Postcode({ oncomplete(data) {
+    new Postcode({ oncomplete(data) {
       guestOrderForm.elements.postalCode.value = data.zonecode || "";
       guestOrderForm.elements.address.value = data.roadAddress || data.jibunAddress || "";
       guestOrderForm.elements.addressDetail.focus();
@@ -842,6 +1049,7 @@ if (authSignupLink && authLoginLink) {
     authLoginLink.href = "login.html";
     authLoginLink.removeAttribute("role");
     authLoginLink.onclick = null;
+    window.dispatchEvent(new CustomEvent("tteok-auth-state", { detail: { authenticated: false } }));
   };
 
   const applyMemberHeader = (user) => {
@@ -853,6 +1061,7 @@ if (authSignupLink && authLoginLink) {
     authLoginLink.textContent = "로그아웃";
     authLoginLink.href = "#";
     authLoginLink.setAttribute("role", "button");
+    window.dispatchEvent(new CustomEvent("tteok-auth-state", { detail: { authenticated: true } }));
     authLoginLink.onclick = (event) => {
       event.preventDefault();
       if (authLoginLink.getAttribute("aria-busy") === "true") return;
@@ -887,6 +1096,8 @@ if (authSignupLink && authLoginLink) {
             .then((response) => { if (response.ok) adminHeaderLink.hidden = false; })
             .catch(() => {});
         }
+      } else {
+        applyGuestHeader();
       }
     })
     .catch(() => {

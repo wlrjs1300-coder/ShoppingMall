@@ -39,6 +39,7 @@ function makeLimiter(max) {
 const checkEmailLimiter = makeLimiter(30);
 const signupLimiter = makeLimiter(10);
 const loginLimiter = makeLimiter(10);
+const findUsernameLimiter = makeLimiter(10);
 const LOGIN_FAILURE_LIMIT = 5;
 
 router.get("/admin/directory", requireAdminAuth, (req, res) => {
@@ -178,6 +179,39 @@ router.post("/check-username", checkEmailLimiter, (req, res) => {
   }
   const existing = db.prepare("SELECT id FROM user_accounts WHERE username = ?").get(username);
   res.json({ available: !existing });
+});
+
+router.post("/find-username", findUsernameLimiter, (req, res) => {
+  const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  const phone = normalizePhone(req.body?.phone);
+  if (!name || name.length > NAME_MAX || !isValidPhone(phone)) {
+    return res.status(400).json({ error: "이름과 휴대폰 번호를 정확히 입력해 주세요." });
+  }
+
+  const verification = db.prepare(`
+    SELECT id
+    FROM phone_verifications
+    WHERE phone = ? AND verified_at IS NOT NULL AND consumed_at IS NULL AND expires_at > ?
+    ORDER BY verified_at DESC
+    LIMIT 1
+  `).get(phone, new Date().toISOString());
+  if (!verification) {
+    return res.status(403).json({ error: "휴대폰 인증을 먼저 완료해 주세요." });
+  }
+
+  const user = db.prepare(`
+    SELECT username
+    FROM user_accounts
+    WHERE name = ? AND phone = ? AND status = 'active'
+    LIMIT 1
+  `).get(name, phone);
+
+  if (!user?.username) {
+    return res.status(404).json({ error: "입력한 정보와 일치하는 회원을 찾지 못했습니다." });
+  }
+  db.prepare("UPDATE phone_verifications SET consumed_at = ? WHERE id = ?")
+    .run(new Date().toISOString(), verification.id);
+  res.json({ username: user.username });
 });
 
 // POST /api/users/signup

@@ -74,13 +74,19 @@ async function addToCart(item) {
 }
 
 function updateCartLinks() {
-  const count = new Set(readCart().map((item) => item.id)).size;
+  const canShowCount = window.__tteokAuthenticated === true || hasValidGuestProfile();
+  const count = canShowCount ? new Set(readCart().map((item) => item.id)).size : 0;
   document.querySelectorAll(".header-text-link").forEach((link) => {
     if (!link.textContent.trim().startsWith("장바구니")) return;
     link.href = "cart.html";
     link.textContent = `장바구니${count ? ` (${count > 99 ? "99+" : count})` : ""}`;
   });
 }
+
+window.addEventListener("tteok-auth-state", (event) => {
+  window.__tteokAuthenticated = event.detail?.authenticated === true;
+  updateCartLinks();
+});
 
 updateCartLinks();
 

@@ -18,14 +18,15 @@
   root.innerHTML = "";
   new postcodeApi({
     oncomplete(data) {
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({
+      const receiver = window.opener && !window.opener.closed ? window.opener : window.parent;
+      if (receiver && receiver !== window) {
+        receiver.postMessage({
           type: "tteok-postcode-selected",
           zonecode: data.zonecode || "",
           address: data.roadAddress || data.jibunAddress || data.address || "",
         }, window.location.origin);
       }
-      window.close();
+      if (window.opener) window.close();
     },
     width: "100%",
     height: "100%",

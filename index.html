@@ -66,44 +66,67 @@
 
         <div class="hero-carousel" aria-roledescription="carousel" aria-label="이벤트 배너">
           <div class="hero-slides" data-hero-slides>
-            <article class="hero-slide is-active" style="background-image: url('assets/tteok-hero.png')">
-              <div class="hero-slide-content">
-                <p class="eyebrow">DONGTAN RICE CAKE SHOP</p>
-                <h1>오늘 빚은 떡을<br />따뜻하게 전합니다</h1>
-                <p>송편 예약부터 답례·단체주문까지 차분히 준비합니다.</p>
+            <article class="hero-slide hero-event-slide is-active" style="background-image: url('assets/tteok-hero.png')">
+              <span class="hero-event-badge"><b>EVENT 01</b> 이달의 기획전</span>
+              <div class="hero-slide-content" data-event-number="01">
+                <p class="eyebrow">MONTHLY BEST COLLECTION</p>
+                <h1>요즘 가장 사랑받는 떡을<br />한자리에 모았습니다</h1>
+                <p>오늘 빚어 더 맛있는 인기 메뉴를 취향에 맞게 둘러보세요.</p>
+                <div class="hero-event-meta" aria-label="이벤트 정보">
+                  <span>인기 메뉴</span>
+                  <span>당일 생산</span>
+                </div>
                 <div class="hero-actions">
-                  <a class="primary-button" href="menu.html">메뉴와 가격 보기</a>
+                  <a class="primary-button" href="menu.html">기획전 메뉴 보기</a>
                   <a class="secondary-button" href="inquiry.html">상담 문의</a>
                 </div>
               </div>
             </article>
-            <article class="hero-slide" style="background-image: url('assets/products/menu-songpyeon.png')">
-              <div class="hero-slide-content">
+            <article class="hero-slide hero-event-slide" style="background-image: url('assets/products/menu-songpyeon.png')">
+              <span class="hero-event-badge"><b>EVENT 02</b> 수량 한정 예약</span>
+              <div class="hero-slide-content" data-event-number="02">
                 <p class="eyebrow">SEASON RESERVATION</p>
                 <h1 class="hero-title-songpyeon"><span>명절 송편,</span><span>지금 예약하면 안심입니다</span></h1>
                 <p>수량 한정 예약제로 매일 신선하게 빚어 준비합니다.</p>
+                <div class="hero-event-meta" aria-label="이벤트 정보">
+                  <span>명절 예약</span>
+                  <span>픽업·배송 상담</span>
+                </div>
                 <div class="hero-actions">
                   <a class="primary-button" href="menu.html?filter=송편">송편 예약 보기</a>
                   <a class="secondary-button" href="inquiry.html">상담 문의</a>
                 </div>
               </div>
             </article>
-            <article class="hero-slide" style="background-image: url('assets/products/menu-baekil.png')">
-              <div class="hero-slide-content">
+            <article class="hero-slide hero-event-slide" style="background-image: url('assets/products/menu-baekil.png')">
+              <span class="hero-event-badge"><b>EVENT 03</b> 기념일 맞춤 상담</span>
+              <div class="hero-slide-content" data-event-number="03">
                 <p class="eyebrow">BAEKIL &amp; EVENT</p>
                 <h1>백일·돌잔치,<br />미리 준비해 드립니다</h1>
                 <p>기념일 일정에 맞춰 색과 구성을 상담해 드려요.</p>
+                <div class="hero-event-meta" aria-label="이벤트 정보">
+                  <span>백일·돌</span>
+                  <span>맞춤 구성</span>
+                </div>
                 <div class="hero-actions">
                   <a class="primary-button" href="menu.html?filter=행사">행사떡 보기</a>
                   <a class="secondary-button" href="inquiry.html">상담 문의</a>
                 </div>
               </div>
             </article>
-            <article class="hero-slide" style="background-image: url('assets/products/menu-gift-box.png')">
-              <div class="hero-slide-content">
+            <article class="hero-slide hero-event-slide" style="background-image: url('assets/products/menu-gift-box.png')">
+              <span class="hero-event-badge"><b>EVENT 04</b> 단체 주문 혜택</span>
+              <div class="hero-slide-content" data-event-number="04">
                 <p class="eyebrow">GIFT &amp; BULK ORDER</p>
-                <h1>답례떡·단체주문도<br />한 번에</h1>
+                <h1 class="hero-event-title-two-lines">
+                  <span>답례떡·단체주문,</span>
+                  <span>준비부터 포장까지 한 번에</span>
+                </h1>
                 <p>수량과 포장까지 맞춤 상담으로 도와드립니다.</p>
+                <div class="hero-event-meta" aria-label="이벤트 정보">
+                  <span>수량별 상담</span>
+                  <span>맞춤 포장</span>
+                </div>
                 <div class="hero-actions">
                   <a class="primary-button" href="menu.html?filter=답례">답례·단체 보기</a>
                   <a class="secondary-button" href="inquiry.html">상담 문의</a>
@@ -149,42 +172,22 @@
         </div>
       </section>
 
-      <section class="home-mini-guide" aria-label="진행 중인 이벤트">
-        <a href="menu.html?filter=송편#menu-list">
-          <span class="home-event-index">01</span>
-          <span class="home-event-copy">
-            <small>SEASON RESERVATION</small>
-            <strong>명절 송편 사전 예약</strong>
-            <em>정해진 수량만 정성껏 준비합니다.</em>
-          </span>
-          <span class="home-event-arrow" aria-hidden="true">→</span>
+      <section class="home-mini-guide" aria-label="따뜻한 떡집 이용 안내">
+        <a href="menu.html">
+          <span>01</span>
+          <strong>메뉴·가격</strong>
         </a>
         <a href="inquiry.html">
-          <span class="home-event-index">02</span>
-          <span class="home-event-copy">
-            <small>ORDER BENEFIT</small>
-            <strong>답례떡·단체 주문 혜택</strong>
-            <em>상담 고객을 위한 혜택을 확인해 보세요.</em>
-          </span>
-          <span class="home-event-arrow" aria-hidden="true">→</span>
+          <span>02</span>
+          <strong>상담 문의</strong>
         </a>
         <a href="faq.html#shipping-notice">
-          <span class="home-event-index">03</span>
-          <span class="home-event-copy">
-            <small>PICKUP &amp; DELIVERY</small>
-            <strong>동탄 픽업·배송 안내</strong>
-            <em>일정과 지역에 맞는 수령 방법을 안내합니다.</em>
-          </span>
-          <span class="home-event-arrow" aria-hidden="true">→</span>
+          <span>03</span>
+          <strong>주문·배송 안내</strong>
         </a>
-        <a href="inquiry.html">
-          <span class="home-event-index">04</span>
-          <span class="home-event-copy">
-            <small>CELEBRATION</small>
-            <strong>백일·돌 맞춤 상담</strong>
-            <em>기념일에 어울리는 구성과 수량을 제안합니다.</em>
-          </span>
-          <span class="home-event-arrow" aria-hidden="true">→</span>
+        <a href="faq.html#faq">
+          <span>04</span>
+          <strong>자주 묻는 질문</strong>
         </a>
       </section>
     </main>

@@ -22,22 +22,7 @@
         <h1>로그인</h1>
         <p class="auth-card-desc">원하시는 로그인 방법을 선택해 주세요.</p>
 
-        <div class="social-login" aria-label="소셜 로그인">
-          <a class="social-login-button is-kakao" data-social-provider="kakao" href="/api/auth/social/kakao">
-            <span class="social-login-icon">K</span><span>카카오로 로그인</span>
-          </a>
-          <a class="social-login-button is-naver" data-social-provider="naver" href="/api/auth/social/naver">
-            <span class="social-login-icon">N</span><span>네이버로 로그인</span>
-          </a>
-          <a class="social-login-button is-google" data-social-provider="google" href="/api/auth/social/google">
-            <span class="social-login-icon">G</span><span>Google로 로그인</span>
-          </a>
-          <p class="auth-message social-login-message" data-social-login-message role="status" aria-live="polite"></p>
-          <p class="social-login-note">처음 이용하는 소셜 계정은 인증 후 간단한 약관 동의를 거쳐 시작합니다.</p>
-        </div>
-
         <form class="login-credential-panel" id="email-login-panel" data-login-form novalidate>
-          <div class="social-login-divider"><span>아이디 로그인</span></div>
           <label>
             <span>아이디</span>
             <input type="text" name="identifier" autocomplete="username" required />
@@ -51,7 +36,22 @@
           <p class="auth-message" data-login-message role="status" aria-live="polite"></p>
         </form>
 
-        <p class="auth-switch">비밀번호를 잊으셨나요? <a href="forgot-password.html">비밀번호 찾기</a></p>
+        <div class="social-login" aria-label="소셜 로그인">
+          <div class="social-login-divider"><span>소셜 로그인</span></div>
+          <a class="social-login-button is-kakao" data-social-provider="kakao" href="/api/auth/social/kakao">
+            <span class="social-login-icon">K</span><span>카카오로 로그인</span>
+          </a>
+          <a class="social-login-button is-naver" data-social-provider="naver" href="/api/auth/social/naver">
+            <span class="social-login-icon">N</span><span>네이버로 로그인</span>
+          </a>
+          <a class="social-login-button is-google" data-social-provider="google" href="/api/auth/social/google">
+            <span class="social-login-icon">G</span><span>Google로 로그인</span>
+          </a>
+          <p class="auth-message social-login-message" data-social-login-message role="status" aria-live="polite"></p>
+          <p class="social-login-note">처음 이용하는 소셜 계정은 인증 후 간단한 약관 동의를 거쳐 시작합니다.</p>
+        </div>
+
+        <p class="auth-switch">계정 정보를 잊으셨나요? <a href="find-username.html">아이디 찾기</a><span aria-hidden="true"> / </span><a href="forgot-password.html">비밀번호 찾기</a></p>
         <p class="auth-switch">아직 계정이 없으신가요? <a href="signup.html">회원가입</a></p>
         <p class="auth-switch auth-guest-switch"><span class="auth-guest-prompt">비회원이신가요?</span><a href="guest-order.html" data-guest-checkout>주문하기</a><span aria-hidden="true">/</span><a href="guest-order-lookup.html">주문조회</a></p>
       </section>

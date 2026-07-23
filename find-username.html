@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>따뜻한 떡집 | 아이디 찾기</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="login-page find-username-page">
+    <header class="site-header" data-shared-header></header>
+    <main class="auth-page">
+      <section class="auth-card find-username-card">
+        <div class="find-username-head">
+          <span class="find-username-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 7c.8-3.1 3.4-5 7-5s6.2 1.9 7 5"/><path d="m18 7 1.3 1.3L22 5.5"/></svg>
+          </span>
+          <div>
+            <small>ACCOUNT RECOVERY</small>
+            <h1>아이디 찾기</h1>
+            <p class="auth-card-desc">가입할 때 등록한 정보로 본인 확인을 진행합니다.</p>
+          </div>
+        </div>
+        <ol class="find-username-steps" aria-label="아이디 찾기 절차">
+          <li class="is-active"><b>01</b><span>회원 정보</span></li>
+          <li><b>02</b><span>휴대폰 인증</span></li>
+          <li><b>03</b><span>아이디 확인</span></li>
+        </ol>
+        <form data-find-username-form novalidate>
+          <div class="find-username-fields">
+          <label>
+            <span>이름</span>
+            <input type="text" name="name" autocomplete="name" maxlength="50" placeholder="가입자 이름을 입력해 주세요" required />
+          </label>
+          <label>
+            <span>휴대폰 번호</span>
+            <span class="auth-inline-field">
+              <input type="tel" name="phone" inputmode="numeric" autocomplete="tel" placeholder="01012345678" data-find-phone required />
+              <button type="button" class="auth-inline-button" data-find-send-code>인증번호 받기</button>
+            </span>
+          </label>
+          <label data-find-code-field hidden>
+            <span>인증번호</span>
+            <span class="auth-inline-field">
+              <input type="text" name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" data-find-code />
+              <button type="button" class="auth-inline-button" data-find-verify-code>확인</button>
+            </span>
+          </label>
+          <p class="auth-message" data-find-code-message role="status" aria-live="polite"></p>
+          </div>
+          <button class="primary-button" type="submit" data-find-submit disabled>아이디 확인하기</button>
+          <p class="auth-message" data-find-username-message role="status" aria-live="polite"></p>
+          <div class="demo-reset-result find-username-result" data-find-username-result hidden>
+            <strong>회원님의 아이디</strong>
+            <p data-found-username></p>
+            <a class="secondary-button" href="login.html">로그인하러 가기</a>
+          </div>
+        </form>
+        <p class="auth-switch find-username-back"><a href="login.html"><span aria-hidden="true">←</span> 로그인으로 돌아가기</a></p>
+      </section>
+    </main>
+    <footer class="site-footer" data-shared-footer></footer>
+    <script src="cart-utils.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=20260723-find-id"></script>
+  </body>
+</html>
