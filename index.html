@@ -13,7 +13,7 @@
     <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/logo.svg" />
     <link rel="preload" as="image" href="assets/tteok-hero.png" />
-    <link rel="stylesheet" href="styles.css?v=12" />
+    <link rel="stylesheet" href="styles.css?v=13" />
     <link rel="manifest" href="manifest.json" />
   </head>
   <body class="home-page">
@@ -24,15 +24,50 @@
     <main>
       <section class="home-hero">
         <nav class="hero-category-nav" aria-label="빠른 메뉴 분류">
-          <p class="hero-category-nav-title">카테고리</p>
-          <a href="menu.html">전체 메뉴 보기</a>
-          <a href="menu.html?filter=송편#menu-list">송편</a>
-          <a href="menu.html?filter=설기#menu-list">설기</a>
-          <a href="menu.html?filter=인절미#menu-list">인절미</a>
-          <a href="menu.html?filter=찰떡#menu-list">찰떡</a>
-          <a href="menu.html?filter=기본떡#menu-list">기본떡</a>
-          <a href="menu.html?filter=행사#menu-list">백일/행사</a>
-          <a href="menu.html?filter=답례#menu-list">답례/단체</a>
+          <div class="hero-category-nav-title">
+            <span>MENU</span>
+            <strong>떡 종류로 둘러보기</strong>
+          </div>
+          <a class="is-all" href="menu.html">
+            <span class="category-nav-number">ALL</span>
+            <span class="category-nav-copy"><strong>전체 메뉴</strong><small>모든 상품 한눈에 보기</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="menu.html?filter=송편#menu-list">
+            <span class="category-nav-number">01</span>
+            <span class="category-nav-copy"><strong>송편</strong><small>명절·예약</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="menu.html?filter=설기#menu-list">
+            <span class="category-nav-number">02</span>
+            <span class="category-nav-copy"><strong>설기</strong><small>백일·기념일</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="menu.html?filter=인절미#menu-list">
+            <span class="category-nav-number">03</span>
+            <span class="category-nav-copy"><strong>인절미</strong><small>고소한 콩고물 떡</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="menu.html?filter=찰떡#menu-list">
+            <span class="category-nav-number">04</span>
+            <span class="category-nav-copy"><strong>찰떡</strong><small>쫀득한 전통 떡</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="menu.html?filter=기본떡#menu-list">
+            <span class="category-nav-number">05</span>
+            <span class="category-nav-copy"><strong>기본떡</strong><small>매일 찾는 떡</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="menu.html?filter=행사#menu-list">
+            <span class="category-nav-number">06</span>
+            <span class="category-nav-copy"><strong>백일·행사</strong><small>특별한 날의 구성</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="menu.html?filter=답례#menu-list">
+            <span class="category-nav-number">07</span>
+            <span class="category-nav-copy"><strong>답례·단체</strong><small>정성스러운 선물</small></span>
+            <span class="category-nav-arrow" aria-hidden="true">→</span>
+          </a>
         </nav>
 
         <div class="hero-carousel" aria-roledescription="carousel" aria-label="이벤트 배너">
