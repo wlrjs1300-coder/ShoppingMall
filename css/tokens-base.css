@@ -455,6 +455,10 @@ a {
   transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
+.hero-category-nav > a {
+  flex: 1 1 0;
+}
+
 .hero-category-nav a:hover,
 .hero-category-nav a:focus-visible {
   color: var(--pink-deep);
