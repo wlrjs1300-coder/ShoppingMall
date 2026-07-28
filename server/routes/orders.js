@@ -440,6 +440,18 @@ router.post("/production/complete", requireAuth, (req, res) => {
     return res.status(400).json({ error: "취소됐거나 존재하지 않는 주문이 포함되어 있습니다." });
   }
 
+  const incompleteOnlinePayment = db.prepare(`
+    SELECT payments.order_id
+    FROM payments
+    JOIN orders ON orders.id = payments.order_id
+    WHERE payments.order_id IN (${placeholders})
+      AND (payments.status <> 'DONE' OR orders.payment_status <> '결제완료')
+    LIMIT 1
+  `).get(...orderIds);
+  if (incompleteOnlinePayment) {
+    return res.status(409).json({ error: "결제가 완료되지 않은 온라인 주문은 생산 완료 처리할 수 없습니다." });
+  }
+
   const matchingItems = db.prepare(`
     SELECT order_id, product_name, quantity
     FROM order_items
@@ -555,6 +567,10 @@ router.put("/:id", requireAuth, (req, res) => {
   const items = getOrderItems(existing.id);
   db.exec("BEGIN");
   try {
+    const onlinePayment = db.prepare("SELECT status FROM payments WHERE order_id=?").get(existing.id);
+    if (onlinePayment && req.body.paymentStatus !== undefined && req.body.paymentStatus !== existing.payment_status) {
+      throw new Error("ONLINE_PAYMENT_STATUS_LOCKED");
+    }
     if (items.length === 1 && (req.body.product !== undefined || req.body.unitPrice !== undefined || req.body.quantity !== undefined)) {
       const productName = String(req.body.product ?? items[0].productName);
       const unitPrice = Math.max(0, Number(req.body.unitPrice ?? items[0].unitPrice));
@@ -578,7 +594,6 @@ router.put("/:id", requireAuth, (req, res) => {
     const nextWorkflow = requestedWorkflow === undefined ? existing.workflow_status : (WORKFLOW_STATUSES.has(requestedWorkflow) ? requestedWorkflow : null);
     if (!nextWorkflow) throw new Error("INVALID_WORKFLOW_STATUS");
     if (nextWorkflow !== existing.workflow_status && !getWorkflowTransitions(existing.workflow_status, req.body.fulfillmentType ?? existing.fulfillment_type).includes(nextWorkflow)) throw new Error("INVALID_WORKFLOW_TRANSITION");
-    if (existing.workflow_status === "결제대기" && !["결제대기", "취소"].includes(nextWorkflow)) nextPaymentStatus = "결제완료";
     if ((nextStatus !== existing.status && ["취소", "주문취소"].includes(nextStatus) || nextWorkflow !== existing.workflow_status && nextWorkflow === "취소") && !changeReason) throw new Error("CHANGE_REASON_REQUIRED");
     const workflowOrderStatus = ({ 접수대기: "접수대기", 접수완료: "준비중", 배송중: "배송중", 배송완료: "배송완료", 픽업준비완료: "준비완료", 픽업완료: "픽업완료", 취소: "취소" })[nextWorkflow] || nextStatus;
     if (["픽업완료", "배송완료"].includes(nextStatus) && nextPaymentStatus === "결제대기") throw new Error("INVALID_STATE_COMBINATION");
@@ -587,6 +602,16 @@ router.put("/:id", requireAuth, (req, res) => {
       ? req.body.amountStatus : (requestedTotal > 0 ? "confirmed" : existing.amount_status || "pending");
     const productionStatus = req.body.productionStatus === undefined ? existing.production_status : (PRODUCTION_STATUSES.has(req.body.productionStatus) ? req.body.productionStatus : null);
     if (!productionStatus) throw new Error("INVALID_PRODUCTION_STATUS");
+    const isCancelTransition = ["취소", "주문취소"].includes(nextStatus) || nextWorkflow === "취소";
+    const onlinePaymentIncomplete = onlinePayment
+      && (onlinePayment.status !== "DONE" || existing.payment_status !== "결제완료");
+    const advancesUnpaidOnlineOrder = onlinePaymentIncomplete && !isCancelTransition && (
+      !["결제대기", "접수대기"].includes(nextWorkflow)
+      || !["접수대기"].includes(nextStatus)
+      || productionStatus !== "생산 대기"
+      || (req.body.logisticsStatus !== undefined && req.body.logisticsStatus !== existing.logistics_status)
+    );
+    if (advancesUnpaidOnlineOrder) throw new Error("ONLINE_PAYMENT_NOT_COMPLETED");
     const productionAssignee = String(req.body.productionAssignee ?? existing.production_assignee ?? "").trim().slice(0, 50);
     const packagingType = String(req.body.packagingType ?? existing.packaging_type ?? "기본 포장").trim().slice(0, 50) || "기본 포장";
     db.prepare(`
@@ -619,6 +644,12 @@ router.put("/:id", requireAuth, (req, res) => {
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
+    if (error.message === "ONLINE_PAYMENT_STATUS_LOCKED") {
+      return res.status(409).json({ error: "온라인 결제 주문의 결제 상태는 Toss 승인·재조정·취소 API에서만 변경할 수 있습니다." });
+    }
+    if (error.message === "ONLINE_PAYMENT_NOT_COMPLETED") {
+      return res.status(409).json({ error: "결제가 완료되지 않은 온라인 주문은 생산·배송 단계로 진행할 수 없습니다." });
+    }
     if (["INVALID_ORDER_STATUS", "INVALID_STATUS_TRANSITION", "INVALID_WORKFLOW_STATUS", "INVALID_WORKFLOW_TRANSITION", "INVALID_STATE_COMBINATION", "CHANGE_REASON_REQUIRED"].includes(error.message)) {
       return res.status(400).json({ error: "주문·결제 상태 조합을 확인해 주세요." });
     }

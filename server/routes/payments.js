@@ -50,29 +50,185 @@ function getPaymentActor(req, fallback = "system") {
   return fallback;
 }
 
+function reconciliationError(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
+
+function paymentContext(orderId) {
+  return db.prepare(`
+    SELECT p.*, o.total_amount AS order_amount, o.payment_status AS order_payment_status,
+      o.status AS order_status, o.workflow_status AS order_workflow_status
+    FROM payments p
+    JOIN orders o ON o.id = p.order_id
+    WHERE p.order_id = ?
+  `).get(orderId);
+}
+
+function paymentKeyConflict(paymentKey, orderId) {
+  if (!paymentKey) return false;
+  return Boolean(db.prepare("SELECT 1 FROM payments WHERE payment_key=? AND order_id<>? LIMIT 1").get(paymentKey, orderId));
+}
+
+function writeReconciliationLog({ orderId, previousStatus, nextValue, actor, action, message, now }) {
+  db.prepare(
+    `INSERT INTO activity_logs
+    (id, category, message, tab, action, entity_id, previous_value, next_value, actor, created_at)
+    VALUES (?, 'PAYMENT', ?, 'logs', ?, ?, ?, ?, ?, ?)`
+  ).run(`activity-${uuid()}`, message, action, orderId, previousStatus, nextValue, actor, now);
+}
+
+function recordReconciliationFailure(pay, reason, actor, now = new Date().toISOString()) {
+  try {
+    writeReconciliationLog({
+      orderId: pay?.order_id || null,
+      previousStatus: pay?.status || "UNKNOWN",
+      nextValue: reason,
+      actor,
+      action: "payment_reconciliation_failed",
+      message: `${pay?.order_id || "unknown-order"} payment reconciliation failed: ${reason}`,
+      now,
+    });
+  } catch {
+    // 감사 로그 저장 장애가 원래 재조정 오류를 가리지 않게 한다.
+  }
+}
+
+function markReconciliationRequired(pay, reason, actor, now = new Date().toISOString()) {
+  if (!pay) return;
+  try {
+    inTransaction(() => {
+      const current = db.prepare("SELECT status FROM payments WHERE order_id=?").get(pay.order_id);
+      if (!current || ["DONE", "CANCELED", "PARTIAL_CANCELED"].includes(current.status)) return;
+      db.prepare(
+        `UPDATE payments
+         SET status='RECONCILE_REQUIRED', retry_count=retry_count+1, last_error=?
+         WHERE order_id=? AND status IN ('PENDING','FAILED','CONFIRMING','RECONCILE_REQUIRED')`
+      ).run(reason, pay.order_id);
+      writeReconciliationLog({
+        orderId: pay.order_id,
+        previousStatus: current.status,
+        nextValue: "RECONCILE_REQUIRED",
+        actor,
+        action: "payment_reconciliation_required",
+        message: `${pay.order_id} payment requires provider reconciliation: ${reason}`,
+        now,
+      });
+    });
+  } catch {
+    // 결제 완료로 잘못 기록하지 않는 것이 우선이며 후속 관리자 재조정이 가능하도록 둔다.
+  }
+}
+
+function validateVerifiedPayment(pay, result) {
+  if (!pay) throw reconciliationError("PAYMENT_NOT_FOUND");
+  if (!result?.paymentKey) throw reconciliationError("PAYMENT_KEY_MISSING");
+  if (result.orderId !== pay.order_id) throw reconciliationError("ORDER_ID_MISMATCH");
+  if (Number(result.totalAmount) !== Number(pay.amount) || Number(pay.order_amount) !== Number(pay.amount)) {
+    throw reconciliationError("AMOUNT_MISMATCH");
+  }
+  if (pay.payment_key && pay.payment_key !== result.paymentKey) throw reconciliationError("PAYMENT_KEY_MISMATCH");
+  if (paymentKeyConflict(result.paymentKey, pay.order_id)) throw reconciliationError("PAYMENT_KEY_CONFLICT");
+  if (["CANCELED", "PARTIAL_CANCELED"].includes(pay.status)
+    || ["결제취소", "부분환불", "환불완료"].includes(pay.order_payment_status)
+    || ["취소", "주문취소"].includes(pay.order_status)
+    || pay.order_workflow_status === "취소") {
+    throw reconciliationError("LOCAL_PAYMENT_CANCELED");
+  }
+  if (["CANCELED", "PARTIAL_CANCELED"].includes(result.status)) throw reconciliationError("PROVIDER_CANCELED");
+  if (result.status !== "DONE") throw reconciliationError("PROVIDER_NOT_DONE");
+}
+
 function completeTransaction(pay, result, now, actor = "system") {
   return inTransaction(() => {
-    db.prepare(
-      "UPDATE payments SET payment_key=?, status='DONE', paid_at=?, last_error=NULL, toss_secret=?, payment_method=? WHERE order_id=?"
-    ).run(result.paymentKey || pay.payment_key, now, result.secret || pay.toss_secret, result.method || null, pay.order_id);
+    const current = paymentContext(pay.order_id);
+    validateVerifiedPayment(current, result);
+    if (current.status === "DONE") return { alreadyDone: true, previousStatus: "DONE" };
+    if (!["CONFIRMING", "RECONCILE_REQUIRED"].includes(current.status)) throw reconciliationError("INVALID_LOCAL_STATUS");
 
-    db.prepare("UPDATE orders SET payment_status='결제완료', status='접수대기', workflow_status='접수대기', updated_at=? WHERE id=?")
-      .run(now, pay.order_id);
+    const updated = db.prepare(
+      `UPDATE payments
+       SET payment_key=?, status='DONE', paid_at=?, last_error=NULL, toss_secret=?, payment_method=?
+       WHERE order_id=? AND status IN ('CONFIRMING','RECONCILE_REQUIRED')`
+    ).run(result.paymentKey, result.approvedAt || now, result.secret || current.toss_secret, result.method || null, pay.order_id);
+    if (updated.changes !== 1) throw reconciliationError("CONCURRENT_STATE_CHANGE");
 
-    db.prepare(
-      `INSERT INTO activity_logs
-      (id, category, message, tab, action, entity_id, previous_value, next_value, actor, created_at)
-      VALUES (?, 'PAYMENT', ?, 'logs', 'payment_status_change', ?, ?, ?, ?, ?)`
-    ).run(
-      `activity-${uuid()}`,
-      `${pay.order_id} payment completed`,
-      pay.order_id,
-      "결제대기",
-      "결제완료",
+    const orderUpdated = db.prepare(
+      `UPDATE orders
+       SET payment_status='결제완료',
+         workflow_status=CASE WHEN workflow_status='결제대기' THEN '접수대기' ELSE workflow_status END,
+         updated_at=?
+       WHERE id=? AND payment_status NOT IN ('결제취소','부분환불','환불완료')`
+    ).run(now, pay.order_id);
+    if (orderUpdated.changes !== 1) throw reconciliationError("ORDER_STATE_CONFLICT");
+
+    writeReconciliationLog({
+      orderId: pay.order_id,
+      previousStatus: current.status,
+      nextValue: "DONE",
       actor,
-      now
-    );
+      action: actor === "customer" ? "payment_status_change" : "payment_reconciled",
+      message: actor === "customer" ? `${pay.order_id} payment completed` : `${pay.order_id} payment reconciled`,
+      now,
+    });
+    return { alreadyDone: false, previousStatus: current.status };
   });
+}
+
+async function reconcilePayment(orderId, actor) {
+  let pay = paymentContext(orderId);
+  if (!pay) {
+    const order = db.prepare("SELECT id FROM orders WHERE id=?").get(orderId);
+    recordReconciliationFailure({ order_id: orderId, status: "UNKNOWN" }, order ? "PAYMENT_NOT_FOUND" : "ORDER_NOT_FOUND", actor);
+    return { status: 404, reason: order ? "PAYMENT_NOT_FOUND" : "ORDER_NOT_FOUND" };
+  }
+  if (!pay.payment_key) {
+    markReconciliationRequired(pay, "PAYMENT_KEY_MISSING", actor);
+    return { status: 409, reason: "PAYMENT_KEY_MISSING" };
+  }
+  if (paymentKeyConflict(pay.payment_key, pay.order_id)) {
+    markReconciliationRequired(pay, "PAYMENT_KEY_CONFLICT", actor);
+    return { status: 409, reason: "PAYMENT_KEY_CONFLICT" };
+  }
+
+  let verified;
+  try {
+    verified = await toss.getPayment(pay.payment_key);
+  } catch (error) {
+    const reason = error?.code === "ETIMEDOUT" ? "PROVIDER_TIMEOUT" : "PROVIDER_NETWORK_ERROR";
+    markReconciliationRequired(pay, reason, actor);
+    return { status: 502, reason };
+  }
+  if (verified.status !== 200) {
+    const reason = verified.status >= 500 ? "PROVIDER_UNAVAILABLE" : "PROVIDER_LOOKUP_FAILED";
+    markReconciliationRequired(pay, reason, actor);
+    return { status: 502, reason };
+  }
+
+  pay = paymentContext(orderId);
+  try {
+    validateVerifiedPayment(pay, verified.data);
+    const result = completeTransaction(pay, verified.data, new Date().toISOString(), actor);
+    return {
+      status: 200,
+      reconciled: !result.alreadyDone,
+      alreadyDone: result.alreadyDone,
+      paymentStatus: "DONE",
+      orderPaymentStatus: "결제완료",
+    };
+  } catch (error) {
+    const validationReasons = new Set([
+      "PAYMENT_NOT_FOUND", "PAYMENT_KEY_MISSING", "ORDER_ID_MISMATCH", "AMOUNT_MISMATCH",
+      "PAYMENT_KEY_MISMATCH", "PAYMENT_KEY_CONFLICT", "LOCAL_PAYMENT_CANCELED",
+      "PROVIDER_CANCELED", "PROVIDER_NOT_DONE", "INVALID_LOCAL_STATUS",
+      "CONCURRENT_STATE_CHANGE", "ORDER_STATE_CONFLICT",
+    ]);
+    const reason = validationReasons.has(error.code) ? error.code : "DB_RECONCILIATION_FAILED";
+    if (reason !== "INVALID_LOCAL_STATUS") markReconciliationRequired(pay, reason, actor);
+    recordReconciliationFailure(pay, reason, actor);
+    return { status: 409, reason };
+  }
 }
 
 function cancelTransaction(pay, now, cancelAmount = pay.amount, reason = "일반 취소", actor = "system") {
@@ -182,6 +338,7 @@ router.post("/confirm", async (req, res) => {
   if (pay.status === "DONE") return res.json({ ok: true, alreadyPaid: true, productIds: itemsFor(orderId).map((item) => item.product_id).filter(Boolean) });
   if (pay.status === "CANCELED") return res.status(409).json({ error: "취소된 결제입니다." });
   if (pay.status === "CONFIRMING") return res.status(409).json({ error: "결제 확인이 진행 중입니다." });
+  if (pay.status === "RECONCILE_REQUIRED") return res.status(409).json({ error: "결제사 상태 확인이 필요한 주문입니다.", reconcileRequired: true });
   if (amount !== undefined && Number(amount) !== pay.amount) return res.status(400).json({ error: "결제 금액이 일치하지 않습니다." });
   if (!process.env.TOSS_SECRET_KEY && process.env.TOSS_MOCK_MODE !== "true") return res.status(503).json({ error: "결제 키 설정이 없습니다. 환경변수를 확인해 주세요." });
 
@@ -193,20 +350,40 @@ router.post("/confirm", async (req, res) => {
 
   try {
     const result = await toss.confirmPayment({ paymentKey, orderId, amount: pay.amount, idempotencyKey });
-    pay = { ...pay, payment_key: paymentKey, order_status: db.prepare("SELECT status FROM orders WHERE id=?").get(orderId)?.status };
+    pay = paymentContext(orderId);
 
-    if (result.status === 200 && result.data?.orderId === orderId && Number(result.data?.totalAmount) === pay.amount) {
-      completeTransaction(pay, result.data, new Date().toISOString(), getPaymentActor(req, "customer"));
-      return res.json({ ok: true, productIds: itemsFor(orderId).map((item) => item.product_id).filter(Boolean) });
+    if (result.status === 200) {
+      try {
+        validateVerifiedPayment(pay, result.data);
+        completeTransaction(pay, result.data, new Date().toISOString(), getPaymentActor(req, "customer"));
+        return res.json({ ok: true, productIds: itemsFor(orderId).map((item) => item.product_id).filter(Boolean) });
+      } catch {
+        markReconciliationRequired(pay, "POST_CONFIRM_RECONCILIATION_REQUIRED", getPaymentActor(req, "customer"));
+        return res.status(502).json({ error: "결제 승인 결과를 최종 반영하지 못했습니다. 관리자 확인이 필요합니다.", reconcileRequired: true });
+      }
     }
 
+    if (result.status >= 500) {
+      markReconciliationRequired(pay, "CONFIRM_PROVIDER_UNAVAILABLE", getPaymentActor(req, "customer"));
+      return res.status(502).json({
+        error: "결제 승인 결과를 확인하지 못했습니다. 관리자 확인이 필요합니다.",
+        retryable: false,
+        reconcileRequired: true,
+      });
+    }
     const message = result.data?.message || "결제 승인 중 오류가 발생했습니다.";
     db.prepare("UPDATE payments SET status='FAILED', retry_count=retry_count+1, last_error=?, confirm_idempotency_key=NULL WHERE order_id=?")
       .run(message, orderId);
     return res.status(result.status >= 400 && result.status < 600 ? result.status : 502).json({ ok: false, error: message, retryable: true });
   } catch (error) {
-    db.prepare("UPDATE payments SET status='FAILED', retry_count=retry_count+1, last_error=? WHERE order_id=?").run(error.message, orderId);
-    return res.status(502).json({ error: "결제 처리 중 네트워크 오류가 발생했습니다.", retryable: true });
+    pay = paymentContext(orderId) || pay;
+    const reason = error?.code === "ETIMEDOUT" ? "CONFIRM_TIMEOUT" : "CONFIRM_NETWORK_ERROR";
+    markReconciliationRequired(pay, reason, getPaymentActor(req, "customer"));
+    return res.status(502).json({
+      error: "결제 승인 결과를 확인하지 못했습니다. 재승인하지 말고 관리자 확인을 요청해 주세요.",
+      retryable: false,
+      reconcileRequired: true,
+    });
   }
 });
 
@@ -220,19 +397,53 @@ router.post("/webhook", async (req, res) => {
   if (!pay) return res.status(404).json({ error: "결제 정보를 찾을 수 없습니다." });
   if (data.secret && pay.toss_secret && data.secret !== pay.toss_secret) return res.status(403).json({ error: "요청 secret이 일치하지 않습니다." });
 
-  const verified = await toss.getPayment(paymentKey);
-  if (verified.status !== 200 || verified.data?.orderId !== pay.order_id || Number(verified.data?.totalAmount) !== pay.amount) {
+  let verified;
+  try {
+    verified = await toss.getPayment(paymentKey);
+  } catch {
+    markReconciliationRequired(pay, "WEBHOOK_PROVIDER_LOOKUP_FAILED", getPaymentActor(req, "toss-webhook"));
+    return res.status(502).json({ error: "결제사 상태 조회에 실패했습니다." });
+  }
+  if (verified.status !== 200) {
+    markReconciliationRequired(pay, verified.status >= 500 ? "WEBHOOK_PROVIDER_UNAVAILABLE" : "WEBHOOK_PROVIDER_LOOKUP_FAILED", getPaymentActor(req, "toss-webhook"));
+    return res.status(502).json({ error: "결제사 상태 조회에 실패했습니다." });
+  }
+  if (verified.data?.orderId !== pay.order_id || Number(verified.data?.totalAmount) !== pay.amount) {
+    markReconciliationRequired(pay, "WEBHOOK_PROVIDER_MISMATCH", getPaymentActor(req, "toss-webhook"));
     return res.status(403).json({ error: "결제 조회 결과가 주문 정보와 일치하지 않습니다." });
   }
 
   const status = verified.data.status;
   if (status === "DONE" && pay.status !== "DONE") {
-    completeTransaction(pay, verified.data, new Date().toISOString(), getPaymentActor(req, "toss-webhook"));
+    if (!["CONFIRMING", "RECONCILE_REQUIRED"].includes(pay.status)) {
+      markReconciliationRequired(pay, "WEBHOOK_UNEXPECTED_LOCAL_STATUS", getPaymentActor(req, "toss-webhook"));
+    } else {
+      try {
+        completeTransaction(paymentContext(pay.order_id), verified.data, new Date().toISOString(), getPaymentActor(req, "toss-webhook"));
+      } catch {
+        markReconciliationRequired(pay, "WEBHOOK_DB_RECONCILIATION_FAILED", getPaymentActor(req, "toss-webhook"));
+        return res.status(500).json({ error: "결제 상태 반영에 실패했습니다." });
+      }
+    }
   } else if (["CANCELED", "PARTIAL_CANCELED"].includes(status) && pay.status !== "CANCELED") {
     cancelTransaction(pay, new Date().toISOString(), pay.canceled_amount || pay.amount, "Payment was canceled by Toss webhook", getPaymentActor(req, "toss-webhook"));
   }
 
   return res.sendStatus(200);
+});
+
+router.post("/:orderId/reconcile", requireAuth, async (req, res) => {
+  const result = await reconcilePayment(req.params.orderId, getPaymentActor(req, "admin"));
+  if (result.status !== 200) {
+    return res.status(result.status).json({ reconciled: false, reason: result.reason });
+  }
+  return res.json({
+    reconciled: result.reconciled,
+    alreadyDone: result.alreadyDone,
+    orderId: req.params.orderId,
+    paymentStatus: result.paymentStatus,
+    orderPaymentStatus: result.orderPaymentStatus,
+  });
 });
 
 router.get("/:orderId", requireAuth, (req, res) => {
