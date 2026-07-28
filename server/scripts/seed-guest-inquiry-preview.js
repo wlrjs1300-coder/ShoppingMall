@@ -1,3 +1,5 @@
+const { assertNonProductionScript } = require("./production-guard");
+assertNonProductionScript("비회원 문의 미리보기 데이터 생성");
 const db = require("../db");
 
 const id = "inquiry-demo-guest-20260722";

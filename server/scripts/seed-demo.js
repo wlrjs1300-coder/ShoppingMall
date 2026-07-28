@@ -1,5 +1,6 @@
 require("dotenv").config();
-if (process.env.NODE_ENV === "production") throw new Error("운영 환경에서는 데모 계정을 생성할 수 없습니다.");
+const { assertNonProductionScript } = require("./production-guard");
+assertNonProductionScript("데모 계정 생성");
 
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");

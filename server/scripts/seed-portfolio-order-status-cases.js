@@ -1,8 +1,7 @@
-﻿const db = require("../db");
+const { assertNonProductionScript } = require("./production-guard");
+assertNonProductionScript("포트폴리오 주문 상태 데이터 생성");
 
-if (process.env.NODE_ENV === "production") {
-  throw new Error("운영 환경에서는 시연용 더미 데이터를 만들 수 없습니다.");
-}
+const db = require("../db");
 
 const admin = db.prepare("SELECT id FROM user_accounts WHERE username = 'portfolio_admin'").get();
 if (!admin?.id) throw new Error("portfolio_admin 계정을 찾지 못했습니다.");
