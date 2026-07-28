@@ -39,3 +39,9 @@ services:
         sync: false
       - key: STORE_URL
         sync: false
+      - key: PAYMENT_MODE
+        value: disabled
+      - key: NOTIFICATION_MODE
+        value: none
+      - key: EMAIL_MODE
+        value: disabled
