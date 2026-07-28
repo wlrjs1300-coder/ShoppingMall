@@ -1,6 +1,7 @@
 const https = require("https");
 
 const mockPayments = new Map();
+const REQUEST_TIMEOUT_MS = 8_000;
 
 function request(method, path, body, idempotencyKey) {
   return new Promise((resolve, reject) => {
@@ -18,6 +19,11 @@ function request(method, path, body, idempotencyKey) {
       });
     });
     req.on("error", reject);
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      const error = new Error("Toss API request timed out");
+      error.code = "ETIMEDOUT";
+      req.destroy(error);
+    });
     if (payload) req.write(payload);
     req.end();
   });
