@@ -1,5 +1,6 @@
 require("dotenv").config();
-if (process.env.NODE_ENV === "production") throw new Error("운영 환경에서는 시연 계정을 생성할 수 없습니다.");
+const { assertNonProductionScript } = require("./production-guard");
+assertNonProductionScript("포트폴리오 계정 생성");
 if (process.env.ALLOW_PORTFOLIO_SEED !== "true") {
   throw new Error("시연 계정을 만들려면 ALLOW_PORTFOLIO_SEED=true를 명시해 주세요.");
 }
