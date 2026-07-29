@@ -1,6 +1,6 @@
 const path = require("node:path");
 
-const PLACEHOLDER_RE = /여기에_|your-domain|your-app|change-in-production|xxxxxxxx|example(?:\.com|\.net|\.org)/i;
+const PLACEHOLDER_RE = /여기에_|replace-with|your-[a-z]|your-domain|your-app|change-in-production|xxxxxxxx|example(?:\.com|\.net|\.org)/i;
 const STORE_PHONE_PLACEHOLDER_RE = /000[-\s]?0000|^0{8,}$/;
 const STORE_ADDRESS_PLACEHOLDER_RE = /화성시\s*소재|주소\s*예시|example|여기에_/i;
 const DEMO_ADMIN_CODES = new Set(["portfolio-admin", "admin", "admin123", "Admin123!"]);
@@ -21,6 +21,16 @@ const PRODUCTION_FORBIDDEN_KEYS = [
   "ALLOW_PORTFOLIO_SEED",
 ];
 const MINIMUM_NODE_VERSION = "22.16.0";
+const READINESS_CATEGORIES = Object.freeze({
+  SECURITY: "보안 비밀값",
+  NETWORK: "서비스 URL 및 네트워크",
+  DATABASE: "데이터베이스",
+  PAYMENT: "결제",
+  BACKUP: "백업 및 복구",
+  ADMIN: "관리자 인증",
+  STORE: "매장·서비스 운영정보",
+  MANUAL: "운영 확인 필요",
+});
 
 function parseNodeVersion(version) {
   const match = String(version || "").trim().match(/^v?(\d+)\.(\d+)\.(\d+)$/);
@@ -72,6 +82,13 @@ function parseProductionUrl(value) {
   } catch {
     return null;
   }
+}
+
+function isRepositoryPath(target, repositoryRoot = path.resolve(__dirname, "..")) {
+  if (!target || !path.isAbsolute(target)) return false;
+  const relative = path.relative(repositoryRoot, path.resolve(target));
+  return relative === ""
+    || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
 function hasValidSecret(env, key) {
@@ -129,7 +146,9 @@ function productionConfigErrors(env = process.env) {
   const allowedOriginValues = valueOf(env, "ALLOWED_ORIGIN").split(",").map((item) => item.trim()).filter(Boolean);
   const allowedOrigins = allowedOriginValues.map(parseProductionUrl);
   if (isConfigured(env, "ALLOWED_ORIGIN")
-    && (!allowedOriginValues.length || allowedOrigins.some((origin) => !origin)
+    && (allowedOriginValues.includes("*")
+      || new Set(allowedOriginValues.map((item) => item.replace(/\/$/, ""))).size !== allowedOriginValues.length
+      || !allowedOriginValues.length || allowedOrigins.some((origin) => !origin)
       || allowedOrigins.some((origin, index) => origin.origin !== allowedOriginValues[index].replace(/\/$/, "")))) {
     errors.push("ALLOWED_ORIGIN은 localhost나 예제 도메인이 아닌 HTTPS 출처만 쉼표로 구분해 설정해야 합니다.");
   }
@@ -141,6 +160,9 @@ function productionConfigErrors(env = process.env) {
   if (isConfigured(env, "DB_PATH") && (!path.isAbsolute(env.DB_PATH) || env.DB_PATH === ":memory:")) {
     errors.push("DB_PATH는 영구 볼륨의 절대경로여야 합니다.");
   }
+  if (isConfigured(env, "DB_PATH") && isRepositoryPath(env.DB_PATH)) {
+    errors.push("DB_PATH must be outside the Git repository.");
+  }
 
   const repositoryRoot = path.resolve(__dirname, "..");
   const backupDir = valueOf(env, "BACKUP_DIR");
@@ -149,8 +171,7 @@ function productionConfigErrors(env = process.env) {
   } else if (!path.isAbsolute(backupDir)) {
     errors.push("BACKUP_DIR must be an absolute path.");
   } else {
-    const relative = path.relative(repositoryRoot, path.resolve(backupDir));
-    if (relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))) {
+    if (isRepositoryPath(backupDir, repositoryRoot)) {
       errors.push("BACKUP_DIR must be outside the Git repository.");
     }
     if (isConfigured(env, "DB_PATH") && path.resolve(backupDir) === path.dirname(path.resolve(env.DB_PATH))) {
@@ -240,6 +261,10 @@ function productionConfigErrors(env = process.env) {
 function productionConfigWarnings(env = process.env) {
   if (env.NODE_ENV !== "production") return [];
   const warnings = [];
+  if (isConfigured(env, "ADMIN_JWT_ISSUER")
+    && valueOf(env, "ADMIN_JWT_ISSUER") === valueOf(env, "ADMIN_JWT_AUDIENCE")) {
+    warnings.push("ADMIN_JWT_ISSUER and ADMIN_JWT_AUDIENCE should be different values.");
+  }
   warnings.push("최소 한 명의 활성 super_admin 준비와 정기적인 권한 회수 절차를 확인해야 합니다.");
   warnings.push("Confirm that production backup and restore drills are scheduled.");
   if (valueOf(env, "PAYMENT_MODE").toLowerCase() === "disabled") warnings.push("PAYMENT_MODE=disabled: 자체몰 Toss 결제가 비활성화되어 있습니다.");
@@ -253,6 +278,54 @@ function productionConfigWarnings(env = process.env) {
   return warnings;
 }
 
+function readinessItem(level, code, category, problem, action, envKeys = []) {
+  return { level, code, category, problem, action, envKeys };
+}
+
+function productionReadinessReport(env = process.env) {
+  const items = [];
+  for (const message of productionConfigErrors(env)) {
+    const key = [
+      "JWT_SECRET", "AUTH_CODE_PEPPER", "ADMIN_JWT_ISSUER", "ADMIN_JWT_AUDIENCE",
+      "ADMIN_TOKEN_TTL", "ADMIN_LOGIN_RATE_MAX", "ADMIN_LOGIN_RATE_WINDOW_MS",
+      "PUBLIC_BASE_URL", "ALLOWED_ORIGIN", "DB_PATH", "BACKUP_DIR",
+      "BACKUP_RETENTION_DAYS", "BACKUP_MAX_FILES", "PAYMENT_MODE",
+      "STORE_NAME", "STORE_PHONE", "STORE_HOURS", "STORE_ADDRESS",
+    ].find((name) => message.includes(name));
+    let category = READINESS_CATEGORIES.SECURITY;
+    if (key?.startsWith("ADMIN_")) category = READINESS_CATEGORIES.ADMIN;
+    if (["PUBLIC_BASE_URL", "ALLOWED_ORIGIN"].includes(key)) category = READINESS_CATEGORIES.NETWORK;
+    if (key === "DB_PATH") category = READINESS_CATEGORIES.DATABASE;
+    if (key?.startsWith("BACKUP_")) category = READINESS_CATEGORIES.BACKUP;
+    if (key === "PAYMENT_MODE" || /TOSS_|\bToss\b/.test(message)) category = READINESS_CATEGORIES.PAYMENT;
+    if (key?.startsWith("STORE_")) category = READINESS_CATEGORIES.STORE;
+    const codeBase = key || (/TOSS_|\bToss\b/.test(message) ? "TOSS_CONFIGURATION" : "PRODUCTION_CONFIGURATION");
+    const suffix = /required|설정되지|필요/.test(message) ? "MISSING" : "INVALID";
+    items.push(readinessItem(
+      "error",
+      `${codeBase}_${suffix}`,
+      category,
+      message,
+      `${key || "관련 production 설정"}을 운영 비밀 저장소 또는 배포 환경 설정에서 수정하세요.`,
+      key ? [key] : [],
+    ));
+  }
+  for (const message of productionConfigWarnings(env)) {
+    items.push(readinessItem(
+      "confirm-needed",
+      "OPERATOR_CONFIRMATION",
+      READINESS_CATEGORIES.MANUAL,
+      message,
+      "production 배포 승인 전에 담당자가 확인하고 체크리스트에 기록하세요.",
+    ));
+  }
+  return {
+    errors: items.filter((item) => item.level === "error"),
+    confirmations: items.filter((item) => item.level === "confirm-needed"),
+    items,
+  };
+}
+
 function assertProductionConfig(env = process.env) {
   const errors = productionConfigErrors(env);
   if (errors.length) throw new Error(`[환경설정] 서버 시작 중단\n- ${errors.join("\n- ")}`);
@@ -264,4 +337,6 @@ module.exports = {
   assertProductionConfig,
   productionConfigErrors,
   productionConfigWarnings,
+  productionReadinessReport,
+  READINESS_CATEGORIES,
 };

@@ -17,6 +17,7 @@ const {
   assertProductionConfig,
   nodeVersionError,
   productionConfigErrors,
+  productionReadinessReport,
 } = require("../config");
 const { runMigrations, migrations } = require("../migrations");
 
@@ -273,5 +274,72 @@ test("SQLite 백업을 생성하고 임시 DB에서 복원 가능성을 검증�
   });
   assert.equal(verify.status, 0, verify.stderr);
   assert.match(verify.stdout, /Backup verification passed/);
+  fs.rmSync(temp, { recursive: true, force: true });
+});
+
+test("문서용 placeholder 비밀값을 production 값으로 허용하지 않는다", () => {
+  const errors = productionConfigErrors(validProductionEnv({
+    JWT_SECRET: "replace-with-a-random-secret-of-at-least-32-bytes",
+    AUTH_CODE_PEPPER: "your-authentication-pepper-of-at-least-32-bytes",
+  })).join(" ");
+  assert.match(errors, /JWT_SECRET/);
+  assert.match(errors, /AUTH_CODE_PEPPER/);
+});
+
+test("production URL은 HTTPS origin만 허용하고 wildcard, path, 중복을 거부한다", () => {
+  for (const origin of [
+    "*",
+    "https://shop.realstore.kr/api",
+    "https://shop.realstore.kr,https://shop.realstore.kr/",
+  ]) {
+    assert.match(productionConfigErrors(validProductionEnv({ ALLOWED_ORIGIN: origin })).join(" "), /ALLOWED_ORIGIN/);
+  }
+  assert.match(
+    productionConfigErrors(validProductionEnv({ PUBLIC_BASE_URL: "https://example.com" })).join(" "),
+    /PUBLIC_BASE_URL/,
+  );
+});
+
+test("production DB와 backup 경로는 저장소 밖에서 분리한다", () => {
+  const repositoryDb = path.join(root, "server", "data", "production.sqlite");
+  assert.match(productionConfigErrors(validProductionEnv({ DB_PATH: repositoryDb })).join(" "), /DB_PATH/);
+  const databaseDir = path.dirname(validProductionEnv().DB_PATH);
+  assert.match(
+    productionConfigErrors(validProductionEnv({ BACKUP_DIR: databaseDir })).join(" "),
+    /BACKUP_DIR/,
+  );
+  assert.match(
+    productionConfigErrors(validProductionEnv({ BACKUP_RETENTION_DAYS: "0" })).join(" "),
+    /BACKUP_RETENTION_DAYS/,
+  );
+});
+
+test("readiness report는 error와 운영자 확인을 구조적으로 분리하고 비밀값을 노출하지 않는다", () => {
+  const secret = "never-print-this-production-secret";
+  const report = productionReadinessReport(validProductionEnv({
+    JWT_SECRET: secret,
+    TOSS_SECRET_KEY: secret,
+    ADMIN_JWT_AUDIENCE: "shoppingmall-admin",
+  }));
+  assert.equal(report.errors.length, 0);
+  assert.ok(report.confirmations.length >= 1);
+  assert.ok(report.items.every((item) => item.code && item.category && item.problem && item.action));
+  assert.equal(JSON.stringify(report).includes(secret), false);
+});
+
+test("deploy preflight는 DB와 backup 파일을 생성하지 않는 읽기 전용 검사다", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "readiness-read-only-"));
+  const dbPath = path.join(temp, "database", "production.sqlite");
+  const backupDir = path.join(temp, "backups");
+  const result = spawnSync(process.execPath, [path.join(root, "server/scripts/deployment-preflight.js")], {
+    env: {
+      ...process.env,
+      ...validProductionEnv({ DB_PATH: dbPath, BACKUP_DIR: backupDir }),
+    },
+    encoding: "utf8",
+  });
+  assert.equal(fs.existsSync(dbPath), false);
+  assert.equal(fs.existsSync(backupDir), false);
+  assert.match(`${result.stdout}${result.stderr}`, /\[(?:ERROR|CONFIRM-NEEDED)\]\[[A-Z0-9_]+\]/);
   fs.rmSync(temp, { recursive: true, force: true });
 });
