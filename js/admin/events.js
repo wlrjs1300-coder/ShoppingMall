@@ -20,6 +20,12 @@ document.querySelector(".admin-order-list")?.addEventListener("change", (event) 
 
 document.querySelector(".admin-order-list")?.addEventListener("click", async (event) => {
   if (event.target.closest("[data-admin-order-select]")) return;
+  const reconcileButton = event.target.closest("[data-admin-payment-reconcile]");
+  if (reconcileButton) {
+    event.stopPropagation();
+    await reconcileAdminPayment(reconcileButton.dataset.adminPaymentReconcile, reconcileButton);
+    return;
+  }
   const detailButton = event.target.closest(".admin-order-detail-open");
   if (detailButton) {
     const row = detailButton.closest("tr[data-order-id]");
@@ -98,6 +104,7 @@ document.querySelector(".admin-order-list")?.addEventListener("click", async (ev
 
 document.querySelector(".admin-order-list")?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" && event.key !== " ") return;
+  if (event.target.closest("button, input, select, textarea, a")) return;
   const row = event.target.closest("tr[data-order-id]");
   if (!row) return;
   event.preventDefault();
@@ -130,6 +137,10 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
   if (!order) return;
 
   const action = actionButton.dataset.detailAction;
+  if (action === "reconcile-payment") {
+    await reconcileAdminPayment(orderId, actionButton);
+    return;
+  }
   if (action === "customer-orders") {
     const search = document.querySelector(".admin-search-input");
     if (search) search.value = order.phone || order.customer || "";
