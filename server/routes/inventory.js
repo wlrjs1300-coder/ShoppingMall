@@ -1,8 +1,21 @@
 const express = require("express");
+const crypto = require("crypto");
 const db = require("../db");
 const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
+
+function logBlockedDelete(req, entityId, reason) {
+  try {
+    db.prepare(`INSERT INTO activity_logs
+      (id, category, message, tab, action, entity_id, previous_value, next_value, actor, created_at)
+      VALUES (?, 'SECURITY', ?, 'inventory', 'destructive_action_blocked', ?, 'retained', ?, ?, ?)`)
+      .run(`activity-${crypto.randomUUID()}`, `${entityId} inventory deletion blocked: ${reason}`,
+        entityId, reason, req.admin?.id || "admin", new Date().toISOString());
+  } catch {
+    // The destructive action remains blocked even when its audit record cannot be written.
+  }
+}
 
 function rowToItem(row) {
   return {
@@ -72,8 +85,11 @@ router.post("/logs", requireAuth, (req, res) => {
 
 // DELETE /api/inventory/logs — 전체 이력 삭제 (/:id 보다 먼저 등록)
 router.delete("/logs", requireAuth, (req, res) => {
-  db.prepare("DELETE FROM inventory_logs").run();
-  res.json({ ok: true });
+  logBlockedDelete(req, "inventory_logs", "INVENTORY_HISTORY_EXISTS");
+  res.status(405).json({
+    error: "재고 이력은 운영 감사 목적으로 삭제할 수 없습니다.",
+    reason: "INVENTORY_HISTORY_EXISTS",
+  });
 });
 
 // PUT /api/inventory/:id
@@ -100,16 +116,48 @@ router.put("/:id", requireAuth, (req, res) => {
 
 // DELETE /api/inventory/:id
 router.delete("/:id", requireAuth, (req, res) => {
-  const existing = db.prepare("SELECT id FROM inventory WHERE id = ?").get(req.params.id);
-  if (!existing) return res.status(404).json({ error: "재고 품목을 찾을 수 없습니다." });
-  db.prepare("DELETE FROM inventory WHERE id = ?").run(req.params.id);
-  res.json({ ok: true });
+  const now = new Date().toISOString();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const current = db.prepare("SELECT * FROM inventory WHERE id = ?").get(req.params.id);
+    if (!current) {
+      db.exec("ROLLBACK");
+      return res.status(404).json({ error: "재고 품목을 찾을 수 없습니다.", reason: "NOT_FOUND" });
+    }
+    const hasHistory = db.prepare(
+      "SELECT 1 FROM inventory_logs WHERE product=? OR instr(COALESCE(materials, ''), ?) > 0 LIMIT 1"
+    ).get(current.name, current.name);
+    const hasPurchase = db.prepare("SELECT 1 FROM purchase_orders WHERE inventory_id=? LIMIT 1").get(current.id);
+    if (hasHistory || hasPurchase || Number(current.stock) !== 0) {
+      db.exec("ROLLBACK");
+      logBlockedDelete(req, current.id, "INVENTORY_HISTORY_EXISTS");
+      return res.status(409).json({
+        error: "재고 또는 거래 이력이 있는 품목은 삭제할 수 없습니다.",
+        reason: "INVENTORY_HISTORY_EXISTS",
+      });
+    }
+    const deleted = db.prepare("DELETE FROM inventory WHERE id = ?").run(current.id);
+    if (deleted.changes !== 1) throw new Error("CONCURRENT_STATE_CHANGE");
+    db.prepare(`INSERT INTO activity_logs
+      (id, category, message, tab, action, entity_id, previous_value, next_value, actor, created_at)
+      VALUES (?, 'INVENTORY', ?, 'inventory', 'inventory_deleted', ?, 'unused', 'DELETED', ?, ?)`)
+      .run(`activity-${crypto.randomUUID()}`, `${current.id} unused inventory item deleted`,
+        current.id, req.admin?.id || "admin", now);
+    db.exec("COMMIT");
+    return res.json({ ok: true });
+  } catch {
+    db.exec("ROLLBACK");
+    return res.status(500).json({ error: "재고 품목 삭제를 완료하지 못했습니다." });
+  }
 });
 
 // DELETE /api/inventory — 전체 삭제
 router.delete("/", requireAuth, (req, res) => {
-  db.prepare("DELETE FROM inventory").run();
-  res.json({ ok: true });
+  logBlockedDelete(req, "inventory", "DESTRUCTIVE_ACTION_DISABLED");
+  res.status(405).json({
+    error: "재고 전체 삭제 기능은 비활성화되어 있습니다.",
+    reason: "DESTRUCTIVE_ACTION_DISABLED",
+  });
 });
 
 module.exports = router;

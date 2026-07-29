@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const db = require("../db");
 const { requireAuth } = require("../middleware/auth");
 
@@ -38,10 +39,21 @@ router.post("/", requireAuth, (req, res) => {
   res.status(201).json({ ok: true });
 });
 
-// DELETE /api/activity-logs — 전체 삭제
 router.delete("/", requireAuth, (req, res) => {
-  db.prepare("DELETE FROM activity_logs").run();
-  res.json({ ok: true });
+  const now = new Date().toISOString();
+  try {
+    db.prepare(`INSERT INTO activity_logs
+      (id, category, message, tab, action, entity_id, previous_value, next_value, actor, created_at)
+      VALUES (?, 'SECURITY', 'Blocked activity log deletion attempt', 'logs',
+        'destructive_action_blocked', 'activity_logs', 'retained', 'retained', ?, ?)`)
+      .run(`activity-${crypto.randomUUID()}`, req.admin?.id || "admin", now);
+  } catch {
+    // The immutable response must not depend on recording the blocked attempt.
+  }
+  res.status(405).json({
+    error: "활동 로그는 운영 감사 목적으로 삭제할 수 없습니다.",
+    reason: "AUDIT_LOG_IMMUTABLE",
+  });
 });
 
 module.exports = router;
