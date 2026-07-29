@@ -47,6 +47,11 @@ function validProductionEnv(overrides = {}) {
     PAYMENT_MODE: "disabled",
     NOTIFICATION_MODE: "none",
     EMAIL_MODE: "disabled",
+    ADMIN_JWT_ISSUER: "shoppingmall-admin",
+    ADMIN_JWT_AUDIENCE: "shoppingmall-admin-api",
+    ADMIN_TOKEN_TTL: "1h",
+    ADMIN_LOGIN_RATE_MAX: "5",
+    ADMIN_LOGIN_RATE_WINDOW_MS: "900000",
     ...overrides,
   };
 }
@@ -83,7 +88,7 @@ test("운영 환경은 공개 데모 관리자 코드와 출처 불일치를 거
 });
 
 test("운영 필수값별 누락과 잘못된 공개 URL을 거부한다", () => {
-  for (const key of ["JWT_SECRET", "AUTH_CODE_PEPPER", "ADMIN_CODE"]) {
+  for (const key of ["JWT_SECRET", "AUTH_CODE_PEPPER", "ADMIN_JWT_ISSUER", "ADMIN_JWT_AUDIENCE", "ADMIN_TOKEN_TTL"]) {
     const env = validProductionEnv();
     delete env[key];
     assert.match(productionConfigErrors(env).join(" "), new RegExp(key));

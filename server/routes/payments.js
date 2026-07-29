@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const express = require("express");
 const db = require("../db");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission } = require("../middleware/auth");
 const toss = require("../services/toss-payments");
 
 const router = express.Router();
@@ -358,7 +358,7 @@ router.get("/info/:orderId", (req, res) => {
   });
 });
 
-router.post("/", requireAuth, (req, res) => {
+router.post("/", requireAuth, requirePermission("payments:reconcile"), (req, res) => {
   const { orderId } = req.body;
   if (!orderId) return res.status(400).json({ error: "orderId가 필요합니다." });
 
@@ -503,7 +503,7 @@ router.post("/webhook", async (req, res) => {
   return res.sendStatus(200);
 });
 
-router.post("/:orderId/reconcile", requireAuth, async (req, res) => {
+router.post("/:orderId/reconcile", requireAuth, requirePermission("payments:reconcile"), async (req, res) => {
   const result = await reconcilePayment(req.params.orderId, getPaymentActor(req, "admin"));
   if (result.status !== 200) {
     return res.status(result.status).json({ reconciled: false, reason: result.reason });
@@ -517,7 +517,7 @@ router.post("/:orderId/reconcile", requireAuth, async (req, res) => {
   });
 });
 
-router.get("/:orderId", requireAuth, (req, res) => {
+router.get("/:orderId", requireAuth, requirePermission("payments:read"), (req, res) => {
   const pay = db.prepare("SELECT * FROM payments WHERE order_id = ?").get(req.params.orderId);
   if (!pay) return res.json({ status: "NONE" });
 
@@ -540,7 +540,7 @@ router.get("/:orderId", requireAuth, (req, res) => {
   });
 });
 
-router.post("/:orderId/cancel", requireAuth, async (req, res) => {
+router.post("/:orderId/cancel", requireAuth, requirePermission("payments:cancel"), async (req, res) => {
   let pay = db.prepare("SELECT * FROM payments WHERE order_id=?").get(req.params.orderId);
   if (!pay) return res.status(404).json({ error: "결제 정보를 찾을 수 없습니다." });
   if (pay.status === "CANCELED") return res.json({ ok: true, alreadyCanceled: true });

@@ -33,6 +33,8 @@ test("관리자 회원은 일반 로그인 후 관리자 세션을 발급받을 
       (id, username, email, password_hash, name, phone, role, terms_agreed_at, privacy_agreed_at, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, ?, ?)
   `).run("role-admin-user", "role_admin", "role-admin@example.com", bcrypt.hashSync("password123", 4), "관리자", "01022223333", now, now, now, now);
+  db.prepare(`INSERT INTO admin_accounts (user_id,role,is_active,token_version,created_at,updated_at)
+    VALUES ('role-admin-user','super_admin',1,0,?,?)`).run(now, now);
 
   const agent = request.agent(app);
   const login = await agent.post("/api/users/login").send({ identifier: "role_admin", password: "password123" });

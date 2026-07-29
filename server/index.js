@@ -113,6 +113,7 @@ for (const directory of PUBLIC_DIRECTORIES) {
 }
 
 app.use("/api/auth", require("./routes/auth"));
+app.use("/api/admin-users", require("./routes/admin-users"));
 app.use("/api/auth/social", require("./routes/social-auth"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/customers", require("./routes/customers"));

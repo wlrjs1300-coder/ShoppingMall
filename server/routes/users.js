@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
@@ -10,7 +11,8 @@ const {
   clearCustomerCookie,
   requireCustomerAuth,
 } = require("../middleware/customerAuth");
-const { requireAuth: requireAdminAuth } = require("../middleware/auth");
+const { audit, requireAuth: requireAdminAuth, requirePermission } = require("../middleware/auth");
+const { ADMIN_ROLES, permissionsForRole } = require("../lib/admin-permissions");
 const { consumePendingSocialLink } = require("../services/social-link");
 
 const router = express.Router();
@@ -42,7 +44,15 @@ const loginLimiter = makeLimiter(10);
 const findUsernameLimiter = makeLimiter(10);
 const LOGIN_FAILURE_LIMIT = 5;
 
-router.get("/admin/directory", requireAdminAuth, (req, res) => {
+function insertAdminPasswordAudit(userId) {
+  db.prepare(`INSERT INTO activity_logs
+    (id, category, message, tab, action, entity_id, previous_value, next_value, actor, created_at)
+    VALUES (?, 'SECURITY', 'Administrator password changed and sessions revoked', 'admin',
+      'admin_password_changed', ?, NULL, NULL, ?, ?)`)
+    .run(`activity-${crypto.randomUUID()}`, userId, userId, new Date().toISOString());
+}
+
+router.get("/admin/directory", requireAdminAuth, requirePermission("orders:read"), (req, res) => {
   const now = new Date();
   const users = db.prepare(`
     SELECT id, name, phone, status, login_locked_until
@@ -58,7 +68,7 @@ router.get("/admin/directory", requireAdminAuth, (req, res) => {
   res.json({ users });
 });
 
-router.post("/admin/:id/suspension", requireAdminAuth, (req, res) => {
+router.post("/admin/:id/suspension", requireAdminAuth, requirePermission("orders:write"), (req, res) => {
   const user = db.prepare("SELECT id, role, status, login_locked_until FROM user_accounts WHERE id=?").get(req.params.id);
   if (!user) return res.status(404).json({ error: "회원을 찾을 수 없습니다." });
   if (user.role === "admin") return res.status(403).json({ error: "관리자 계정은 이 화면에서 정지할 수 없습니다." });
@@ -71,7 +81,7 @@ router.post("/admin/:id/suspension", requireAdminAuth, (req, res) => {
   res.json({ ok: true, suspended });
 });
 
-router.post("/admin/:id/withdraw", requireAdminAuth, (req, res) => {
+router.post("/admin/:id/withdraw", requireAdminAuth, requirePermission("orders:write"), (req, res) => {
   const user = db.prepare("SELECT id, role, status FROM user_accounts WHERE id=?").get(req.params.id);
   if (!user) return res.status(404).json({ error: "회원을 찾을 수 없습니다." });
   if (user.role === "admin") return res.status(403).json({ error: "관리자 계정은 이 화면에서 탈퇴시킬 수 없습니다." });
@@ -343,8 +353,27 @@ router.get("/me", requireCustomerAuth, (req, res) => {
 // 관리자 회원 쿠키를 기존 관리자 API용 단기 토큰으로 교환합니다.
 router.post("/admin-session", requireCustomerAuth, (req, res) => {
   if (req.user.role !== "admin") return res.status(403).json({ error: "관리자 권한이 필요합니다." });
-  const token = jwt.sign({ sub: req.user.id, role: "admin" }, process.env.JWT_SECRET, { expiresIn: "24h" });
-  res.json({ token });
+  const admin = db.prepare(`
+    SELECT aa.role, aa.is_active, aa.token_version, ua.status, ua.role AS user_role
+    FROM user_accounts ua
+    LEFT JOIN admin_accounts aa ON aa.user_id=ua.id
+    WHERE ua.id=?
+  `).get(req.user.id);
+  if (!admin || admin.role == null) {
+    audit("admin_session_denied", req.user.id, "Administrator session exchange denied: account required", req.user.id);
+    return res.status(403).json({ error: "관리자 계정이 등록되지 않았습니다.", reason: "ADMIN_ACCOUNT_REQUIRED" });
+  }
+  if (!admin.is_active || admin.status !== "active" || admin.user_role !== "admin") {
+    audit("admin_session_denied", req.user.id, "Administrator session exchange denied: inactive account", req.user.id);
+    return res.status(403).json({ error: "비활성화된 관리자 계정입니다.", reason: "ADMIN_ACCOUNT_INACTIVE" });
+  }
+  if (!ADMIN_ROLES.includes(admin.role)) {
+    audit("admin_session_denied", req.user.id, "Administrator session exchange denied: invalid role", req.user.id);
+    return res.status(403).json({ error: "관리자 권한이 올바르지 않습니다.", reason: "INVALID_ADMIN_ROLE" });
+  }
+  const { issueAdminToken } = require("../middleware/auth");
+  const token = issueAdminToken({ id: req.user.id, role: admin.role, tokenVersion: admin.token_version });
+  res.json({ token, admin: { id: req.user.id, role: admin.role, permissions: permissionsForRole(admin.role) } });
 });
 
 function getMemberOrderStatusHistory(orderId) {
@@ -492,11 +521,32 @@ router.post("/me/password", requireCustomerAuth, (req, res) => {
   const newPassword = String(req.body?.newPassword || "");
   const bytes = Buffer.byteLength(newPassword, "utf8");
   if (newPassword.length < PASSWORD_MIN || bytes > PASSWORD_MAX) return res.status(400).json({ error: "새 비밀번호는 8자 이상 72바이트 이하로 입력해 주세요." });
-  const user = db.prepare("SELECT password_hash FROM user_accounts WHERE id=?").get(req.user.id);
-  if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) return res.status(400).json({ error: "현재 비밀번호가 올바르지 않습니다." });
-  db.prepare("UPDATE user_accounts SET password_hash=?, updated_at=? WHERE id=?")
-    .run(bcrypt.hashSync(newPassword, 10), new Date().toISOString(), req.user.id);
-  res.json({ ok: true });
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const user = db.prepare("SELECT password_hash FROM user_accounts WHERE id=?").get(req.user.id);
+    if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+      db.exec("ROLLBACK");
+      return res.status(400).json({ error: "현재 비밀번호가 올바르지 않습니다." });
+    }
+    const admin = db.prepare("SELECT token_version FROM admin_accounts WHERE user_id=?").get(req.user.id);
+    const now = new Date().toISOString();
+    const passwordUpdate = db.prepare("UPDATE user_accounts SET password_hash=?, updated_at=? WHERE id=?")
+      .run(bcrypt.hashSync(newPassword, 10), now, req.user.id);
+    if (passwordUpdate.changes !== 1) throw new Error("PASSWORD_UPDATE_FAILED");
+    if (admin) {
+      const adminUpdate = db.prepare(`UPDATE admin_accounts SET token_version=token_version+1, updated_at=?
+        WHERE user_id=? AND token_version=?`).run(now, req.user.id, admin.token_version);
+      if (adminUpdate.changes !== 1) throw new Error("ADMIN_SESSION_REVOKE_FAILED");
+      insertAdminPasswordAudit(req.user.id);
+    }
+    db.exec("COMMIT");
+    return res.json({ ok: true });
+  } catch {
+    try {
+      db.exec("ROLLBACK");
+    } catch {}
+    return res.status(500).json({ error: "비밀번호를 변경하지 못했습니다." });
+  }
 });
 
 router.get("/me/social-identities", requireCustomerAuth, (req, res) => {

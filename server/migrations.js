@@ -164,6 +164,26 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 11,
+    name: "admin_accounts_rbac",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS admin_accounts (
+          user_id TEXT PRIMARY KEY,
+          role TEXT NOT NULL CHECK (role IN ('super_admin','operations','finance','viewer')),
+          is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+          token_version INTEGER NOT NULL DEFAULT 0 CHECK (token_version >= 0),
+          last_login_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES user_accounts(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_admin_accounts_active_role
+          ON admin_accounts(is_active, role);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {

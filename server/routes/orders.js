@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const db = require("../db");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission } = require("../middleware/auth");
 const { optionalCustomerAuth } = require("../middleware/customerAuth");
 const { notifyOrderReceived, notifyOrderReady } = require("../services/notify");
 const { normalizePhone, isValidPhone } = require("../utils/normalize");
@@ -281,7 +281,7 @@ function createOrder({ id, userId, customerData, products, requestedItems, memo,
   addStatusHistory(id, null, ORDER_STATUS, "customer", createdAt);
 }
 
-router.get("/", requireAuth, (req, res) => {
+router.get("/", requireAuth, requirePermission("orders:read"), (req, res) => {
   const rows = db.prepare(`
     SELECT o.*,
       p.status AS payment_internal_status,
@@ -294,7 +294,7 @@ router.get("/", requireAuth, (req, res) => {
   res.json(rows.map((row) => rowToOrder(row, { includePaymentSummary: true })));
 });
 
-router.get("/:id/history", requireAuth, (req, res) => {
+router.get("/:id/history", requireAuth, requirePermission("orders:read"), (req, res) => {
   const existing = db.prepare("SELECT id FROM orders WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "주문을 찾을 수 없습니다." });
   const rows = db.prepare("SELECT * FROM order_status_history WHERE order_id = ? ORDER BY created_at DESC").all(req.params.id);
@@ -399,7 +399,7 @@ router.post("/guest/lookup", publicOrderLimiter, (req, res) => {
   res.json(rowToOrder(row));
 });
 
-router.post("/admin", requireAuth, (req, res) => {
+router.post("/admin", requireAuth, requirePermission("orders:write"), (req, res) => {
   const now = new Date().toISOString();
   const id = typeof req.body.id === "string" && req.body.id ? req.body.id : `order-${crypto.randomUUID()}`;
   const parsedQuantity = Number(req.body.quantity);
@@ -440,7 +440,7 @@ router.post("/admin", requireAuth, (req, res) => {
 });
 
 // 생산 완료와 원재료 차감은 반드시 이 API의 단일 트랜잭션에서 처리한다.
-router.post("/production/complete", requireAuth, (req, res) => {
+router.post("/production/complete", requireAuth, requirePermission("orders:write"), (req, res) => {
   const orderIds = Array.isArray(req.body?.orderIds)
     ? [...new Set(req.body.orderIds.filter((id) => typeof id === "string" && id.trim()).map((id) => id.trim()))]
     : [];
@@ -570,7 +570,7 @@ router.post("/production/complete", requireAuth, (req, res) => {
   }
 });
 
-router.put("/:id", requireAuth, (req, res) => {
+router.put("/:id", requireAuth, requirePermission("orders:write"), (req, res) => {
   const existing = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "주문을 찾을 수 없습니다." });
   const now = new Date().toISOString();
@@ -686,7 +686,7 @@ function recordBlockedOrderDeleteSafely({ entityId, previousValue, reason, actor
   }
 }
 
-router.delete("/:id", requireAuth, (req, res) => {
+router.delete("/:id", requireAuth, requirePermission("orders:write"), (req, res) => {
   const actor = getActorLabel(req);
   const now = new Date().toISOString();
   db.exec("BEGIN IMMEDIATE");
@@ -741,7 +741,7 @@ router.delete("/:id", requireAuth, (req, res) => {
   }
 });
 
-router.delete("/", requireAuth, (req, res) => {
+router.delete("/", requireAuth, requirePermission("orders:write"), (req, res) => {
   recordBlockedOrderDeleteSafely({
     entityId: "orders", previousValue: "retained", reason: "DESTRUCTIVE_ACTION_DISABLED",
     actor: getActorLabel(req), message: "Bulk order deletion blocked",
