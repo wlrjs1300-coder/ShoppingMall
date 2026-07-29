@@ -18,6 +18,7 @@ const {
   nodeVersionError,
   productionConfigErrors,
   productionReadinessReport,
+  naverCommerceConfigErrors,
 } = require("../config");
 const { runMigrations, migrations } = require("../migrations");
 
@@ -342,4 +343,31 @@ test("deploy preflight는 DB와 backup 파일을 생성하지 않는 읽기 전�
   assert.equal(fs.existsSync(backupDir), false);
   assert.match(`${result.stdout}${result.stderr}`, /\[(?:ERROR|CONFIRM-NEEDED)\]\[[A-Z0-9_]+\]/);
   fs.rmSync(temp, { recursive: true, force: true });
+});
+
+test("네이버 커머스 sync 비활성은 credential 없이 허용하고 활성 설정은 안전하게 검증한다", () => {
+  assert.deepEqual(naverCommerceConfigErrors({ NODE_ENV: "production", NAVER_COMMERCE_SYNC_ENABLED: "false" }), []);
+  const base = {
+    NODE_ENV: "production",
+    NAVER_COMMERCE_SYNC_ENABLED: "true",
+    NAVER_COMMERCE_CLIENT_ID: "client-fixture",
+    NAVER_COMMERCE_CLIENT_SECRET: "$2a$10$abcdefghijklmnopqrstuv",
+  };
+  assert.match(naverCommerceConfigErrors({ ...base, NAVER_COMMERCE_CLIENT_SECRET: "" }).map((item) => item.code).join(), /NAVER_CLIENT_SECRET_MISSING/);
+  assert.match(naverCommerceConfigErrors({ ...base, NAVER_COMMERCE_AUTH_TYPE: "SELLER" }).map((item) => item.code).join(), /NAVER_ACCOUNT_ID_MISSING/);
+  assert.match(naverCommerceConfigErrors({ ...base, NAVER_COMMERCE_API_BASE_URL: "https://mock.invalid/external" }).map((item) => item.code).join(), /NAVER_API_BASE_URL_INVALID/);
+});
+
+test("readiness 출력에는 네이버 credential 원문이 포함되지 않고 외부 연결 코드가 없다", () => {
+  const secret = "never-output-naver-client-secret";
+  const env = validProductionEnv({
+    NAVER_COMMERCE_SYNC_ENABLED: "true",
+    NAVER_COMMERCE_CLIENT_ID: "your-client-id",
+    NAVER_COMMERCE_CLIENT_SECRET: secret,
+  });
+  const report = productionReadinessReport(env);
+  assert.equal(JSON.stringify(report).includes(secret), false);
+  assert.match(report.errors.map((item) => item.code).join(), /NAVER_CONFIGURATION_PLACEHOLDER/);
+  const preflight = fs.readFileSync(path.join(root, "server/scripts/deployment-preflight.js"), "utf8");
+  assert.doesNotMatch(preflight, /fetch\s*\(|oauth2\/token/);
 });

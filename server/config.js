@@ -21,6 +21,7 @@ const PRODUCTION_FORBIDDEN_KEYS = [
   "ALLOW_PORTFOLIO_SEED",
 ];
 const MINIMUM_NODE_VERSION = "22.16.0";
+const NAVER_COMMERCE_OFFICIAL_BASE_URL = "https://api.commerce.naver.com/external";
 const READINESS_CATEGORIES = Object.freeze({
   SECURITY: "보안 비밀값",
   NETWORK: "서비스 URL 및 네트워크",
@@ -94,6 +95,48 @@ function isRepositoryPath(target, repositoryRoot = path.resolve(__dirname, "..")
 function hasValidSecret(env, key) {
   const value = valueOf(env, key);
   return Boolean(value) && !isPlaceholder(value);
+}
+
+function getNaverCommerceConfig(env = process.env) {
+  return {
+    enabled: valueOf(env, "NAVER_COMMERCE_SYNC_ENABLED").toLowerCase() === "true",
+    clientId: valueOf(env, "NAVER_COMMERCE_CLIENT_ID"),
+    clientSecret: valueOf(env, "NAVER_COMMERCE_CLIENT_SECRET"),
+    authType: valueOf(env, "NAVER_COMMERCE_AUTH_TYPE").toUpperCase() || "SELF",
+    accountId: valueOf(env, "NAVER_COMMERCE_ACCOUNT_ID"),
+    apiBaseUrl: valueOf(env, "NAVER_COMMERCE_API_BASE_URL") || NAVER_COMMERCE_OFFICIAL_BASE_URL,
+    requestTimeoutMs: Number(valueOf(env, "NAVER_COMMERCE_REQUEST_TIMEOUT_MS") || 10000),
+  };
+}
+
+function naverCommerceConfigErrors(env = process.env) {
+  const config = getNaverCommerceConfig(env);
+  if (!config.enabled) return [];
+  const errors = [];
+  if (!config.clientId) errors.push({ code: "NAVER_CLIENT_ID_MISSING", key: "NAVER_COMMERCE_CLIENT_ID", message: "네이버 커머스API client ID가 필요합니다." });
+  if (!config.clientSecret) errors.push({ code: "NAVER_CLIENT_SECRET_MISSING", key: "NAVER_COMMERCE_CLIENT_SECRET", message: "네이버 커머스API client secret이 필요합니다." });
+  if ((config.clientId && isPlaceholder(config.clientId)) || (config.clientSecret && isPlaceholder(config.clientSecret))) {
+    errors.push({ code: "NAVER_CONFIGURATION_PLACEHOLDER", key: "NAVER_COMMERCE_CLIENT_ID,NAVER_COMMERCE_CLIENT_SECRET", message: "네이버 커머스API 인증정보에 placeholder를 사용할 수 없습니다." });
+  }
+  if (!["SELF", "SELLER"].includes(config.authType)) {
+    errors.push({ code: "NAVER_AUTH_TYPE_INVALID", key: "NAVER_COMMERCE_AUTH_TYPE", message: "네이버 인증 유형은 SELF 또는 SELLER여야 합니다." });
+  }
+  if (config.authType === "SELLER" && !config.accountId) {
+    errors.push({ code: "NAVER_ACCOUNT_ID_MISSING", key: "NAVER_COMMERCE_ACCOUNT_ID", message: "SELLER 인증에는 account ID가 필요합니다." });
+  }
+  try {
+    const parsed = new URL(config.apiBaseUrl);
+    const officialProductionUrl = parsed.origin === "https://api.commerce.naver.com"
+      && parsed.pathname.replace(/\/$/, "") === "/external";
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password
+      || (env.NODE_ENV === "production" && !officialProductionUrl)) throw new Error("invalid");
+  } catch {
+    errors.push({ code: "NAVER_API_BASE_URL_INVALID", key: "NAVER_COMMERCE_API_BASE_URL", message: "네이버 커머스API base URL이 올바르지 않습니다." });
+  }
+  if (!Number.isSafeInteger(config.requestTimeoutMs) || config.requestTimeoutMs <= 0) {
+    errors.push({ code: "NAVER_REQUEST_TIMEOUT_INVALID", key: "NAVER_COMMERCE_REQUEST_TIMEOUT_MS", message: "네이버 요청 timeout은 양의 정수여야 합니다." });
+  }
+  return errors;
 }
 
 function addMissingErrors(errors, env, keys, message) {
@@ -255,6 +298,7 @@ function productionConfigErrors(env = process.env) {
     }
   }
 
+  errors.push(...naverCommerceConfigErrors(env).map((item) => `${item.code}: ${item.message}`));
   return [...new Set(errors)];
 }
 
@@ -319,6 +363,14 @@ function productionReadinessReport(env = process.env) {
       "production 배포 승인 전에 담당자가 확인하고 체크리스트에 기록하세요.",
     ));
   }
+  for (const item of naverCommerceConfigErrors(env)) {
+    const existing = items.find((entry) => entry.problem.includes(item.code));
+    if (existing) {
+      existing.code = item.code;
+      existing.category = READINESS_CATEGORIES.NETWORK;
+      existing.envKeys = item.key.split(",");
+    }
+  }
   return {
     errors: items.filter((item) => item.level === "error"),
     confirmations: items.filter((item) => item.level === "confirm-needed"),
@@ -339,4 +391,7 @@ module.exports = {
   productionConfigWarnings,
   productionReadinessReport,
   READINESS_CATEGORIES,
+  NAVER_COMMERCE_OFFICIAL_BASE_URL,
+  getNaverCommerceConfig,
+  naverCommerceConfigErrors,
 };
