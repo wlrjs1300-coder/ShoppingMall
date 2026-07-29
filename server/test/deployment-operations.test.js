@@ -13,10 +13,22 @@ const { DatabaseSync } = require("node:sqlite");
 const request = require("supertest");
 const app = require("../index");
 const db = require("../db");
-const { assertProductionConfig, productionConfigErrors } = require("../config");
+const {
+  assertProductionConfig,
+  nodeVersionError,
+  productionConfigErrors,
+} = require("../config");
 const { runMigrations, migrations } = require("../migrations");
 
 const root = path.resolve(__dirname, "../..");
+
+test("Node.js backup API minimum version contract is enforced", () => {
+  assert.equal(nodeVersionError("24.15.0"), null);
+  assert.equal(nodeVersionError("22.16.0"), null);
+  assert.match(nodeVersionError("22.15.9"), /22\.16\.0.*22\.15\.9/);
+  assert.match(nodeVersionError("22.5.0"), /22\.16\.0.*22\.5\.0/);
+  assert.match(nodeVersionError("invalid"), /22\.16\.0.*invalid/);
+});
 
 function validProductionEnv(overrides = {}) {
   return {
@@ -27,6 +39,7 @@ function validProductionEnv(overrides = {}) {
     ALLOWED_ORIGIN: "https://shop.realstore.kr",
     PUBLIC_BASE_URL: "https://shop.realstore.kr",
     DB_PATH: path.join(path.parse(root).root, "data", "tteokjip.db"),
+    BACKUP_DIR: path.join(path.parse(root).root, "shoppingmall-backups"),
     STORE_NAME: "따뜻한 떡집",
     STORE_PHONE: "031-123-4567",
     STORE_HOURS: "09:00 - 19:00",
@@ -229,31 +242,31 @@ test("없는 웹 페이지는 리다이렉트 대신 404 문서를 반환한다"
 });
 
 test("배포 설정, 운영 문서, 법무 초안과 백업 도구가 존재한다", () => {
-  ["railway.json", "render.yaml", "docs/DEPLOYMENT_OPERATIONS.md", "privacy.html", "terms.html", "404.html", "server/scripts/backup-db.js", "server/scripts/restore-db.js"].forEach((file) => {
+  ["railway.json", "render.yaml", "docs/DEPLOYMENT_OPERATIONS.md", "privacy.html", "terms.html", "404.html", "server/scripts/backup-database.js", "server/scripts/verify-backup.js"].forEach((file) => {
     assert.equal(fs.existsSync(path.join(root, file)), true, file);
   });
   assert.match(fs.readFileSync(path.join(root, "sw.js"), "utf8"), /networkFirst/);
 });
 
-test("SQLite 백업을 생성하고 별도 DB로 무결하게 복원한다", () => {
+test("SQLite 백업을 생성하고 임시 DB에서 복원 가능성을 검증한다", () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "tteokjip-backup-test-"));
-  const source = path.join(temp, "source.db");
-  const restored = path.join(temp, "restored.db");
+  const source = path.join(temp, "database", "source.sqlite");
   const backupDir = path.join(temp, "backups");
-  const seed = new DatabaseSync(source);
-  seed.exec("CREATE TABLE sample (value TEXT); INSERT INTO sample VALUES ('verified')");
-  seed.close();
-  const backup = spawnSync(process.execPath, [path.join(root, "server/scripts/backup-db.js")], {
+  fs.mkdirSync(path.dirname(source), { recursive: true });
+  const initialize = spawnSync(process.execPath, ["-e", "require('./db').close()"], {
+    cwd: path.join(root, "server"),
+    env: { ...process.env, DB_PATH: source, NODE_ENV: "test" },
+    encoding: "utf8",
+  });
+  assert.equal(initialize.status, 0, initialize.stderr);
+  const backup = spawnSync(process.execPath, [path.join(root, "server/scripts/backup-database.js")], {
     env: { ...process.env, DB_PATH: source, BACKUP_DIR: backupDir }, encoding: "utf8",
   });
   assert.equal(backup.status, 0, backup.stderr);
-  const backupFile = path.join(backupDir, fs.readdirSync(backupDir).find((name) => name.endsWith(".db")));
-  const restore = spawnSync(process.execPath, [path.join(root, "server/scripts/restore-db.js"), backupFile, "--confirm"], {
-    env: { ...process.env, DB_PATH: restored }, encoding: "utf8",
+  const verify = spawnSync(process.execPath, [path.join(root, "server/scripts/verify-backup.js")], {
+    env: { ...process.env, DB_PATH: source, BACKUP_DIR: backupDir }, encoding: "utf8",
   });
-  assert.equal(restore.status, 0, restore.stderr);
-  const verified = new DatabaseSync(restored, { readOnly: true });
-  assert.equal(verified.prepare("SELECT value FROM sample").get().value, "verified");
-  verified.close();
+  assert.equal(verify.status, 0, verify.stderr);
+  assert.match(verify.stdout, /Backup verification passed/);
   fs.rmSync(temp, { recursive: true, force: true });
 });

@@ -45,12 +45,13 @@ npm run deploy:check
 
 ```bash
 cd server
-npm run db:backup
-npm run db:restore -- /data/backups/tteokjip-날짜.db --confirm
+npm run backup:create
+npm run backup:verify
 ```
 
-- `db:backup`은 SQLite `VACUUM INTO`를 사용해 일관된 백업을 만들고 기본 14개를 보존합니다.
-- 플랫폼 스케줄러 또는 외부 cron으로 하루 1회 `npm run db:backup`을 실행합니다.
+- `backup:create`는 SQLite backup API를 사용해 검증 가능한 외부 백업 세트를 생성합니다.
+- 플랫폼 스케줄러 또는 외부 cron으로 `npm run backup:create`를 실행합니다.
+- 자동 `db:restore` 명령은 제공하지 않습니다. 복원 전 `backup:verify`를 통과시킨 뒤 [백업 및 복구 절차](backup-and-recovery.md)에 따라 서비스를 중지하고 수동으로 복원합니다.
 - 플랫폼 자체 볼륨 백업도 함께 켜서 앱 백업과 이중화합니다.
 - 복원 전 서버를 중지하고 현재 DB와 `-wal`, `-shm` 파일을 함께 다룹니다. 복원 도구는 기존 DB 사본을 남기고 백업 무결성을 검사합니다.
 - 월 1회 별도 환경에서 복원 후 `/api/health`, 회원 수, 최근 주문을 대조합니다.
