@@ -1,9 +1,9 @@
 const express = require("express");
 const { requireAuth, requirePermission, audit } = require("../middleware/auth");
-const { createNaverCommerceClient } = require("../services/naver-commerce-client");
+const { getDefaultNaverCommerceClient } = require("../services/naver-commerce-client");
 
 const router = express.Router();
-const defaultClient = createNaverCommerceClient();
+const defaultClient = getDefaultNaverCommerceClient();
 const defaultClientFactory = () => defaultClient;
 let clientFactory = defaultClientFactory;
 

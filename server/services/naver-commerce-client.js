@@ -300,9 +300,16 @@ function createNaverCommerceClient({
   return { clearTokenCache, getAccessToken, request, getConnectionStatus };
 }
 
+let defaultClient;
+function getDefaultNaverCommerceClient() {
+  if (!defaultClient) defaultClient = createNaverCommerceClient();
+  return defaultClient;
+}
+
 module.exports = {
   NaverCommerceError,
   createNaverCommerceClient,
+  getDefaultNaverCommerceClient,
   parseRetryAfter,
   responseMetadata,
 };
