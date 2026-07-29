@@ -184,6 +184,43 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 12,
+    name: "naver_product_mappings",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sales_channel_product_mappings (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL DEFAULT 'naver' CHECK (channel = 'naver'),
+          internal_product_id TEXT NOT NULL,
+          external_origin_product_no TEXT NOT NULL CHECK (external_origin_product_no GLOB '[0-9]*' AND external_origin_product_no NOT GLOB '*[^0-9]*'),
+          external_channel_product_no TEXT NOT NULL CHECK (external_channel_product_no GLOB '[0-9]*' AND external_channel_product_no NOT GLOB '*[^0-9]*'),
+          external_group_product_no TEXT CHECK (external_group_product_no IS NULL OR (external_group_product_no GLOB '[0-9]*' AND external_group_product_no NOT GLOB '*[^0-9]*')),
+          external_option_id TEXT CHECK (external_option_id IS NULL OR (external_option_id GLOB '[0-9]*' AND external_option_id NOT GLOB '*[^0-9]*')),
+          seller_management_code TEXT,
+          channel_service_type TEXT NOT NULL,
+          external_product_name TEXT NOT NULL,
+          external_status TEXT NOT NULL,
+          mapping_status TEXT NOT NULL DEFAULT 'PENDING_VERIFICATION'
+            CHECK (mapping_status IN ('ACTIVE','DISABLED','PENDING_VERIFICATION','UNSUPPORTED_OPTION','INVALID_INTERNAL_PRODUCT','EXTERNAL_NOT_FOUND','CONFLICT')),
+          inventory_sync_enabled INTEGER NOT NULL DEFAULT 0 CHECK (inventory_sync_enabled IN (0,1)),
+          price_sync_enabled INTEGER NOT NULL DEFAULT 0 CHECK (price_sync_enabled IN (0,1)),
+          safety_stock INTEGER NOT NULL DEFAULT 0 CHECK (safety_stock >= 0 AND typeof(safety_stock) = 'integer'),
+          last_verified_at TEXT,
+          last_product_sync_at TEXT,
+          last_error_code TEXT,
+          last_error_message TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (internal_product_id) REFERENCES products(id) ON DELETE RESTRICT,
+          UNIQUE (channel, internal_product_id),
+          UNIQUE (channel, external_channel_product_no)
+        );
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_product_mappings_status
+          ON sales_channel_product_mappings(channel, mapping_status, updated_at);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {
