@@ -3,6 +3,7 @@ process.env.DB_PATH = ":memory:";
 process.env.ADMIN_CODE = "test-admin-code";
 process.env.JWT_SECRET = "test-secret-for-auth-tests-only";
 process.env.NOTIFICATION_MODE = "none";
+process.env.NODE_ENV = "test";
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -21,7 +22,7 @@ test("올바른 ADMIN_CODE로 로그인하면 JWT가 발급된다", async () => 
   assert.ok(res.body.token.length > 0);
 
   const payload = jwt.verify(res.body.token, process.env.JWT_SECRET);
-  assert.equal(payload.role, "admin");
+  assert.equal(payload.role, "super_admin");
 });
 
 test("잘못된 관리자 코드로 로그인하면 401이 반환된다", async () => {

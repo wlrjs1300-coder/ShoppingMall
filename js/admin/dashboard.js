@@ -39,8 +39,8 @@ const adminAccountingEnd = document.querySelector(".admin-accounting-end");
 const adminAccountingReset = document.querySelector(".admin-accounting-reset");
 const adminAccountingCsv = document.querySelector(".admin-accounting-csv");
 const adminFormDrawerBackdrop = document.querySelector(".admin-form-drawer-backdrop");
-const adminAccessCode = "";
 const adminAccessStorageKey = "tteokAdminAccess";
+let currentAdminPermissions = new Set();
 let editingAdminOrderId = "";
 let adminFeedbackTimer = 0;
 let activeDetailItem = null;
@@ -347,6 +347,30 @@ function grantAdminAccess() {
   }
 }
 
+function applyAdminPermissions(admin) {
+  currentAdminPermissions = new Set(Array.isArray(admin?.permissions) ? admin.permissions : []);
+  const rules = {
+    "orders:write": [".admin-order-create-open", "[data-admin-bulk-apply]", ".admin-delete", '[data-detail-action="edit"]', '[data-detail-action="delete"]'],
+    "inventory:write": [".admin-inventory-submit", ".admin-inventory-edit", ".admin-inventory-delete", ".admin-recipe-delete"],
+    "purchase_orders:write": [".admin-supplier-submit", ".admin-supplier-delete", ".admin-purchase-request", ".admin-purchase-edit", ".admin-purchase-delete"],
+    "payments:reconcile": ["[data-admin-payment-reconcile]", '[data-detail-action="reconcile-payment"]'],
+    "payments:cancel": [".admin-payment-cancel", '[data-detail-action="cancel-payment"]'],
+  };
+  for (const [permission, selectors] of Object.entries(rules)) {
+    document.querySelectorAll(selectors.join(",")).forEach((element) => {
+      element.hidden = !currentAdminPermissions.has(permission);
+      element.setAttribute("aria-hidden", String(!currentAdminPermissions.has(permission)));
+    });
+  }
+}
+
+function hasAdminPermission(permission) {
+  return currentAdminPermissions.has(permission);
+}
+
+new MutationObserver(() => applyAdminPermissions({ permissions: [...currentAdminPermissions] }))
+  .observe(document.body, { childList: true, subtree: true });
+
 async function bootstrapMemberAdminAccess() {
   try {
     const response = await fetch("/api/users/admin-session", { method: "POST", credentials: "same-origin" });
@@ -366,6 +390,7 @@ async function bootstrapMemberAdminAccess() {
       return;
     }
     setApiToken(result.token);
+    applyAdminPermissions(result.admin);
     grantAdminAccess();
     unlockAdmin();
     await loadFromApi();
@@ -386,19 +411,13 @@ adminLockForm?.addEventListener("submit", async (event) => {
   const code = String(new FormData(adminLockForm).get("code") || "").trim();
   if (!code) return;
 
-  // 서버가 살아있으면 API로 검증, 오프라인이면 로컬 코드로 폴백
   const result = await apiFetch("/auth/login", { method: "POST", body: { code } });
-  if (result === null) {
-    // 서버 오프라인 — 로컬 코드로 폴백
-    if (code !== adminAccessCode) {
-      if (adminLockMessage) adminLockMessage.textContent = "확인 코드가 맞지 않습니다.";
-      return;
-    }
-  } else if (!result.token) {
+  if (!result?.token) {
     if (adminLockMessage) adminLockMessage.textContent = "확인 코드가 맞지 않습니다.";
     return;
   } else {
     setApiToken(result.token);
+    applyAdminPermissions(result.admin);
     await loadFromApi();
   }
 

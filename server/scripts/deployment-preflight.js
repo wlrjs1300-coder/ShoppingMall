@@ -18,6 +18,9 @@ for (const file of [
 ]) {
   if (!fs.existsSync(path.join(root, file))) errors.push(`Backup component is missing: ${file}`);
 }
+if (!fs.existsSync(path.join(root, "docs/admin-auth-operations.md"))) {
+  errors.push("Administrator authentication operations document is missing.");
+}
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "server/package.json"), "utf8"));
 if (packageJson.scripts?.["backup:create"] !== "node scripts/backup-database.js") {
   errors.push("backup:create must use the safe backup script.");

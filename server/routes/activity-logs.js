@@ -1,7 +1,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const db = require("../db");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -21,7 +21,7 @@ function rowToLog(row) {
 }
 
 // GET /api/activity-logs
-router.get("/", requireAuth, (req, res) => {
+router.get("/", requireAuth, requirePermission("activity_logs:read"), (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
   const rows = db.prepare("SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT ?").all(limit);
   res.json(rows.map(rowToLog));

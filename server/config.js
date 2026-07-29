@@ -88,7 +88,6 @@ function productionConfigErrors(env = process.env) {
 
   const errors = [];
   const required = [
-    "ADMIN_CODE",
     "JWT_SECRET",
     "AUTH_CODE_PEPPER",
     "ALLOWED_ORIGIN",
@@ -98,6 +97,11 @@ function productionConfigErrors(env = process.env) {
     "STORE_PHONE",
     "STORE_HOURS",
     "STORE_ADDRESS",
+    "ADMIN_JWT_ISSUER",
+    "ADMIN_JWT_AUDIENCE",
+    "ADMIN_TOKEN_TTL",
+    "ADMIN_LOGIN_RATE_MAX",
+    "ADMIN_LOGIN_RATE_WINDOW_MS",
   ];
   for (const key of required) {
     if (!isConfigured(env, key) || isPlaceholder(env[key])) errors.push(`${key}가 설정되지 않았거나 예제값입니다.`);
@@ -105,9 +109,17 @@ function productionConfigErrors(env = process.env) {
 
   if (isConfigured(env, "JWT_SECRET") && Buffer.byteLength(env.JWT_SECRET) < 32) errors.push("JWT_SECRET은 32바이트 이상이어야 합니다.");
   if (isConfigured(env, "AUTH_CODE_PEPPER") && Buffer.byteLength(env.AUTH_CODE_PEPPER) < 32) errors.push("AUTH_CODE_PEPPER는 32바이트 이상이어야 합니다.");
-  if (isConfigured(env, "ADMIN_CODE")
-    && (Buffer.byteLength(env.ADMIN_CODE) < 12 || DEMO_ADMIN_CODES.has(env.ADMIN_CODE))) {
-    errors.push("ADMIN_CODE는 공개된 데모 값이 아닌 12바이트 이상의 값이어야 합니다.");
+  if (valueOf(env, "ALLOW_LEGACY_ADMIN_LOGIN").toLowerCase() === "true") {
+    errors.push("운영 환경에서는 legacy ADMIN_CODE 로그인을 활성화할 수 없습니다.");
+  }
+  if (isConfigured(env, "ADMIN_CODE") && DEMO_ADMIN_CODES.has(env.ADMIN_CODE)) {
+    errors.push("운영 환경에는 기본·데모 ADMIN_CODE를 설정할 수 없습니다.");
+  }
+  if (isConfigured(env, "ADMIN_TOKEN_TTL") && !/^[1-9]\d*[mhd]$/.test(valueOf(env, "ADMIN_TOKEN_TTL"))) {
+    errors.push("ADMIN_TOKEN_TTL은 1h 같은 명시적 기간이어야 합니다.");
+  }
+  for (const key of ["ADMIN_LOGIN_RATE_MAX", "ADMIN_LOGIN_RATE_WINDOW_MS"]) {
+    if (isConfigured(env, key) && !/^[1-9]\d*$/.test(valueOf(env, key))) errors.push(`${key}는 양의 정수여야 합니다.`);
   }
 
   const publicBaseUrl = parseProductionUrl(valueOf(env, "PUBLIC_BASE_URL"));
@@ -228,6 +240,7 @@ function productionConfigErrors(env = process.env) {
 function productionConfigWarnings(env = process.env) {
   if (env.NODE_ENV !== "production") return [];
   const warnings = [];
+  warnings.push("최소 한 명의 활성 super_admin 준비와 정기적인 권한 회수 절차를 확인해야 합니다.");
   warnings.push("Confirm that production backup and restore drills are scheduled.");
   if (valueOf(env, "PAYMENT_MODE").toLowerCase() === "disabled") warnings.push("PAYMENT_MODE=disabled: 자체몰 Toss 결제가 비활성화되어 있습니다.");
   if (valueOf(env, "NOTIFICATION_MODE").toLowerCase() === "none") warnings.push("NOTIFICATION_MODE=none: 문자·알림톡이 비활성화되어 있습니다.");
