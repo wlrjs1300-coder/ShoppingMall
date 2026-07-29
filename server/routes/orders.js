@@ -154,12 +154,12 @@ function getOrderItems(orderId) {
 }
 
 
-function rowToOrder(row) {
+function rowToOrder(row, { includePaymentSummary = false } = {}) {
   const items = getOrderItems(row.id);
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
   const first = items[0];
   const productSummary = first ? `${first.productName}${items.length > 1 ? ` 외 ${items.length - 1}건` : ""}` : "상품 없음";
-  return {
+  const order = {
     id: row.id,
     checkoutId: row.id,
     userId: row.user_id,
@@ -192,6 +192,12 @@ function rowToOrder(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (includePaymentSummary) {
+    order.paymentInternalStatus = row.payment_internal_status || "NONE";
+    order.paymentLastError = row.payment_last_error || null;
+    order.paymentUpdatedAt = row.payment_updated_at || null;
+  }
+  return order;
 }
 
 function getOrder(orderId) {
@@ -276,7 +282,16 @@ function createOrder({ id, userId, customerData, products, requestedItems, memo,
 }
 
 router.get("/", requireAuth, (req, res) => {
-  res.json(db.prepare("SELECT * FROM orders ORDER BY created_at DESC").all().map(rowToOrder));
+  const rows = db.prepare(`
+    SELECT o.*,
+      p.status AS payment_internal_status,
+      p.last_error AS payment_last_error,
+      COALESCE(p.canceled_at, p.paid_at, p.requested_at) AS payment_updated_at
+    FROM orders o
+    LEFT JOIN payments p ON p.order_id = o.id
+    ORDER BY o.created_at DESC
+  `).all();
+  res.json(rows.map((row) => rowToOrder(row, { includePaymentSummary: true })));
 });
 
 router.get("/:id/history", requireAuth, (req, res) => {

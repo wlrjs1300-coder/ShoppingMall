@@ -18,8 +18,6 @@ function getAdminOrderStatusLabel(status = "접수대기") {
 }
 
 const selectedAdminOrderIds = new Set();
-const adminPaymentStates = new Map();
-const adminPaymentStateLoads = new Set();
 const adminPaymentReconciliations = new Set();
 
 const ADMIN_PAYMENT_ERROR_MESSAGES = {
@@ -44,30 +42,9 @@ function getAdminPaymentErrorMessage(reason, status = 0) {
 }
 
 function getAdminPaymentStatusLabel(order) {
-  return adminPaymentStates.get(order.id)?.status === "RECONCILE_REQUIRED"
+  return order.paymentInternalStatus === "RECONCILE_REQUIRED"
     ? "결제 확인 필요"
-    : (order.paymentStatus || (order.paymentKey ? "결제완료" : "결제대기"));
-}
-
-function hydrateAdminPaymentStates(orders) {
-  orders.forEach((order) => {
-    if (adminPaymentStates.has(order.id) || adminPaymentStateLoads.has(order.id)) return;
-    adminPaymentStateLoads.add(order.id);
-    apiFetch(`/payments/${encodeURIComponent(order.id)}`).then((payment) => {
-      if (!payment) {
-        adminPaymentStates.set(order.id, { status: "UNAVAILABLE", lastError: null, updatedAt: order.updatedAt });
-        return;
-      }
-      adminPaymentStates.set(order.id, payment.status !== "NONE"
-        ? { status: payment.status, lastError: payment.lastError || null, updatedAt: payment.canceledAt || payment.paidAt || payment.requestedAt || order.updatedAt }
-        : { status: "NONE", lastError: null, updatedAt: order.updatedAt });
-    }).catch(() => {
-      adminPaymentStates.set(order.id, { status: "UNAVAILABLE", lastError: null, updatedAt: order.updatedAt });
-    }).finally(() => {
-      adminPaymentStateLoads.delete(order.id);
-      renderAdminOrders();
-    });
-  });
+    : (order.paymentStatus || "결제대기");
 }
 
 function getAdminReconciliationSuccessMessage(result) {
@@ -102,17 +79,8 @@ async function reconcileAdminPayment(orderId, triggerButton) {
     reconciliationSucceeded = true;
     AppUI.toast(getAdminReconciliationSuccessMessage(result.data), "success");
     await loadFromApi();
-    adminPaymentStates.clear();
     const refreshedOrder = readOrders().find((order) => order.id === orderId);
-    const refreshedPayment = await apiFetch(`/payments/${encodeURIComponent(orderId)}`);
-    if (!refreshedOrder || !refreshedPayment) throw new Error("PAYMENT_REFRESH_UNAVAILABLE");
-    adminPaymentStates.set(orderId, refreshedPayment.status !== "NONE"
-      ? {
-        status: refreshedPayment.status,
-        lastError: refreshedPayment.lastError || null,
-        updatedAt: refreshedPayment.canceledAt || refreshedPayment.paidAt || refreshedPayment.requestedAt || refreshedOrder.updatedAt,
-      }
-      : { status: "NONE", lastError: null, updatedAt: refreshedOrder.updatedAt });
+    if (!refreshedOrder) throw new Error("ORDER_REFRESH_UNAVAILABLE");
     renderAdminDashboard();
     if (detailWasOpen) openAdminOrderDetail(orderId);
   } catch {
@@ -148,7 +116,6 @@ function renderAdminOrders() {
   if (!orderList) return;
 
   const orders = readOrders();
-  hydrateAdminPaymentStates(orders);
   const empty = document.querySelector(".admin-empty");
   const totalInfo = document.querySelector("[data-admin-total]");
   const tabCount = document.querySelector('[data-admin-tab-count="orders"]');
@@ -182,7 +149,7 @@ function renderAdminOrders() {
       const pickup = [order.pickupDate, order.pickupTime].filter(Boolean).join(" ");
       const fulfillment = getFulfillmentLabel(order.fulfillmentType);
       const paymentStatus = getAdminPaymentStatusLabel(order);
-      const needsReconciliation = adminPaymentStates.get(order.id)?.status === "RECONCILE_REQUIRED";
+      const needsReconciliation = order.paymentInternalStatus === "RECONCILE_REQUIRED";
       const amountText = order.amountStatus === "pending" ? "금액 미확정" : formatWon(Number(order.revenue || 0));
       const displayOrderNumber = getAdminOrderNumber(order);
       const statusClass = getAdminOrderStatusClass(order.status || "접수대기");
@@ -282,8 +249,7 @@ function openAdminOrderDetail(orderId) {
   const created = order.createdAt ? new Date(order.createdAt).toLocaleString("ko-KR") : "-";
   const pickup = [order.pickupDate, order.pickupTime].filter(Boolean).join(" ") || "미정";
   const fulfillment = getFulfillmentLabel(order.fulfillmentType);
-  const paymentState = adminPaymentStates.get(order.id);
-  const needsReconciliation = paymentState?.status === "RECONCILE_REQUIRED";
+  const needsReconciliation = order.paymentInternalStatus === "RECONCILE_REQUIRED";
   const paymentStatus = getAdminPaymentStatusLabel(order);
   const statusClass = getAdminOrderStatusClass(getUnifiedWorkflowStatus(order));
   const { revenue } = getAdminOrderMargin(order);
@@ -306,7 +272,7 @@ function openAdminOrderDetail(orderId) {
       <section><h3>배송 및 수령 정보</h3><dl><div><dt>진행 상태</dt><dd><span class="admin-order-status-pill ${statusClass}">${escapeHtml(getUnifiedWorkflowStatus(order))}</span></dd></div><div><dt>수령 방법</dt><dd><span class="admin-inline-view">${escapeHtml(fulfillment)}</span><select class="admin-inline-field" data-inline-fulfillment><option value="pickup" ${order.fulfillmentType !== "delivery" ? "selected" : ""}>매장 픽업</option><option value="delivery" ${order.fulfillmentType === "delivery" ? "selected" : ""}>배송</option></select></dd></div><div><dt>수령 일정</dt><dd><span class="admin-inline-view">${escapeHtml(pickup)}</span><span class="admin-inline-field admin-inline-date-time"><input data-inline-pickup-date type="date" value="${escapeHtml(order.pickupDate || "")}" /><input data-inline-pickup-time type="time" value="${escapeHtml(order.pickupTime || "")}" /></span></dd></div><div><dt>배송지</dt><dd><span class="admin-inline-view">${escapeHtml(order.deliveryAddress || (order.fulfillmentType === "delivery" ? "배송지 미입력" : "매장 방문 수령"))}</span><input class="admin-inline-field" data-inline-address value="${escapeHtml(order.deliveryAddress || "")}" /></dd></div></dl></section>
       ${isCancelled ? `<section class="is-wide admin-order-cancellation-section"><div class="admin-order-cancellation-summary"><div class="admin-order-cancellation-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg></div><div><span>ORDER CANCELLED</span><h3>주문 취소 사유</h3><small data-order-cancellation-meta>취소 처리 이력을 확인하고 있습니다.</small></div></div><div class="admin-order-cancellation-reason"><span>취소 사유</span><p data-order-cancellation-reason>${escapeHtml(savedCancellationReason || "취소 사유를 불러오는 중입니다.")}</p></div></section>` : ""}
       ${buildOrderFulfillmentJourney(order)}
-      <section class="is-wide admin-order-product-payment-section"><h3>주문 상품 및 결제</h3><div class="admin-order-item-lines">${orderItems.map((item, index) => `<div><strong><span class="admin-inline-view">${escapeHtml(item.productName || "상품")}</span>${index === 0 ? `<input class="admin-inline-field" data-inline-product value="${escapeHtml(item.productName || order.product || "")}" />` : ""}</strong><span><span class="admin-inline-view">${formatWon(Number(item.unitPrice || 0))} × ${Number(item.quantity || 0)}개</span>${index === 0 ? `<span class="admin-inline-field admin-inline-product-values"><label>단가<input data-inline-unit-price type="number" min="0" value="${Number(item.unitPrice || order.unitPrice || 0)}" /></label><label>수량<input data-inline-quantity type="number" min="1" max="99" value="${Number(item.quantity || order.quantity || 1)}" /></label></span>` : ""}</span><b>${formatWon(Number(item.lineTotal || 0))}</b></div>`).join("")}</div><div class="admin-order-combined-payment"><h4>결제 요약</h4><div class="admin-order-payment-layout"><dl class="admin-order-payment-meta"><div><dt>결제 상태</dt><dd>${escapeHtml(paymentStatus)}</dd></div>${needsReconciliation ? `<div><dt>최근 오류</dt><dd>결제사 응답 확인 필요</dd></div><div><dt>최근 갱신</dt><dd>${paymentState.updatedAt ? escapeHtml(new Date(paymentState.updatedAt).toLocaleString("ko-KR")) : "-"}</dd></div>` : ""}<div><dt>결제 수단</dt><dd data-order-payment-method>-</dd></div><div><dt>환불 금액</dt><dd data-order-refund-total>0원</dd></div></dl><dl class="admin-order-price-lines"><div><dt>상품금액</dt><dd>${formatWon(subtotal)}</dd></div><div><dt>배송비</dt><dd>${formatWon(deliveryFee)}</dd></div><div><dt>할인</dt><dd>-${formatWon(discount)}</dd></div><div><dt>최종 결제금액</dt><dd><strong>${formatWon(revenue)}</strong></dd></div></dl></div></div></section>
+      <section class="is-wide admin-order-product-payment-section"><h3>주문 상품 및 결제</h3><div class="admin-order-item-lines">${orderItems.map((item, index) => `<div><strong><span class="admin-inline-view">${escapeHtml(item.productName || "상품")}</span>${index === 0 ? `<input class="admin-inline-field" data-inline-product value="${escapeHtml(item.productName || order.product || "")}" />` : ""}</strong><span><span class="admin-inline-view">${formatWon(Number(item.unitPrice || 0))} × ${Number(item.quantity || 0)}개</span>${index === 0 ? `<span class="admin-inline-field admin-inline-product-values"><label>단가<input data-inline-unit-price type="number" min="0" value="${Number(item.unitPrice || order.unitPrice || 0)}" /></label><label>수량<input data-inline-quantity type="number" min="1" max="99" value="${Number(item.quantity || order.quantity || 1)}" /></label></span>` : ""}</span><b>${formatWon(Number(item.lineTotal || 0))}</b></div>`).join("")}</div><div class="admin-order-combined-payment"><h4>결제 요약</h4><div class="admin-order-payment-layout"><dl class="admin-order-payment-meta"><div><dt>결제 상태</dt><dd>${escapeHtml(paymentStatus)}</dd></div>${needsReconciliation ? `<div><dt>최근 오류</dt><dd>${escapeHtml(getAdminPaymentErrorMessage(order.paymentLastError))}</dd></div><div><dt>최근 갱신</dt><dd>${order.paymentUpdatedAt ? escapeHtml(new Date(order.paymentUpdatedAt).toLocaleString("ko-KR")) : "-"}</dd></div>` : ""}<div><dt>결제 수단</dt><dd>-</dd></div><div><dt>환불 금액</dt><dd>-</dd></div></dl><dl class="admin-order-price-lines"><div><dt>상품금액</dt><dd>${formatWon(subtotal)}</dd></div><div><dt>배송비</dt><dd>${formatWon(deliveryFee)}</dd></div><div><dt>할인</dt><dd>-${formatWon(discount)}</dd></div><div><dt>최종 결제금액</dt><dd><strong>${formatWon(revenue)}</strong></dd></div></dl></div></div></section>
       <section class="is-wide admin-order-request-section ${requestMemo ? "has-request" : "is-empty"}"><div class="admin-order-request-head"><h3>고객 요청사항</h3>${requestMemo ? `<span>확인 필요</span>` : ""}</div><div class="admin-order-request-note"><span class="admin-order-request-mark admin-inline-view" aria-hidden="true">“</span><p class="admin-order-detail-memo admin-inline-view">${escapeHtml(requestMemo || "별도로 전달된 요청사항이 없습니다.")}</p><textarea class="admin-inline-field" data-inline-memo rows="3">${escapeHtml(order.memo || "")}</textarea></div></section>
       <section class="is-wide"><h3>상태 변경 이력</h3><ol class="admin-order-history" data-order-history><li class="is-empty">이력을 불러오는 중입니다.</li></ol></section>
     </div>
@@ -348,17 +314,6 @@ function openAdminOrderDetail(orderId) {
       if (meta) meta.textContent = cancellation
         ? `${new Date(cancellation.createdAt).toLocaleString("ko-KR")} · ${cancellation.changedBy === "admin" ? "관리자 처리" : cancellation.changedBy === "system" ? "자동 처리" : cancellation.changedBy || "처리자 미확인"}`
         : "취소 처리 시점이 기록되지 않았습니다.";
-    }
-  });
-  apiFetch(`/payments/${encodeURIComponent(order.id)}`).then((payment) => {
-    if (!payment || payment.status === "NONE") return;
-    const method = content.querySelector("[data-order-payment-method]");
-    const refund = content.querySelector("[data-order-refund-total]");
-    if (method) method.textContent = payment.paymentMethod || "결제수단 미제공";
-    if (refund) refund.textContent = formatWon(Number(payment.canceledAmount || 0));
-    if (isCancelled && payment.cancelReason) {
-      const reason = content.querySelector("[data-order-cancellation-reason]");
-      if (reason && !savedCancellationReason) reason.textContent = payment.cancelReason;
     }
   });
 }
