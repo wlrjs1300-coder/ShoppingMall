@@ -20,6 +20,27 @@ const PRODUCTION_FORBIDDEN_KEYS = [
   "PASSWORD_RESET_TEST_TOKEN",
   "ALLOW_PORTFOLIO_SEED",
 ];
+const MINIMUM_NODE_VERSION = "22.16.0";
+
+function parseNodeVersion(version) {
+  const match = String(version || "").trim().match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  return match ? match.slice(1).map(Number) : null;
+}
+
+function nodeVersionError(version, minimum = MINIMUM_NODE_VERSION) {
+  const current = parseNodeVersion(version);
+  const required = parseNodeVersion(minimum);
+  if (!current || !required) {
+    return `Node.js ${minimum} 이상이 필요합니다. 현재 버전: ${String(version || "알 수 없음")}`;
+  }
+  for (let index = 0; index < required.length; index += 1) {
+    if (current[index] > required[index]) return null;
+    if (current[index] < required[index]) {
+      return `Node.js ${minimum} 이상이 필요합니다. 현재 버전: ${String(version).replace(/^v/, "")}`;
+    }
+  }
+  return null;
+}
 
 function valueOf(env, key) {
   return typeof env[key] === "string" ? env[key].trim() : "";
@@ -109,6 +130,26 @@ function productionConfigErrors(env = process.env) {
     errors.push("DB_PATH는 영구 볼륨의 절대경로여야 합니다.");
   }
 
+  const repositoryRoot = path.resolve(__dirname, "..");
+  const backupDir = valueOf(env, "BACKUP_DIR");
+  if (!backupDir) {
+    errors.push("BACKUP_DIR is required in production.");
+  } else if (!path.isAbsolute(backupDir)) {
+    errors.push("BACKUP_DIR must be an absolute path.");
+  } else {
+    const relative = path.relative(repositoryRoot, path.resolve(backupDir));
+    if (relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))) {
+      errors.push("BACKUP_DIR must be outside the Git repository.");
+    }
+    if (isConfigured(env, "DB_PATH") && path.resolve(backupDir) === path.dirname(path.resolve(env.DB_PATH))) {
+      errors.push("BACKUP_DIR must not be the database directory.");
+    }
+  }
+  for (const [key, fallback] of [["BACKUP_RETENTION_DAYS", "30"], ["BACKUP_MAX_FILES", "30"]]) {
+    const value = valueOf(env, key) || fallback;
+    if (!/^[1-9]\d*$/.test(value)) errors.push(`${key} must be a positive integer.`);
+  }
+
   const normalizedPhone = valueOf(env, "STORE_PHONE").replace(/\D/g, "");
   if (isConfigured(env, "STORE_PHONE")
     && (STORE_PHONE_PLACEHOLDER_RE.test(valueOf(env, "STORE_PHONE")) || normalizedPhone.length < 9)) {
@@ -187,6 +228,7 @@ function productionConfigErrors(env = process.env) {
 function productionConfigWarnings(env = process.env) {
   if (env.NODE_ENV !== "production") return [];
   const warnings = [];
+  warnings.push("Confirm that production backup and restore drills are scheduled.");
   if (valueOf(env, "PAYMENT_MODE").toLowerCase() === "disabled") warnings.push("PAYMENT_MODE=disabled: 자체몰 Toss 결제가 비활성화되어 있습니다.");
   if (valueOf(env, "NOTIFICATION_MODE").toLowerCase() === "none") warnings.push("NOTIFICATION_MODE=none: 문자·알림톡이 비활성화되어 있습니다.");
   if (valueOf(env, "EMAIL_MODE").toLowerCase() === "disabled") warnings.push("EMAIL_MODE=disabled: 비밀번호 재설정 이메일이 비활성화되어 있습니다.");
@@ -203,4 +245,10 @@ function assertProductionConfig(env = process.env) {
   if (errors.length) throw new Error(`[환경설정] 서버 시작 중단\n- ${errors.join("\n- ")}`);
 }
 
-module.exports = { assertProductionConfig, productionConfigErrors, productionConfigWarnings };
+module.exports = {
+  MINIMUM_NODE_VERSION,
+  nodeVersionError,
+  assertProductionConfig,
+  productionConfigErrors,
+  productionConfigWarnings,
+};
