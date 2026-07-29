@@ -208,6 +208,22 @@ async function reconcilePayment(orderId, actor) {
 
   pay = paymentContext(orderId);
   try {
+    if (["CANCELED", "PARTIAL_CANCELED"].includes(verified.data.status) && Array.isArray(verified.data.cancels)) {
+      const result = cancelTransaction(
+        pay,
+        verified.data,
+        new Date().toISOString(),
+        pay.cancel_reason || "Provider cancellation reconciliation",
+        actor
+      );
+      return {
+        status: 200,
+        reconciled: !result.alreadyApplied,
+        alreadyDone: result.alreadyApplied,
+        paymentStatus: result.isFull ? "CANCELED" : "PARTIAL_CANCELED",
+        orderPaymentStatus: result.isFull ? "결제취소" : "부분환불",
+      };
+    }
     validateVerifiedPayment(pay, verified.data);
     const result = completeTransaction(pay, verified.data, new Date().toISOString(), actor);
     return {
@@ -231,17 +247,44 @@ async function reconcilePayment(orderId, actor) {
   }
 }
 
-function cancelTransaction(pay, now, cancelAmount = pay.amount, reason = "일반 취소", actor = "system") {
-  return inTransaction(() => {
-    const accumulated = Math.min(pay.amount, Number(pay.canceled_amount || 0) + cancelAmount);
-    const isFull = accumulated >= pay.amount;
-    db.prepare(
-      "UPDATE payments SET status=?, canceled_amount=?, cancel_reason=?, canceled_at=?, last_error=NULL WHERE order_id=?"
-    ).run(isFull ? "CANCELED" : "PARTIAL_CANCELED", accumulated, reason, now, pay.order_id);
+function providerCancellation(result, expectedPayment) {
+  if (!result || !["CANCELED", "PARTIAL_CANCELED"].includes(result.status)) {
+    throw reconciliationError("PROVIDER_CANCEL_STATUS_MISMATCH");
+  }
+  const total = Number(result.totalAmount);
+  const cancels = Array.isArray(result.cancels) ? result.cancels : [];
+  const canceled = cancels.reduce((sum, item) => sum + Number(item?.cancelAmount), 0);
+  if (!Number.isSafeInteger(total) || total !== Number(expectedPayment.amount)
+    || cancels.some((item) => !Number.isSafeInteger(Number(item?.cancelAmount)) || Number(item.cancelAmount) <= 0)
+    || !Number.isSafeInteger(canceled) || canceled < 0 || canceled > total
+    || (result.balanceAmount !== undefined && Number(result.balanceAmount) !== total - canceled)
+    || (result.status === "CANCELED" && canceled !== total)
+    || (result.status === "PARTIAL_CANCELED" && (canceled <= 0 || canceled >= total))) {
+    throw reconciliationError("PROVIDER_CANCEL_AMOUNT_MISMATCH");
+  }
+  return { canceled, isFull: result.status === "CANCELED" };
+}
 
-    db.prepare(
+function cancelTransaction(pay, providerResult, now, reason = "일반 취소", actor = "system") {
+  return inTransaction(() => {
+    const current = paymentContext(pay.order_id);
+    const { canceled: accumulated, isFull } = providerCancellation(providerResult, current);
+    const previousAmount = Number(current.canceled_amount || 0);
+    if (accumulated < previousAmount) throw reconciliationError("PROVIDER_CANCEL_AMOUNT_REGRESSION");
+    if (current.status === (isFull ? "CANCELED" : "PARTIAL_CANCELED") && accumulated === previousAmount) {
+      return { alreadyApplied: true, canceledAmount: accumulated, isFull };
+    }
+    const updated = db.prepare(
+      `UPDATE payments SET status=?, canceled_amount=?, cancel_reason=?, canceled_at=?,
+       last_error=NULL, cancel_idempotency_key=NULL
+       WHERE order_id=? AND status IN ('CANCELING','DONE','PARTIAL_CANCELED','RECONCILE_REQUIRED')`
+    ).run(isFull ? "CANCELED" : "PARTIAL_CANCELED", accumulated, reason, now, pay.order_id);
+    if (updated.changes !== 1) throw reconciliationError("CONCURRENT_STATE_CHANGE");
+
+    const orderUpdated = db.prepare(
       "UPDATE orders SET payment_status=?, workflow_status=CASE WHEN ? THEN '취소' ELSE workflow_status END, updated_at=? WHERE id=?"
     ).run(isFull ? "결제취소" : "부분환불", isFull ? 1 : 0, now, pay.order_id);
+    if (orderUpdated.changes !== 1) throw reconciliationError("ORDER_STATE_CONFLICT");
 
     db.prepare(
       `INSERT INTO activity_logs
@@ -249,14 +292,37 @@ function cancelTransaction(pay, now, cancelAmount = pay.amount, reason = "일반
       VALUES (?, 'PAYMENT', ?, 'logs', 'payment_status_change', ?, ?, ?, ?, ?)`
     ).run(
       `activity-${uuid()}`,
-      `${pay.order_id} CANCELLED: ${accumulated.toLocaleString("ko-KR")} reason: ${reason}`,
+      `${pay.order_id} cancellation ${current.status}->${isFull ? "CANCELED" : "PARTIAL_CANCELED"}; `
+        + `canceledAmount ${previousAmount}->${accumulated}; scope=${isFull ? "full" : "partial"}; reason=${reason}`,
       pay.order_id,
-      "결제완료",
+      current.order_payment_status,
       isFull ? "결제취소" : "부분환불",
       actor,
       now
     );
+    return { alreadyApplied: false, canceledAmount: accumulated, isFull };
   });
+}
+
+function markCancelReconciliationRequired(orderId, reason, actor) {
+  const now = new Date().toISOString();
+  try {
+    inTransaction(() => {
+      const current = paymentContext(orderId);
+      if (!current) return;
+      const updated = db.prepare(
+        `UPDATE payments SET status='RECONCILE_REQUIRED', last_error=?, retry_count=retry_count+1
+         WHERE order_id=? AND status='CANCELING'`
+      ).run(reason, orderId);
+      if (updated.changes) writeReconciliationLog({
+        orderId, previousStatus: current.status, nextValue: "RECONCILE_REQUIRED", actor,
+        action: "payment_reconciliation_required",
+        message: `${orderId} cancellation requires provider reconciliation: ${reason}`, now,
+      });
+    });
+  } catch {
+    // Preserve the provider-success ambiguity for a later provider lookup.
+  }
 }
 
 router.get("/config", (req, res) => {
@@ -425,8 +491,13 @@ router.post("/webhook", async (req, res) => {
         return res.status(500).json({ error: "결제 상태 반영에 실패했습니다." });
       }
     }
-  } else if (["CANCELED", "PARTIAL_CANCELED"].includes(status) && pay.status !== "CANCELED") {
-    cancelTransaction(pay, new Date().toISOString(), pay.canceled_amount || pay.amount, "Payment was canceled by Toss webhook", getPaymentActor(req, "toss-webhook"));
+  } else if (["CANCELED", "PARTIAL_CANCELED"].includes(status)) {
+    try {
+      cancelTransaction(pay, verified.data, new Date().toISOString(), "Payment was canceled by Toss webhook", getPaymentActor(req, "toss-webhook"));
+    } catch {
+      markCancelReconciliationRequired(pay.order_id, "WEBHOOK_CANCEL_RECONCILIATION_FAILED", getPaymentActor(req, "toss-webhook"));
+      return res.status(500).json({ error: "결제 취소 상태 반영에 실패했습니다." });
+    }
   }
 
   return res.sendStatus(200);
@@ -470,10 +541,12 @@ router.get("/:orderId", requireAuth, (req, res) => {
 });
 
 router.post("/:orderId/cancel", requireAuth, async (req, res) => {
-  const pay = db.prepare("SELECT * FROM payments WHERE order_id=?").get(req.params.orderId);
+  let pay = db.prepare("SELECT * FROM payments WHERE order_id=?").get(req.params.orderId);
   if (!pay) return res.status(404).json({ error: "결제 정보를 찾을 수 없습니다." });
   if (pay.status === "CANCELED") return res.json({ ok: true, alreadyCanceled: true });
-  if (pay.status === "CONFIRMING") return res.status(409).json({ error: "확인 중인 결제를 취소할 수 없습니다." });
+  if (["CONFIRMING", "RECONCILE_REQUIRED", "CANCELING"].includes(pay.status)) {
+    return res.status(409).json({ error: "현재 결제 상태에서는 취소할 수 없습니다." });
+  }
 
   const reason = String(req.body.cancelReason || "관리자 요청").trim().slice(0, 200);
   const remaining = pay.amount - Number(pay.canceled_amount || 0);
@@ -481,14 +554,46 @@ router.post("/:orderId/cancel", requireAuth, async (req, res) => {
   if (!Number.isInteger(cancelAmount) || cancelAmount <= 0 || cancelAmount > remaining) return res.status(400).json({ error: "취소 금액이 올바르지 않습니다." });
 
   if (["DONE", "PARTIAL_CANCELED"].includes(pay.status)) {
-    const idempotencyKey = uuid();
-    db.prepare("UPDATE payments SET cancel_idempotency_key=? WHERE order_id=?").run(idempotencyKey, pay.order_id);
-    const result = await toss.cancelPayment({ paymentKey: pay.payment_key, cancelReason: reason, cancelAmount, idempotencyKey });
-    if (result.status !== 200) return res.status(result.status || 502).json({ error: result.data?.message || "결제 취소 요청이 실패했습니다." });
+    const previousStatus = pay.status;
+    const idempotencyKey = pay.cancel_idempotency_key || uuid();
+    const locked = db.prepare(
+      `UPDATE payments SET status='CANCELING', cancel_idempotency_key=?, last_error=NULL
+       WHERE order_id=? AND status IN ('DONE','PARTIAL_CANCELED')`
+    ).run(idempotencyKey, pay.order_id);
+    if (locked.changes !== 1) return res.status(409).json({ error: "다른 취소 요청이 처리 중입니다." });
+    let result;
+    try {
+      result = await toss.cancelPayment({ paymentKey: pay.payment_key, cancelReason: reason, cancelAmount, idempotencyKey });
+    } catch (error) {
+      const failure = error?.code === "ETIMEDOUT" ? "CANCEL_TIMEOUT" : "CANCEL_NETWORK_ERROR";
+      markCancelReconciliationRequired(pay.order_id, failure, getPaymentActor(req, "admin"));
+      return res.status(502).json({ error: "결제 취소 결과를 확인하지 못했습니다.", reconcileRequired: true });
+    }
+    if (result.status !== 200) {
+      if (result.status >= 500) {
+        markCancelReconciliationRequired(pay.order_id, "CANCEL_PROVIDER_UNAVAILABLE", getPaymentActor(req, "admin"));
+        return res.status(502).json({ error: "결제 취소 결과를 확인하지 못했습니다.", reconcileRequired: true });
+      }
+      db.prepare(
+        `UPDATE payments SET status=?, last_error=?, cancel_idempotency_key=NULL
+         WHERE order_id=? AND status='CANCELING'`
+      ).run(previousStatus, "CANCEL_PROVIDER_REJECTED", pay.order_id);
+      return res.status(result.status || 502).json({ error: result.data?.message || "결제 취소 요청이 실패했습니다." });
+    }
+    pay = paymentContext(pay.order_id);
+    try {
+      const applied = cancelTransaction(pay, result.data, new Date().toISOString(), reason, getPaymentActor(req, "admin"));
+      return res.json({
+        ok: true,
+        canceledAmount: applied.canceledAmount,
+        remainingAmount: pay.amount - applied.canceledAmount,
+      });
+    } catch {
+      markCancelReconciliationRequired(pay.order_id, "CANCEL_POST_PROVIDER_RECONCILIATION_REQUIRED", getPaymentActor(req, "admin"));
+      return res.status(502).json({ error: "취소 결과를 최종 반영하지 못했습니다.", reconcileRequired: true });
+    }
   }
-
-  cancelTransaction(pay, new Date().toISOString(), cancelAmount, reason, getPaymentActor(req, "admin"));
-  res.json({ ok: true, canceledAmount: Number(pay.canceled_amount || 0) + cancelAmount, remainingAmount: remaining - cancelAmount });
+  return res.status(409).json({ error: "현재 결제 상태에서는 취소할 수 없습니다." });
 });
 
 module.exports = router;

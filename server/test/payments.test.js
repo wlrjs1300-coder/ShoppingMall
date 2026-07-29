@@ -423,3 +423,171 @@ test("재조정 오류 응답과 감사 로그에 paymentKey나 provider secret�
     assert.doesNotMatch(log.message, new RegExp(`provider-secret-${sample.order.id}`));
   }
 });
+
+test("concurrent admin cancellations acquire one CANCELING lock and call Toss once", async () => {
+  const sample = await createReconciliationCase("DONE");
+  db.prepare("UPDATE orders SET payment_status='결제완료' WHERE id=?").run(sample.order.id);
+  const originalCancel = toss.cancelPayment;
+  let calls = 0;
+  toss.cancelPayment = async (options) => {
+    calls += 1;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    return originalCancel(options);
+  };
+  try {
+    const requests = [1, 2].map(() => request(app)
+      .post(`/api/payments/${sample.order.id}/cancel`)
+      .set("Authorization", `Bearer ${sample.token}`)
+      .send({ cancelAmount: 1000, cancelReason: "concurrency test" }));
+    const responses = await Promise.all(requests);
+    assert.deepEqual(responses.map((response) => response.status).sort(), [200, 409]);
+    assert.equal(calls, 1);
+    const payment = db.prepare("SELECT status, canceled_amount FROM payments WHERE order_id=?").get(sample.order.id);
+    assert.equal(payment.status, "PARTIAL_CANCELED");
+    assert.equal(payment.canceled_amount, 1000);
+  } finally {
+    toss.cancelPayment = originalCancel;
+  }
+});
+
+test("Toss cancels history is authoritative and repeated webhooks are idempotent", async () => {
+  const sample = await createReconciliationCase("DONE");
+  db.prepare("UPDATE orders SET payment_status='결제완료' WHERE id=?").run(sample.order.id);
+  const first = await request(app).post(`/api/payments/${sample.order.id}/cancel`)
+    .set("Authorization", `Bearer ${sample.token}`).send({ cancelAmount: 1000, cancelReason: "first" });
+  assert.equal(first.status, 200);
+  const second = await request(app).post(`/api/payments/${sample.order.id}/cancel`)
+    .set("Authorization", `Bearer ${sample.token}`).send({ cancelAmount: 2000, cancelReason: "second" });
+  assert.equal(second.status, 200);
+  assert.equal(second.body.canceledAmount, 3000);
+
+  const beforeLogs = db.prepare(
+    "SELECT COUNT(*) AS count FROM activity_logs WHERE entity_id=? AND action='payment_status_change'"
+  ).get(sample.order.id).count;
+  for (let index = 0; index < 2; index += 1) {
+    const webhook = await request(app).post("/api/payments/webhook").send({ data: { paymentKey: sample.paymentKey } });
+    assert.equal(webhook.status, 200);
+  }
+  const stored = db.prepare("SELECT canceled_amount FROM payments WHERE order_id=?").get(sample.order.id);
+  assert.equal(stored.canceled_amount, 3000);
+  assert.equal(db.prepare(
+    "SELECT COUNT(*) AS count FROM activity_logs WHERE entity_id=? AND action='payment_status_change'"
+  ).get(sample.order.id).count, beforeLogs);
+});
+
+test("provider cancellation success followed by DB failure remains reconcilable", async () => {
+  const sample = await createReconciliationCase("DONE");
+  db.prepare("UPDATE orders SET payment_status='결제완료' WHERE id=?").run(sample.order.id);
+  db.exec(`CREATE TEMP TRIGGER fail_cancel_log
+    BEFORE INSERT ON activity_logs
+    WHEN NEW.action = 'payment_status_change'
+    BEGIN SELECT RAISE(ABORT, 'forced cancellation failure'); END;`);
+  try {
+    const response = await request(app).post(`/api/payments/${sample.order.id}/cancel`)
+      .set("Authorization", `Bearer ${sample.token}`).send({ cancelAmount: 1000 });
+    assert.equal(response.status, 502);
+    assert.equal(response.body.reconcileRequired, true);
+    const payment = db.prepare(
+      "SELECT status, canceled_amount, last_error, cancel_idempotency_key FROM payments WHERE order_id=?"
+    ).get(sample.order.id);
+    assert.equal(payment.status, "RECONCILE_REQUIRED");
+    assert.equal(payment.canceled_amount, 0);
+    assert.equal(payment.last_error, "CANCEL_POST_PROVIDER_RECONCILIATION_REQUIRED");
+    assert.ok(payment.cancel_idempotency_key);
+  } finally {
+    db.exec("DROP TRIGGER fail_cancel_log");
+  }
+  const webhook = await request(app).post("/api/payments/webhook").send({ data: { paymentKey: sample.paymentKey } });
+  assert.equal(webhook.status, 200);
+  assert.equal(db.prepare("SELECT status FROM payments WHERE order_id=?").get(sample.order.id).status, "PARTIAL_CANCELED");
+});
+
+test("explicit Toss 4xx rejection restores state, clears the key, and a retry gets a new key", async () => {
+  const originalCancel = toss.cancelPayment;
+  try {
+    for (const previousStatus of ["DONE", "PARTIAL_CANCELED"]) {
+      const sample = await createReconciliationCase("DONE");
+      const previousCanceled = previousStatus === "PARTIAL_CANCELED" ? 1000 : 0;
+      db.prepare("UPDATE payments SET status=?, canceled_amount=? WHERE order_id=?")
+        .run(previousStatus, previousCanceled, sample.order.id);
+      db.prepare("UPDATE orders SET payment_status=? WHERE id=?")
+        .run(previousStatus === "DONE" ? "결제완료" : "부분환불", sample.order.id);
+
+      const keys = [];
+      toss.cancelPayment = async ({ idempotencyKey }) => {
+        keys.push(idempotencyKey);
+        if (keys.length === 1) {
+          return { status: 400, data: { code: "REJECTED", message: "explicit rejection" } };
+        }
+        return {
+          status: 200,
+          data: {
+            paymentKey: sample.paymentKey,
+            orderId: sample.order.id,
+            totalAmount: sample.order.totalAmount,
+            status: "PARTIAL_CANCELED",
+            balanceAmount: sample.order.totalAmount - previousCanceled - 1000,
+            cancels: [
+              ...(previousCanceled ? [{ cancelAmount: previousCanceled }] : []),
+              { cancelAmount: 1000 },
+            ],
+          },
+        };
+      };
+
+      const rejected = await request(app).post(`/api/payments/${sample.order.id}/cancel`)
+        .set("Authorization", `Bearer ${sample.token}`).send({ cancelAmount: 1000 });
+      assert.equal(rejected.status, 400);
+      assert.doesNotMatch(JSON.stringify(rejected.body), new RegExp(keys[0]));
+      let stored = db.prepare(
+        "SELECT status, last_error, cancel_idempotency_key FROM payments WHERE order_id=?"
+      ).get(sample.order.id);
+      assert.equal(stored.status, previousStatus);
+      assert.equal(stored.last_error, "CANCEL_PROVIDER_REJECTED");
+      assert.equal(stored.cancel_idempotency_key, null);
+
+      const retried = await request(app).post(`/api/payments/${sample.order.id}/cancel`)
+        .set("Authorization", `Bearer ${sample.token}`).send({ cancelAmount: 1000 });
+      assert.equal(retried.status, 200);
+      assert.equal(keys.length, 2);
+      assert.notEqual(keys[0], keys[1]);
+      const logs = db.prepare("SELECT message FROM activity_logs WHERE entity_id=?").all(sample.order.id);
+      assert.equal(logs.some((log) => log.message.includes(keys[0]) || log.message.includes(keys[1])), false);
+    }
+  } finally {
+    toss.cancelPayment = originalCancel;
+  }
+});
+
+test("mock cancellation rejects invalid amounts without mutating provider data", async () => {
+  const paymentKey = `mock-validation-${Date.now()}`;
+  const initial = {
+    paymentKey,
+    orderId: "mock-order",
+    totalAmount: 10000,
+    status: "PARTIAL_CANCELED",
+    balanceAmount: 8000,
+    cancels: [{ cancelAmount: 2000, cancelReason: "existing" }],
+  };
+  toss.mockPayments.set(paymentKey, structuredClone(initial));
+
+  for (const invalid of [8001, 0, -1, 1.5, Number.NaN]) {
+    const before = structuredClone(toss.mockPayments.get(paymentKey));
+    const result = await toss.cancelPayment({ paymentKey, cancelReason: "invalid", cancelAmount: invalid });
+    assert.equal(result.status, 400);
+    assert.equal(result.data.code, "INVALID_CANCEL_AMOUNT");
+    assert.deepEqual(toss.mockPayments.get(paymentKey), before);
+  }
+
+  const partial = await toss.cancelPayment({ paymentKey, cancelReason: "partial", cancelAmount: 3000 });
+  assert.equal(partial.status, 200);
+  assert.equal(partial.data.status, "PARTIAL_CANCELED");
+  assert.equal(partial.data.balanceAmount, 5000);
+  assert.equal(partial.data.cancels.reduce((sum, item) => sum + item.cancelAmount, 0), 5000);
+
+  const full = await toss.cancelPayment({ paymentKey, cancelReason: "full" });
+  assert.equal(full.status, 200);
+  assert.equal(full.data.status, "CANCELED");
+  assert.equal(full.data.balanceAmount, 0);
+  assert.equal(full.data.cancels.reduce((sum, item) => sum + item.cancelAmount, 0), 10000);
+});
