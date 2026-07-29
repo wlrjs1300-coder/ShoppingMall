@@ -4040,3 +4040,34 @@ body.admin-page .admin-main {
   }
 
 }
+.admin-payment-reconcile-badge {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: .28rem .55rem;
+  border-radius: 999px;
+  background: #fff4d8;
+  color: #765315;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.admin-payment-reconcile-button {
+  min-height: 2.25rem;
+  border: 1px solid #c99d55;
+  border-radius: .55rem;
+  background: #fffaf0;
+  color: #604314;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-payment-reconcile-button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.admin-payment-status-label {
+  color: var(--muted, #746b6d);
+  font-size: .78rem;
+}
