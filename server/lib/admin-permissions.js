@@ -4,6 +4,7 @@ const ALL_PERMISSIONS = [
   "purchase_orders:read", "purchase_orders:write",
   "payments:read", "payments:reconcile", "payments:cancel",
   "activity_logs:read", "admin_users:manage", "backup:operate",
+  "sales_channels:read", "sales_channels:manage",
 ];
 
 const ROLE_PERMISSIONS = {
@@ -13,14 +14,17 @@ const ROLE_PERMISSIONS = {
     "inventory:read", "inventory:write",
     "purchase_orders:read", "purchase_orders:write",
     "payments:read", "activity_logs:read",
+    "sales_channels:read",
   ],
   finance: [
     "orders:read", "payments:read", "payments:reconcile",
     "payments:cancel", "activity_logs:read",
+    "sales_channels:read",
   ],
   viewer: [
     "orders:read", "inventory:read", "purchase_orders:read",
     "payments:read", "activity_logs:read",
+    "sales_channels:read",
   ],
 };
 
