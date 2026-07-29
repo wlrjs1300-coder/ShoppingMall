@@ -51,8 +51,29 @@ async function cancelPayment({ paymentKey, cancelReason, cancelAmount, idempoten
   if (process.env.TOSS_MOCK_MODE === "true") {
     const current = mockPayments.get(paymentKey);
     if (!current) return { status: 404, data: { code: "NOT_FOUND" } };
-    const partial = Number(cancelAmount) > 0 && Number(cancelAmount) < Number(current.totalAmount);
-    const data = { ...current, status: partial ? "PARTIAL_CANCELED" : "CANCELED", cancels: [{ cancelReason, cancelAmount: cancelAmount || current.totalAmount }] };
+    const invalidAmount = () => ({
+      status: 400,
+      data: { code: "INVALID_CANCEL_AMOUNT", message: "취소 금액이 올바르지 않습니다." },
+    });
+    const totalAmount = Number(current.totalAmount);
+    const previousCancels = Array.isArray(current.cancels) ? current.cancels : [];
+    const previousAmounts = previousCancels.map((item) => Number(item?.cancelAmount));
+    if (!Number.isSafeInteger(totalAmount) || totalAmount <= 0
+      || previousAmounts.some((amount) => !Number.isSafeInteger(amount) || amount <= 0)) {
+      return invalidAmount();
+    }
+    const alreadyCanceled = previousAmounts.reduce((sum, amount) => sum + amount, 0);
+    if (!Number.isSafeInteger(alreadyCanceled) || alreadyCanceled > totalAmount) return invalidAmount();
+    const remaining = totalAmount - alreadyCanceled;
+    const requested = cancelAmount === undefined ? remaining : Number(cancelAmount);
+    if (!Number.isSafeInteger(requested) || requested <= 0 || requested > remaining) return invalidAmount();
+    const canceledAmount = alreadyCanceled + requested;
+    const data = {
+      ...current,
+      status: canceledAmount === totalAmount ? "CANCELED" : "PARTIAL_CANCELED",
+      balanceAmount: totalAmount - canceledAmount,
+      cancels: [...previousCancels, { cancelReason, cancelAmount: requested }],
+    };
     mockPayments.set(paymentKey, data);
     return { status: 200, data };
   }
