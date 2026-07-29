@@ -92,14 +92,7 @@ document.querySelector(".admin-order-list")?.addEventListener("click", async (ev
     if (row) openAdminOrderDetail(row.dataset.orderId);
     return;
   }
-  const row = deleteButton.closest("tr[data-order-id]");
-  const orders = readOrders();
-  const target = orders.find((order) => order.id === row.dataset.orderId);
-  if (!await AppUI.confirm(`${target?.customer || "고객"}님의 ${target?.product || "주문"}을 삭제할까요? 삭제 후 복구할 수 없습니다.`)) return;
-  writeOrders(orders.filter((order) => order.id !== row.dataset.orderId));
-  addActivityLog("주문", `${target?.product || "주문"}을 삭제했습니다.`, "orders");
-  renderAdminDashboard();
-  setAdminFeedback("주문 1건을 삭제했습니다.");
+  AppUI.alert("운영 주문은 결제 및 상태 이력 보호를 위해 삭제할 수 없습니다.");
 });
 
 document.querySelector(".admin-order-list")?.addEventListener("keydown", (event) => {
@@ -225,12 +218,7 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
     return;
   }
   if (action === "delete") {
-    if (!await AppUI.confirm(`${order.customer || "고객"}님의 ${order.product || "주문"}을 삭제할까요? 삭제 후 복구할 수 없습니다.`)) return;
-    writeOrders(readOrders().filter((current) => current.id !== orderId));
-    addActivityLog("주문", `${order.product || "주문"}을 삭제했습니다.`, "orders");
-    closeAdminOrderDetail();
-    renderAdminDashboard();
-    setAdminFeedback("주문 1건을 삭제했습니다.");
+    AppUI.alert("운영 주문은 결제 및 상태 이력 보호를 위해 삭제할 수 없습니다.");
   }
 });
 
@@ -861,10 +849,24 @@ document.querySelector(".admin-purchase-order-list")?.addEventListener("click", 
   const button = event.target.closest(".admin-purchase-delete");
   if (!button) return;
   const row = button.closest("tr[data-purchase-order-id]");
-  if (!row || !await AppUI.confirm("이 발주 기록을 삭제할까요?")) return;
-  writePurchaseOrders(readPurchaseOrders().filter((order) => order.id !== row.dataset.purchaseOrderId));
+  const purchase = readPurchaseOrders().find((order) => order.id === row?.dataset.purchaseOrderId);
+  if (!row || !purchase) return;
+  if (purchase.receivedAt || !["발주요청", "초안", "DRAFT"].includes(purchase.status)) {
+    return AppUI.alert("확정 또는 입고 처리된 발주는 삭제할 수 없습니다.");
+  }
+  if (!await AppUI.confirm(
+    "이 초기 발주 요청을 영구 삭제하시겠습니까? 입고 또는 정산된 발주는 삭제할 수 없습니다.",
+    { title: "초기 발주 삭제", confirmText: "발주 삭제", tone: "danger" }
+  )) return;
+  button.disabled = true;
+  const result = await apiFetchResult(`/purchase-orders/${encodeURIComponent(purchase.id)}`, { method: "DELETE" });
+  button.disabled = false;
+  if (!result.ok) return AppUI.alert(result.data?.reason === "PURCHASE_ORDER_LOCKED"
+    ? "확정 또는 입고 처리된 발주는 삭제할 수 없습니다."
+    : "발주 기록을 삭제하지 못했습니다.");
+  await loadFromApi();
   renderAdminDashboard();
-  setAdminFeedback("발주 기록을 삭제했습니다.");
+  setAdminFeedback("이력이 없는 초기 발주 요청을 삭제했습니다.");
 });
 
 document.querySelector(".admin-recipe-list")?.addEventListener("click", async (event) => {

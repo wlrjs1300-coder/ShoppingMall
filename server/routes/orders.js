@@ -675,16 +675,81 @@ router.put("/:id", requireAuth, (req, res) => {
   res.json(updated);
 });
 
+function recordBlockedOrderDeleteSafely({ entityId, previousValue, reason, actor, message }) {
+  try {
+    addAuditLog({
+      category: "SECURITY", action: "destructive_action_blocked", entityId,
+      previousValue, nextValue: reason, actor, createdAt: new Date().toISOString(), message,
+    });
+  } catch {
+    // The destructive action remains blocked even when its audit record cannot be written.
+  }
+}
+
 router.delete("/:id", requireAuth, (req, res) => {
-  const existing = db.prepare("SELECT id FROM orders WHERE id = ?").get(req.params.id);
-  if (!existing) return res.status(404).json({ error: "주문을 찾을 수 없습니다." });
-  db.prepare("DELETE FROM orders WHERE id = ?").run(req.params.id);
-  res.json({ ok: true });
+  const actor = getActorLabel(req);
+  const now = new Date().toISOString();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const current = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id);
+    if (!current) {
+      db.exec("ROLLBACK");
+      return res.status(404).json({ error: "주문을 찾을 수 없습니다.", reason: "NOT_FOUND" });
+    }
+    const payment = db.prepare("SELECT status FROM payments WHERE order_id=?").get(current.id);
+    const historyCount = db.prepare("SELECT COUNT(*) AS count FROM order_status_history WHERE order_id=?").get(current.id).count;
+    const productionCount = db.prepare("SELECT COUNT(*) AS count FROM production_completions WHERE order_id=?").get(current.id).count;
+    let reason = null;
+    let message = null;
+    if (payment) {
+      reason = "PAYMENT_HISTORY_EXISTS";
+      message = "결제 이력이 있는 주문은 삭제할 수 없습니다.";
+    } else if (historyCount > 0) {
+      reason = "ORDER_HISTORY_EXISTS";
+      message = "상태 변경 이력이 있는 주문은 삭제할 수 없습니다.";
+    } else if (productionCount > 0
+      || !Number.isFinite(Date.parse(current.created_at))
+      || Date.now() - Date.parse(current.created_at) > 24 * 60 * 60 * 1000
+      || current.status !== "접수대기"
+      || current.workflow_status !== "결제대기"
+      || current.payment_status !== "결제대기"
+      || !["생산 대기", null].includes(current.production_status)
+      || ![null, "픽업대기", "배송대기"].includes(current.logistics_status)) {
+      reason = "INVALID_DELETE_STATE";
+      message = "처리가 시작된 주문은 삭제할 수 없습니다.";
+    }
+    if (reason) {
+      db.exec("ROLLBACK");
+      recordBlockedOrderDeleteSafely({
+        entityId: current.id, previousValue: current.status, reason, actor,
+        message: `${current.id} order deletion blocked: ${reason}`,
+      });
+      return res.status(409).json({ error: message, reason });
+    }
+    const deleted = db.prepare("DELETE FROM orders WHERE id = ?").run(current.id);
+    if (deleted.changes !== 1) throw new Error("CONCURRENT_STATE_CHANGE");
+    addAuditLog({
+      category: "ORDER", action: "order_deleted", entityId: current.id,
+      previousValue: current.status, nextValue: "DELETED", actor, createdAt: now,
+      message: `${current.id} unused initial order deleted`,
+    });
+    db.exec("COMMIT");
+    return res.json({ ok: true });
+  } catch {
+    db.exec("ROLLBACK");
+    return res.status(500).json({ error: "주문 삭제를 완료하지 못했습니다." });
+  }
 });
 
 router.delete("/", requireAuth, (req, res) => {
-  db.prepare("DELETE FROM orders").run();
-  res.json({ ok: true });
+  recordBlockedOrderDeleteSafely({
+    entityId: "orders", previousValue: "retained", reason: "DESTRUCTIVE_ACTION_DISABLED",
+    actor: getActorLabel(req), message: "Bulk order deletion blocked",
+  });
+  res.status(405).json({
+    error: "운영 주문 전체 삭제 기능은 비활성화되어 있습니다.",
+    reason: "DESTRUCTIVE_ACTION_DISABLED",
+  });
 });
 
 module.exports = router;
