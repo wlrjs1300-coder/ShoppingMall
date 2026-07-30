@@ -221,6 +221,102 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 13,
+    name: "naver_order_read_imports",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sales_channel_order_imports (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          external_order_id TEXT NOT NULL,
+          import_status TEXT NOT NULL CHECK (import_status IN (
+            'DISCOVERED','IMPORTED','PARTIAL','RETRY_PENDING','FAILED','MANUAL_REVIEW'
+          )),
+          external_payment_status TEXT,
+          payment_method TEXT,
+          order_amount INTEGER CHECK (order_amount IS NULL OR order_amount >= 0),
+          payment_amount INTEGER CHECK (payment_amount IS NULL OR payment_amount >= 0),
+          ordered_at TEXT,
+          paid_at TEXT,
+          orderer_name_masked TEXT,
+          orderer_phone_masked TEXT,
+          order_pii_ciphertext TEXT,
+          order_pii_iv TEXT,
+          order_pii_auth_tag TEXT,
+          order_pii_key_version TEXT,
+          source_changed_at TEXT,
+          last_synced_at TEXT,
+          payload_hash TEXT,
+          last_error_code TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (channel, external_order_id),
+          CHECK (
+            (order_pii_ciphertext IS NULL AND order_pii_iv IS NULL AND order_pii_auth_tag IS NULL AND order_pii_key_version IS NULL)
+            OR
+            (order_pii_ciphertext IS NOT NULL AND order_pii_iv IS NOT NULL AND order_pii_auth_tag IS NOT NULL AND order_pii_key_version IS NOT NULL)
+          )
+        );
+
+        CREATE TABLE IF NOT EXISTS sales_channel_order_import_items (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          channel_order_import_id TEXT NOT NULL,
+          external_product_order_id TEXT NOT NULL,
+          external_channel_product_no TEXT,
+          external_origin_product_no TEXT,
+          external_claim_id TEXT,
+          external_group_product_id TEXT,
+          external_package_number TEXT,
+          external_item_no TEXT,
+          external_option_manage_code TEXT,
+          product_mapping_id TEXT,
+          internal_product_id TEXT,
+          product_name_snapshot TEXT,
+          option_name_snapshot TEXT,
+          seller_product_code TEXT,
+          initial_quantity INTEGER CHECK (initial_quantity IS NULL OR initial_quantity >= 0),
+          remaining_quantity INTEGER CHECK (remaining_quantity IS NULL OR remaining_quantity >= 0),
+          unit_price INTEGER CHECK (unit_price IS NULL OR unit_price >= 0),
+          initial_payment_amount INTEGER CHECK (initial_payment_amount IS NULL OR initial_payment_amount >= 0),
+          remaining_payment_amount INTEGER CHECK (remaining_payment_amount IS NULL OR remaining_payment_amount >= 0),
+          external_product_order_status TEXT,
+          external_claim_type TEXT,
+          external_claim_status TEXT,
+          last_changed_type TEXT,
+          source_changed_at TEXT,
+          recipient_name_masked TEXT,
+          recipient_phone_masked TEXT,
+          item_pii_ciphertext TEXT,
+          item_pii_iv TEXT,
+          item_pii_auth_tag TEXT,
+          item_pii_key_version TEXT,
+          mapping_status TEXT NOT NULL CHECK (mapping_status IN ('MAPPED','UNMAPPED')),
+          payload_hash TEXT,
+          last_error_code TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (channel, external_product_order_id),
+          FOREIGN KEY (channel_order_import_id) REFERENCES sales_channel_order_imports(id) ON DELETE CASCADE,
+          FOREIGN KEY (product_mapping_id) REFERENCES sales_channel_product_mappings(id) ON DELETE SET NULL,
+          FOREIGN KEY (internal_product_id) REFERENCES products(id) ON DELETE SET NULL,
+          CHECK (
+            (item_pii_ciphertext IS NULL AND item_pii_iv IS NULL AND item_pii_auth_tag IS NULL AND item_pii_key_version IS NULL)
+            OR
+            (item_pii_ciphertext IS NOT NULL AND item_pii_iv IS NOT NULL AND item_pii_auth_tag IS NOT NULL AND item_pii_key_version IS NOT NULL)
+          )
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_imports_status_changed
+          ON sales_channel_order_imports(channel, import_status, source_changed_at);
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_import_items_header
+          ON sales_channel_order_import_items(channel_order_import_id);
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_import_items_mapping
+          ON sales_channel_order_import_items(mapping_status, external_product_order_status);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {
