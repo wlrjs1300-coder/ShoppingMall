@@ -20,6 +20,7 @@ const {
   productionReadinessReport,
   naverCommerceConfigErrors,
   naverOrderImportConfigErrors,
+  orderPiiConfigErrors,
 } = require("../config");
 const { runMigrations, migrations } = require("../migrations");
 
@@ -214,6 +215,47 @@ test("네이버 주문 PII key 오류와 readiness는 secret 원문을 노출하
   assert.match(messages, /NAVER_ORDER_PII_KEY_INVALID/);
   assert.equal(messages.includes(secret), false);
   assert.equal(report.includes(secret), false);
+});
+
+test("order PII protection requires an independent valid keyring only when enabled", () => {
+  assert.deepEqual(orderPiiConfigErrors(validProductionEnv()), []);
+  const enabled = validProductionEnv({ ORDER_PII_PROTECTION_ENABLED: "true" });
+  assert.match(orderPiiConfigErrors(enabled).map((item) => item.code).join(" "), /KEYRING_MISSING/);
+  const valid = {
+    ...enabled,
+    ORDER_PII_KEYS_JSON: JSON.stringify([
+      { version: "v1", key: Buffer.alloc(32, 17).toString("base64") },
+      { version: "v2", key: Buffer.alloc(32, 18).toString("base64") },
+    ]),
+    ORDER_PII_ACTIVE_KEY_VERSION: "v2",
+  };
+  assert.deepEqual(orderPiiConfigErrors(valid), []);
+  assert.deepEqual(productionConfigErrors(valid), []);
+});
+
+test("order PII readiness rejects unsafe keys without exposing key material", () => {
+  const secret = Buffer.alloc(31, 19).toString("base64");
+  const environments = [
+    validProductionEnv({
+      ORDER_PII_PROTECTION_ENABLED: "true",
+      ORDER_PII_KEYS_JSON: JSON.stringify([{ version: "v1", key: secret }]),
+      ORDER_PII_ACTIVE_KEY_VERSION: "v1",
+    }),
+    validProductionEnv({
+      ORDER_PII_PROTECTION_ENABLED: "true",
+      ORDER_PII_KEYS_JSON: JSON.stringify([
+        { version: "v1", key: Buffer.alloc(32, 20).toString("base64") },
+      ]),
+      ORDER_PII_ACTIVE_KEY_VERSION: "v2",
+    }),
+  ];
+  for (const env of environments) {
+    const errors = productionConfigErrors(env).join(" ");
+    const report = JSON.stringify(productionReadinessReport(env));
+    assert.match(errors, /ORDER_PII_/);
+    assert.equal(errors.includes(secret), false);
+    assert.equal(report.includes(secret), false);
+  }
 });
 
 test("모든 seed 스크립트는 production에서 실행이 차단된다", () => {

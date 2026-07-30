@@ -40,7 +40,7 @@ function cleanup() {
 test.afterEach(cleanup);
 
 test("migration 14 creates constrained empty cursor, run and failure tables", () => {
-  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 14);
+  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 15);
   for (const table of [
     "sales_channel_sync_cursors", "sales_channel_sync_runs",
     "sales_channel_sync_run_failures",

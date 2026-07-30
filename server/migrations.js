@@ -402,6 +402,76 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 15,
+    name: "order_pii_protection_foundation",
+    up(db) {
+      const columns = new Set(
+        db.prepare("PRAGMA table_info(orders)").all().map((column) => column.name),
+      );
+      const additions = [
+        ["pii_ciphertext", "TEXT"],
+        ["pii_iv", "TEXT"],
+        ["pii_auth_tag", "TEXT"],
+        ["pii_key_version", "TEXT"],
+        ["customer_name_masked", "TEXT"],
+        ["customer_phone_masked", "TEXT"],
+        ["delivery_region_masked", "TEXT"],
+        ["pii_migrated_at", "TEXT"],
+      ];
+      for (const [name, type] of additions) {
+        if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${type}`);
+      }
+      db.exec(`
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_tuple_insert
+        BEFORE INSERT ON orders
+        WHEN NOT (
+          (NEW.pii_ciphertext IS NULL AND NEW.pii_iv IS NULL
+            AND NEW.pii_auth_tag IS NULL AND NEW.pii_key_version IS NULL)
+          OR
+          (NEW.pii_ciphertext IS NOT NULL AND NEW.pii_iv IS NOT NULL
+            AND NEW.pii_auth_tag IS NOT NULL AND NEW.pii_key_version IS NOT NULL)
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_TUPLE_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_tuple_update
+        BEFORE UPDATE OF pii_ciphertext, pii_iv, pii_auth_tag, pii_key_version ON orders
+        WHEN NOT (
+          (NEW.pii_ciphertext IS NULL AND NEW.pii_iv IS NULL
+            AND NEW.pii_auth_tag IS NULL AND NEW.pii_key_version IS NULL)
+          OR
+          (NEW.pii_ciphertext IS NOT NULL AND NEW.pii_iv IS NOT NULL
+            AND NEW.pii_auth_tag IS NOT NULL AND NEW.pii_key_version IS NOT NULL)
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_TUPLE_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_metadata_insert
+        BEFORE INSERT ON orders
+        WHEN length(COALESCE(NEW.pii_key_version, '')) > 100
+          OR length(COALESCE(NEW.customer_name_masked, '')) > 200
+          OR length(COALESCE(NEW.customer_phone_masked, '')) > 100
+          OR length(COALESCE(NEW.delivery_region_masked, '')) > 300
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_METADATA_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_metadata_update
+        BEFORE UPDATE OF pii_key_version, customer_name_masked,
+          customer_phone_masked, delivery_region_masked ON orders
+        WHEN length(COALESCE(NEW.pii_key_version, '')) > 100
+          OR length(COALESCE(NEW.customer_name_masked, '')) > 200
+          OR length(COALESCE(NEW.customer_phone_masked, '')) > 100
+          OR length(COALESCE(NEW.delivery_region_masked, '')) > 300
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_METADATA_INVALID');
+        END;
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {
