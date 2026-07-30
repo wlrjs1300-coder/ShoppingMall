@@ -317,6 +317,91 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 14,
+    name: "naver_order_import_orchestration",
+    up(db) {
+      db.exec(`
+        CREATE TABLE sales_channel_sync_cursors (
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          stream TEXT NOT NULL CHECK (stream = 'order-import'),
+          initial_from TEXT,
+          window_from TEXT,
+          window_to TEXT,
+          more_from TEXT,
+          more_sequence TEXT CHECK (more_sequence IS NULL OR (
+            more_sequence <> '' AND more_sequence NOT GLOB '*[^0-9]*'
+          )),
+          committed_through TEXT,
+          lease_run_id TEXT,
+          lease_expires_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (channel, stream),
+          CHECK ((lease_run_id IS NULL AND lease_expires_at IS NULL)
+            OR (lease_run_id IS NOT NULL AND lease_expires_at IS NOT NULL))
+        );
+
+        CREATE TABLE sales_channel_sync_runs (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          sync_type TEXT NOT NULL CHECK (sync_type IN ('PULL','REFRESH')),
+          target_import_id TEXT,
+          status TEXT NOT NULL CHECK (status IN ('RUNNING','SUCCEEDED','PARTIAL','FAILED','ABORTED')),
+          requested_from TEXT,
+          requested_to TEXT,
+          pages_fetched INTEGER NOT NULL DEFAULT 0 CHECK (pages_fetched >= 0),
+          discovered_count INTEGER NOT NULL DEFAULT 0 CHECK (discovered_count >= 0),
+          detailed_count INTEGER NOT NULL DEFAULT 0 CHECK (detailed_count >= 0),
+          imported_count INTEGER NOT NULL DEFAULT 0 CHECK (imported_count >= 0),
+          failed_count INTEGER NOT NULL DEFAULT 0 CHECK (failed_count >= 0),
+          provider_trace_id TEXT,
+          safe_error_code TEXT,
+          lock_expires_at TEXT CHECK (lock_expires_at IS NULL OR (
+            lock_expires_at GLOB '????-??-??T??:??:??*'
+            AND julianday(lock_expires_at) IS NOT NULL
+            AND (substr(lock_expires_at, -1) = 'Z'
+              OR substr(lock_expires_at, -6, 1) IN ('+','-'))
+          )),
+          actor TEXT,
+          started_at TEXT NOT NULL,
+          completed_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          CHECK ((sync_type = 'PULL' AND target_import_id IS NULL)
+            OR (sync_type = 'REFRESH' AND target_import_id IS NOT NULL)),
+          CHECK ((status = 'RUNNING' AND completed_at IS NULL AND lock_expires_at IS NOT NULL)
+            OR (status <> 'RUNNING' AND completed_at IS NOT NULL AND lock_expires_at IS NULL))
+        );
+
+        CREATE TABLE sales_channel_sync_run_failures (
+          id TEXT PRIMARY KEY,
+          sync_run_id TEXT NOT NULL,
+          external_product_order_id TEXT,
+          stage TEXT NOT NULL CHECK (stage IN (
+            'CHANGE_FEED','DETAIL_FETCH','NORMALIZATION','PERSISTENCE','REFRESH'
+          )),
+          safe_error_code TEXT NOT NULL,
+          attempt_count INTEGER NOT NULL DEFAULT 1 CHECK (attempt_count >= 1),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (sync_run_id) REFERENCES sales_channel_sync_runs(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX idx_sales_channel_sync_cursors_channel_stream
+          ON sales_channel_sync_cursors(channel, stream);
+        CREATE INDEX idx_sales_channel_sync_runs_channel_status_started
+          ON sales_channel_sync_runs(channel, status, started_at);
+        CREATE UNIQUE INDEX idx_sales_channel_sync_runs_active_refresh
+          ON sales_channel_sync_runs(channel, target_import_id)
+          WHERE sync_type='REFRESH' AND status='RUNNING';
+        CREATE INDEX idx_sales_channel_sync_failures_run_stage
+          ON sales_channel_sync_run_failures(sync_run_id, stage);
+        CREATE INDEX idx_sales_channel_sync_failures_product_order
+          ON sales_channel_sync_run_failures(external_product_order_id);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {
