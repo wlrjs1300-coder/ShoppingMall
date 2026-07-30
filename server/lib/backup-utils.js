@@ -23,6 +23,9 @@ const REQUIRED_TABLES = [
   "sales_channel_product_mappings",
   "sales_channel_order_imports",
   "sales_channel_order_import_items",
+  "sales_channel_sync_cursors",
+  "sales_channel_sync_runs",
+  "sales_channel_sync_run_failures",
   "schema_migrations",
 ];
 const COUNTED_TABLES = ["orders", "payments", "inventory", "purchase_orders", "activity_logs"];

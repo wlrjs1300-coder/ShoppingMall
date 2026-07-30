@@ -35,6 +35,9 @@ function seedDatabase(file, marker = "preserved") {
     CREATE TABLE sales_channel_product_mappings (id TEXT PRIMARY KEY);
     CREATE TABLE sales_channel_order_imports (id TEXT PRIMARY KEY);
     CREATE TABLE sales_channel_order_import_items (id TEXT PRIMARY KEY);
+    CREATE TABLE sales_channel_sync_cursors (channel TEXT, stream TEXT, PRIMARY KEY(channel, stream));
+    CREATE TABLE sales_channel_sync_runs (id TEXT PRIMARY KEY);
+    CREATE TABLE sales_channel_sync_run_failures (id TEXT PRIMARY KEY);
     CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY);
   `);
   db.prepare("INSERT INTO orders VALUES ('order-1', ?)").run(marker);
