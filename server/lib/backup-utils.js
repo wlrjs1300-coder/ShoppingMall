@@ -20,6 +20,9 @@ const REQUIRED_TABLES = [
   "activity_logs",
   "user_accounts",
   "user_addresses",
+  "sales_channel_product_mappings",
+  "sales_channel_order_imports",
+  "sales_channel_order_import_items",
   "schema_migrations",
 ];
 const COUNTED_TABLES = ["orders", "payments", "inventory", "purchase_orders", "activity_logs"];

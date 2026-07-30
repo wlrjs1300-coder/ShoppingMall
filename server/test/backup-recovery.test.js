@@ -32,6 +32,9 @@ function seedDatabase(file, marker = "preserved") {
     CREATE TABLE activity_logs (id TEXT PRIMARY KEY);
     CREATE TABLE user_accounts (id TEXT PRIMARY KEY);
     CREATE TABLE user_addresses (id TEXT PRIMARY KEY);
+    CREATE TABLE sales_channel_product_mappings (id TEXT PRIMARY KEY);
+    CREATE TABLE sales_channel_order_imports (id TEXT PRIMARY KEY);
+    CREATE TABLE sales_channel_order_import_items (id TEXT PRIMARY KEY);
     CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY);
   `);
   db.prepare("INSERT INTO orders VALUES ('order-1', ?)").run(marker);

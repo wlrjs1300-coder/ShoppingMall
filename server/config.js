@@ -139,6 +139,33 @@ function naverCommerceConfigErrors(env = process.env) {
   return errors;
 }
 
+function naverOrderImportConfigErrors(env = process.env) {
+  if (valueOf(env, "NAVER_ORDER_IMPORT_ENABLED").toLowerCase() !== "true") return [];
+  const errors = [];
+  const encodedKey = valueOf(env, "NAVER_ORDER_PII_KEY");
+  const keyVersion = valueOf(env, "NAVER_ORDER_PII_KEY_VERSION");
+  let validKey = false;
+  if (/^[A-Za-z0-9+/]{43}=$/.test(encodedKey)) {
+    const decoded = Buffer.from(encodedKey, "base64");
+    validKey = decoded.length === 32 && decoded.toString("base64") === encodedKey;
+  }
+  if (!validKey) {
+    errors.push({
+      code: "NAVER_ORDER_PII_KEY_INVALID",
+      key: "NAVER_ORDER_PII_KEY",
+      message: "네이버 주문 개인정보 암호화 키는 Base64로 인코딩한 32바이트 키여야 합니다.",
+    });
+  }
+  if (!keyVersion || keyVersion.length > 100) {
+    errors.push({
+      code: "NAVER_ORDER_PII_KEY_VERSION_INVALID",
+      key: "NAVER_ORDER_PII_KEY_VERSION",
+      message: "네이버 주문 개인정보 암호화 키 버전이 올바르지 않습니다.",
+    });
+  }
+  return errors;
+}
+
 function addMissingErrors(errors, env, keys, message) {
   if (!keys.every((key) => hasValidSecret(env, key))) errors.push(message);
 }
@@ -299,6 +326,7 @@ function productionConfigErrors(env = process.env) {
   }
 
   errors.push(...naverCommerceConfigErrors(env).map((item) => `${item.code}: ${item.message}`));
+  errors.push(...naverOrderImportConfigErrors(env).map((item) => `${item.code}: ${item.message}`));
   return [...new Set(errors)];
 }
 
@@ -334,6 +362,7 @@ function productionReadinessReport(env = process.env) {
       "ADMIN_TOKEN_TTL", "ADMIN_LOGIN_RATE_MAX", "ADMIN_LOGIN_RATE_WINDOW_MS",
       "PUBLIC_BASE_URL", "ALLOWED_ORIGIN", "DB_PATH", "BACKUP_DIR",
       "BACKUP_RETENTION_DAYS", "BACKUP_MAX_FILES", "PAYMENT_MODE",
+      "NAVER_ORDER_PII_KEY", "NAVER_ORDER_PII_KEY_VERSION",
       "STORE_NAME", "STORE_PHONE", "STORE_HOURS", "STORE_ADDRESS",
     ].find((name) => message.includes(name));
     let category = READINESS_CATEGORIES.SECURITY;
@@ -371,6 +400,14 @@ function productionReadinessReport(env = process.env) {
       existing.envKeys = item.key.split(",");
     }
   }
+  for (const item of naverOrderImportConfigErrors(env)) {
+    const existing = items.find((entry) => entry.problem.includes(item.code));
+    if (existing) {
+      existing.code = item.code;
+      existing.category = READINESS_CATEGORIES.SECURITY;
+      existing.envKeys = [item.key];
+    }
+  }
   return {
     errors: items.filter((item) => item.level === "error"),
     confirmations: items.filter((item) => item.level === "confirm-needed"),
@@ -394,4 +431,5 @@ module.exports = {
   NAVER_COMMERCE_OFFICIAL_BASE_URL,
   getNaverCommerceConfig,
   naverCommerceConfigErrors,
+  naverOrderImportConfigErrors,
 };

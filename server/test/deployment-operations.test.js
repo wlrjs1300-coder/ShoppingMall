@@ -19,6 +19,7 @@ const {
   productionConfigErrors,
   productionReadinessReport,
   naverCommerceConfigErrors,
+  naverOrderImportConfigErrors,
 } = require("../config");
 const { runMigrations, migrations } = require("../migrations");
 
@@ -186,6 +187,33 @@ test("설정 오류에는 입력한 비밀값을 출력하지 않는다", () => 
     () => assertProductionConfig(validProductionEnv({ PAYMENT_MODE: "toss", TOSS_CLIENT_KEY: secret, TOSS_SECRET_KEY: "" })),
     (error) => !error.message.includes(secret) && /Toss/.test(error.message),
   );
+});
+
+test("네이버 주문 import가 활성화될 때만 32-byte PII key와 version을 요구한다", () => {
+  assert.deepEqual(naverOrderImportConfigErrors(validProductionEnv()), []);
+  const enabled = validProductionEnv({ NAVER_ORDER_IMPORT_ENABLED: "true" });
+  assert.match(naverOrderImportConfigErrors(enabled).map((item) => item.code).join(" "), /PII_KEY_INVALID/);
+  const valid = {
+    ...enabled,
+    NAVER_ORDER_PII_KEY: Buffer.alloc(32, 9).toString("base64"),
+    NAVER_ORDER_PII_KEY_VERSION: "v1",
+  };
+  assert.deepEqual(naverOrderImportConfigErrors(valid), []);
+  assert.deepEqual(productionConfigErrors(valid), []);
+});
+
+test("네이버 주문 PII key 오류와 readiness는 secret 원문을 노출하지 않는다", () => {
+  const secret = Buffer.alloc(31, 8).toString("base64");
+  const env = validProductionEnv({
+    NAVER_ORDER_IMPORT_ENABLED: "true",
+    NAVER_ORDER_PII_KEY: secret,
+    NAVER_ORDER_PII_KEY_VERSION: "v1",
+  });
+  const messages = productionConfigErrors(env).join(" ");
+  const report = JSON.stringify(productionReadinessReport(env));
+  assert.match(messages, /NAVER_ORDER_PII_KEY_INVALID/);
+  assert.equal(messages.includes(secret), false);
+  assert.equal(report.includes(secret), false);
 });
 
 test("모든 seed 스크립트는 production에서 실행이 차단된다", () => {
