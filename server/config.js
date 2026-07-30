@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { PiiKeyringError, parsePiiKeyring } = require("./lib/pii-keyring");
 
 const PLACEHOLDER_RE = /여기에_|replace-with|your-[a-z]|your-domain|your-app|change-in-production|xxxxxxxx|example(?:\.com|\.net|\.org)/i;
 const STORE_PHONE_PLACEHOLDER_RE = /000[-\s]?0000|^0{8,}$/;
@@ -166,6 +167,26 @@ function naverOrderImportConfigErrors(env = process.env) {
   return errors;
 }
 
+function orderPiiConfigErrors(env = process.env) {
+  if (valueOf(env, "ORDER_PII_PROTECTION_ENABLED").toLowerCase() !== "true") return [];
+  try {
+    parsePiiKeyring(
+      valueOf(env, "ORDER_PII_KEYS_JSON"),
+      valueOf(env, "ORDER_PII_ACTIVE_KEY_VERSION"),
+    );
+    return [];
+  } catch (error) {
+    const code = error instanceof PiiKeyringError ? error.code : "ORDER_PII_KEYRING_INVALID";
+    return [{
+      code,
+      key: code.includes("ACTIVE_KEY")
+        ? "ORDER_PII_ACTIVE_KEY_VERSION"
+        : "ORDER_PII_KEYS_JSON",
+      message: "주문 개인정보 암호화 keyring 설정이 올바르지 않습니다.",
+    }];
+  }
+}
+
 function addMissingErrors(errors, env, keys, message) {
   if (!keys.every((key) => hasValidSecret(env, key))) errors.push(message);
 }
@@ -327,6 +348,7 @@ function productionConfigErrors(env = process.env) {
 
   errors.push(...naverCommerceConfigErrors(env).map((item) => `${item.code}: ${item.message}`));
   errors.push(...naverOrderImportConfigErrors(env).map((item) => `${item.code}: ${item.message}`));
+  errors.push(...orderPiiConfigErrors(env).map((item) => `${item.code}: ${item.message}`));
   return [...new Set(errors)];
 }
 
@@ -363,6 +385,7 @@ function productionReadinessReport(env = process.env) {
       "PUBLIC_BASE_URL", "ALLOWED_ORIGIN", "DB_PATH", "BACKUP_DIR",
       "BACKUP_RETENTION_DAYS", "BACKUP_MAX_FILES", "PAYMENT_MODE",
       "NAVER_ORDER_PII_KEY", "NAVER_ORDER_PII_KEY_VERSION",
+      "ORDER_PII_KEYS_JSON", "ORDER_PII_ACTIVE_KEY_VERSION",
       "STORE_NAME", "STORE_PHONE", "STORE_HOURS", "STORE_ADDRESS",
     ].find((name) => message.includes(name));
     let category = READINESS_CATEGORIES.SECURITY;
@@ -408,6 +431,14 @@ function productionReadinessReport(env = process.env) {
       existing.envKeys = [item.key];
     }
   }
+  for (const item of orderPiiConfigErrors(env)) {
+    const existing = items.find((entry) => entry.problem.includes(item.code));
+    if (existing) {
+      existing.code = item.code;
+      existing.category = READINESS_CATEGORIES.SECURITY;
+      existing.envKeys = [item.key];
+    }
+  }
   return {
     errors: items.filter((item) => item.level === "error"),
     confirmations: items.filter((item) => item.level === "confirm-needed"),
@@ -432,4 +463,5 @@ module.exports = {
   getNaverCommerceConfig,
   naverCommerceConfigErrors,
   naverOrderImportConfigErrors,
+  orderPiiConfigErrors,
 };

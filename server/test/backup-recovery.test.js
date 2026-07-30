@@ -19,7 +19,18 @@ function seedDatabase(file, marker = "preserved") {
   const db = new DatabaseSync(file);
   db.exec(`
     PRAGMA foreign_keys = ON;
-    CREATE TABLE orders (id TEXT PRIMARY KEY, marker TEXT);
+    CREATE TABLE orders (
+      id TEXT PRIMARY KEY,
+      marker TEXT,
+      pii_ciphertext TEXT,
+      pii_iv TEXT,
+      pii_auth_tag TEXT,
+      pii_key_version TEXT,
+      customer_name_masked TEXT,
+      customer_phone_masked TEXT,
+      delivery_region_masked TEXT,
+      pii_migrated_at TEXT
+    );
     CREATE TABLE order_items (id TEXT PRIMARY KEY, order_id TEXT REFERENCES orders(id));
     CREATE TABLE order_status_history (id TEXT PRIMARY KEY);
     CREATE TABLE payments (id TEXT PRIMARY KEY);
@@ -40,7 +51,12 @@ function seedDatabase(file, marker = "preserved") {
     CREATE TABLE sales_channel_sync_run_failures (id TEXT PRIMARY KEY);
     CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY);
   `);
-  db.prepare("INSERT INTO orders VALUES ('order-1', ?)").run(marker);
+  db.prepare(`INSERT INTO orders (
+    id, marker, pii_ciphertext, pii_iv, pii_auth_tag, pii_key_version,
+    customer_name_masked, customer_phone_masked, delivery_region_masked, pii_migrated_at
+  ) VALUES ('order-1', ?, 'fixture-ciphertext', 'fixture-iv', 'fixture-tag',
+    'fixture-v1', '테***객', '010-****-0000', '테스트시 테스트구',
+    '2026-07-30T00:00:00.000Z')`).run(marker);
   db.close();
 }
 
@@ -87,6 +103,30 @@ test("metadata is minimal and does not expose the source path or sensitive recor
   assert.equal(metadata.includes("payment-secret"), false);
   assert.equal(metadata.includes("admin-secret"), false);
   assert.equal(metadata.includes("preserved"), false);
+});
+
+test("backup preserves order PII columns while keyring secrets remain external", async (t) => {
+  const item = await fixture();
+  t.after(item.cleanup);
+  const keySecret = Buffer.alloc(32, 23).toString("base64");
+  const result = await createBackup({
+    ...item.env,
+    ORDER_PII_KEYS_JSON: JSON.stringify([{ version: "fixture-v1", key: keySecret }]),
+    ORDER_PII_ACTIVE_KEY_VERSION: "fixture-v1",
+  });
+  const backup = new DatabaseSync(path.join(item.env.BACKUP_DIR, result.backupFile), { readOnly: true });
+  const row = backup.prepare(`SELECT pii_ciphertext, pii_iv, pii_auth_tag, pii_key_version,
+    customer_name_masked, customer_phone_masked, delivery_region_masked, pii_migrated_at
+    FROM orders WHERE id='order-1'`).get();
+  backup.close();
+  assert.equal(row.pii_ciphertext, "fixture-ciphertext");
+  assert.equal(row.pii_key_version, "fixture-v1");
+  const metadata = fs.readFileSync(
+    path.join(item.env.BACKUP_DIR, result.backupFile.replace(/\.sqlite$/, ".json")),
+    "utf8",
+  );
+  assert.equal(metadata.includes(keySecret), false);
+  assert.equal(metadata.includes("fixture-ciphertext"), false);
 });
 
 test("failed validation removes temporary/final artifacts and never changes the source database", async (t) => {
