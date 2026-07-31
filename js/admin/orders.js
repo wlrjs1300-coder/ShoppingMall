@@ -1,3 +1,31 @@
+const ADMIN_ORDER_PII_TIMEOUT_MS = 3 * 60 * 1000;
+let activeAdminOrderPii = null;
+let activeAdminOrderPiiTimer = null;
+
+function clearActiveAdminOrderPii({ rerender = false } = {}) {
+  const orderId = activeAdminOrderPii?.orderId || null;
+  activeAdminOrderPii = null;
+  if (activeAdminOrderPiiTimer) clearTimeout(activeAdminOrderPiiTimer);
+  activeAdminOrderPiiTimer = null;
+  if (rerender && orderId && document.querySelector("[data-admin-order-detail-dialog]")?.open) {
+    openAdminOrderDetail(orderId);
+  }
+}
+
+function setActiveAdminOrderPii(pii) {
+  clearActiveAdminOrderPii();
+  activeAdminOrderPii = {
+    orderId: pii.orderId,
+    customer: pii.customer,
+    phone: pii.phone,
+    deliveryAddress: pii.deliveryAddress,
+  };
+  activeAdminOrderPiiTimer = setTimeout(
+    () => clearActiveAdminOrderPii({ rerender: true }),
+    ADMIN_ORDER_PII_TIMEOUT_MS,
+  );
+}
+
 function getAdminOrderStatusClass(status = "") {
   if (status.includes("취소")) return "is-cancelled";
   if (status.includes("완료")) return "is-complete";
@@ -237,11 +265,12 @@ function buildOrderFulfillmentJourney(order) {
   </section>`;
 }
 
-function openAdminOrderDetail(orderId) {
+function openAdminOrderDetail(orderId, { preservePii = false } = {}) {
   const dialog = document.querySelector("[data-admin-order-detail-dialog]");
   const content = document.querySelector("[data-admin-order-detail]");
   const order = readOrders().find((current) => current.id === orderId);
   if (!dialog || !content || !order) return;
+  if (!preservePii || activeAdminOrderPii?.orderId !== orderId) clearActiveAdminOrderPii();
 
   dialog.scrollTop = 0;
   content.scrollTop = 0;
@@ -262,6 +291,33 @@ function openAdminOrderDetail(orderId) {
   const statusOptions = getAllowedAdminOrderStatuses(order);
   const isCancelled = getUnifiedWorkflowStatus(order) === "취소";
   const savedCancellationReason = String(order.changeReason || order.cancelReason || "").trim();
+  const revealedPii = activeAdminOrderPii?.orderId === orderId ? activeAdminOrderPii : null;
+  const piiAccessSection = hasAdminPermission("orders:pii:read") ? `
+    <section class="admin-order-pii-access" data-admin-order-pii-access>
+      <div class="admin-order-card-title"><h3>개인정보 접근</h3></div>
+      ${revealedPii ? `
+        <dl data-admin-order-pii-revealed>
+          <div><dt>고객명</dt><dd>${escapeHtml(revealedPii.customer || "-")}</dd></div>
+          <div><dt>연락처</dt><dd>${escapeHtml(revealedPii.phone || "-")}</dd></div>
+          <div><dt>배송지</dt><dd>${escapeHtml(revealedPii.deliveryAddress || "-")}</dd></div>
+        </dl>
+        <p>이 정보는 이 상세 화면에서만 표시되며 3분 후 자동으로 숨겨집니다.</p>
+        <button type="button" data-detail-action="hide-pii">개인정보 숨기기</button>
+      ` : `
+        <label>접근 목적
+          <select data-admin-order-pii-reason>
+            <option value="">목적을 선택해 주세요</option>
+            <option value="delivery_contact">배송 연락</option>
+            <option value="pickup_contact">픽업 연락</option>
+            <option value="order_issue">주문 문제 처리</option>
+            <option value="customer_request">고객 요청</option>
+            <option value="address_verification">주소 확인</option>
+          </select>
+        </label>
+        <button type="button" data-detail-action="access-pii">개인정보 보기</button>
+      `}
+    </section>
+  ` : "";
   content.innerHTML = `
     <header class="admin-order-detail-head">
       <div class="admin-order-detail-heading-row"><div class="admin-order-detail-heading"><h2 id="admin-order-detail-title">주문 상세</h2><span>ORDER DETAIL</span></div></div>
@@ -271,6 +327,7 @@ function openAdminOrderDetail(orderId) {
       <section class="admin-order-customer-section"><div class="admin-order-card-title"><h3>고객 정보</h3></div><dl><div><dt>고객명</dt><dd><span class="admin-inline-view">${escapeHtml(order.customer || "-")}</span><input class="admin-inline-field" data-inline-customer value="${escapeHtml(order.customer || "")}" /></dd></div><div><dt>연락처</dt><dd><span class="admin-inline-view">${escapeHtml(order.phone || "-")}</span><input class="admin-inline-field" data-inline-phone value="${escapeHtml(order.phone || "")}" /></dd></div><div><dt>주문 접수</dt><dd>${escapeHtml(created)}</dd></div></dl></section>
       <section><h3>배송 및 수령 정보</h3><dl><div><dt>진행 상태</dt><dd><span class="admin-order-status-pill ${statusClass}">${escapeHtml(getUnifiedWorkflowStatus(order))}</span></dd></div><div><dt>수령 방법</dt><dd><span class="admin-inline-view">${escapeHtml(fulfillment)}</span><select class="admin-inline-field" data-inline-fulfillment><option value="pickup" ${order.fulfillmentType !== "delivery" ? "selected" : ""}>매장 픽업</option><option value="delivery" ${order.fulfillmentType === "delivery" ? "selected" : ""}>배송</option></select></dd></div><div><dt>수령 일정</dt><dd><span class="admin-inline-view">${escapeHtml(pickup)}</span><span class="admin-inline-field admin-inline-date-time"><input data-inline-pickup-date type="date" value="${escapeHtml(order.pickupDate || "")}" /><input data-inline-pickup-time type="time" value="${escapeHtml(order.pickupTime || "")}" /></span></dd></div><div><dt>배송지</dt><dd><span class="admin-inline-view">${escapeHtml(order.deliveryAddress || (order.fulfillmentType === "delivery" ? "배송지 미입력" : "매장 방문 수령"))}</span><input class="admin-inline-field" data-inline-address value="${escapeHtml(order.deliveryAddress || "")}" /></dd></div></dl></section>
       ${isCancelled ? `<section class="is-wide admin-order-cancellation-section"><div class="admin-order-cancellation-summary"><div class="admin-order-cancellation-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg></div><div><span>ORDER CANCELLED</span><h3>주문 취소 사유</h3><small data-order-cancellation-meta>취소 처리 이력을 확인하고 있습니다.</small></div></div><div class="admin-order-cancellation-reason"><span>취소 사유</span><p data-order-cancellation-reason>${escapeHtml(savedCancellationReason || "취소 사유를 불러오는 중입니다.")}</p></div></section>` : ""}
+      ${piiAccessSection}
       ${buildOrderFulfillmentJourney(order)}
       <section class="is-wide admin-order-product-payment-section"><h3>주문 상품 및 결제</h3><div class="admin-order-item-lines">${orderItems.map((item, index) => `<div><strong><span class="admin-inline-view">${escapeHtml(item.productName || "상품")}</span>${index === 0 ? `<input class="admin-inline-field" data-inline-product value="${escapeHtml(item.productName || order.product || "")}" />` : ""}</strong><span><span class="admin-inline-view">${formatWon(Number(item.unitPrice || 0))} × ${Number(item.quantity || 0)}개</span>${index === 0 ? `<span class="admin-inline-field admin-inline-product-values"><label>단가<input data-inline-unit-price type="number" min="0" value="${Number(item.unitPrice || order.unitPrice || 0)}" /></label><label>수량<input data-inline-quantity type="number" min="1" max="99" value="${Number(item.quantity || order.quantity || 1)}" /></label></span>` : ""}</span><b>${formatWon(Number(item.lineTotal || 0))}</b></div>`).join("")}</div><div class="admin-order-combined-payment"><h4>결제 요약</h4><div class="admin-order-payment-layout"><dl class="admin-order-payment-meta"><div><dt>결제 상태</dt><dd>${escapeHtml(paymentStatus)}</dd></div>${needsReconciliation ? `<div><dt>최근 오류</dt><dd>${escapeHtml(getAdminPaymentErrorMessage(order.paymentLastError))}</dd></div><div><dt>최근 갱신</dt><dd>${order.paymentUpdatedAt ? escapeHtml(new Date(order.paymentUpdatedAt).toLocaleString("ko-KR")) : "-"}</dd></div>` : ""}<div><dt>결제 수단</dt><dd>-</dd></div><div><dt>환불 금액</dt><dd>-</dd></div></dl><dl class="admin-order-price-lines"><div><dt>상품금액</dt><dd>${formatWon(subtotal)}</dd></div><div><dt>배송비</dt><dd>${formatWon(deliveryFee)}</dd></div><div><dt>할인</dt><dd>-${formatWon(discount)}</dd></div><div><dt>최종 결제금액</dt><dd><strong>${formatWon(revenue)}</strong></dd></div></dl></div></div></section>
       <section class="is-wide admin-order-request-section ${requestMemo ? "has-request" : "is-empty"}"><div class="admin-order-request-head"><h3>고객 요청사항</h3>${requestMemo ? `<span>확인 필요</span>` : ""}</div><div class="admin-order-request-note"><span class="admin-order-request-mark admin-inline-view" aria-hidden="true">“</span><p class="admin-order-detail-memo admin-inline-view">${escapeHtml(requestMemo || "별도로 전달된 요청사항이 없습니다.")}</p><textarea class="admin-inline-field" data-inline-memo rows="3">${escapeHtml(order.memo || "")}</textarea></div></section>
@@ -322,6 +379,7 @@ function closeAdminOrderDetail() {
   const dialog = document.querySelector("[data-admin-order-detail-dialog]");
   if (!dialog) return;
   const content = dialog.querySelector("[data-admin-order-detail]");
+  clearActiveAdminOrderPii();
   dialog.scrollTop = 0;
   if (content) content.scrollTop = 0;
   if (typeof dialog.close === "function" && dialog.open) dialog.close();

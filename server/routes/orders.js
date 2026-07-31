@@ -15,6 +15,13 @@ const {
 } = require("../services/order-pii-service");
 const { isOrderPiiProtectionEnabled } = require("../lib/pii-keyring");
 const { normalizePhone, isValidPhone } = require("../utils/normalize");
+const {
+  insertOrderPiiAudit,
+  normalizeOrderPiiAccessReason,
+  normalizeRequestIp,
+  orderPiiAccessLimiter,
+  recordOrderPiiAccessFailure,
+} = require("../lib/order-pii-access");
 
 const router = express.Router();
 const ORDER_STATUS = "접수대기";
@@ -253,6 +260,28 @@ function sendPiiAccessError(res) {
   });
 }
 
+function setOrderPiiNoStoreHeaders(req, res, next) {
+  res.setHeader("Cache-Control", "no-store, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  next();
+}
+
+function sendStrictPiiFailureAudit(req, res, { orderId = null, reason = null, failureCode, status }) {
+  try {
+    recordOrderPiiAccessFailure(req, { orderId, reason, failureCode });
+  } catch {
+    return res.status(503).json({
+      error: "개인정보 접근 감사 기록을 완료하지 못했습니다.",
+      reason: "ORDER_PII_AUDIT_FAILED",
+    });
+  }
+  return res.status(status).json({
+    error: "주문 개인정보에 접근할 수 없습니다.",
+    reason: failureCode,
+  });
+}
+
 function normalizeProductionProductName(value) {
   return typeof value === "string" ? value.trim().slice(0, 100) : "";
 }
@@ -356,6 +385,77 @@ router.get("/:id/history", requireAuth, requirePermission("orders:read"), (req, 
     changedBy: row.changed_by, reason: row.reason, createdAt: row.created_at,
   })));
 });
+
+router.post(
+  "/:id/pii-access",
+  setOrderPiiNoStoreHeaders,
+  requireAuth,
+  requirePermission("orders:pii:read", { reason: "ORDER_PII_PERMISSION_DENIED" }),
+  orderPiiAccessLimiter,
+  (req, res) => {
+    const reason = normalizeOrderPiiAccessReason(req.body?.reason);
+    if (!reason) {
+      return sendStrictPiiFailureAudit(req, res, {
+        orderId: req.params.id,
+        failureCode: "ORDER_PII_REASON_INVALID",
+        status: 400,
+      });
+    }
+
+    const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id);
+    if (!row) {
+      return sendStrictPiiFailureAudit(req, res, {
+        orderId: req.params.id,
+        reason,
+        failureCode: "ORDER_PII_ACCESS_FAILED",
+        status: 404,
+      });
+    }
+
+    let pii;
+    try {
+      pii = readOrderPiiForOperation(row);
+    } catch (error) {
+      if (!(error instanceof OrderPiiError)) throw error;
+      return sendStrictPiiFailureAudit(req, res, {
+        orderId: row.id,
+        reason,
+        failureCode: "ORDER_PII_ACCESS_FAILED",
+        status: 503,
+      });
+    }
+
+    let transactionStarted = false;
+    try {
+      db.exec("BEGIN IMMEDIATE");
+      transactionStarted = true;
+      insertOrderPiiAudit({
+        action: "order_pii_accessed",
+        orderId: row.id,
+        actor: req.admin.id,
+        actorRole: req.admin.role,
+        reason,
+        outcome: "success",
+        requestIp: normalizeRequestIp(req),
+      });
+      db.exec("COMMIT");
+      transactionStarted = false;
+    } catch {
+      if (transactionStarted) db.exec("ROLLBACK");
+      return res.status(503).json({
+        error: "개인정보 접근 감사 기록을 완료하지 못했습니다.",
+        reason: "ORDER_PII_AUDIT_FAILED",
+      });
+    }
+
+    return res.json({
+      orderId: row.id,
+      customer: pii.customerName,
+      phone: pii.customerPhone,
+      deliveryAddress: pii.deliveryAddress,
+    });
+  },
+);
 
 router.post("/", publicOrderLimiter, optionalCustomerAuth, (req, res) => {
   const customer = validateCustomerFields(req.body);

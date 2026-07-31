@@ -472,6 +472,52 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 16,
+    name: "structured_order_pii_access_audit",
+    up(db) {
+      const columns = new Set(
+        db.prepare("PRAGMA table_info(activity_logs)").all().map((column) => column.name),
+      );
+      const additions = [
+        ["reason", "TEXT"],
+        ["outcome", "TEXT"],
+        ["failure_code", "TEXT"],
+        ["actor_role", "TEXT"],
+        ["request_ip", "TEXT"],
+      ];
+      for (const [name, type] of additions) {
+        if (!columns.has(name)) db.exec(`ALTER TABLE activity_logs ADD COLUMN ${name} ${type}`);
+      }
+      db.exec(`
+        CREATE TRIGGER IF NOT EXISTS trg_activity_logs_pii_audit_insert
+        BEFORE INSERT ON activity_logs
+        WHEN length(COALESCE(NEW.reason, '')) > 50
+          OR (NEW.outcome IS NOT NULL AND NEW.outcome NOT IN ('success', 'failure'))
+          OR length(COALESCE(NEW.failure_code, '')) > 100
+          OR length(COALESCE(NEW.actor_role, '')) > 50
+          OR length(COALESCE(NEW.request_ip, '')) > 100
+        BEGIN
+          SELECT RAISE(ABORT, 'ACTIVITY_LOG_STRUCTURED_AUDIT_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_activity_logs_pii_audit_update
+        BEFORE UPDATE OF reason, outcome, failure_code, actor_role, request_ip
+        ON activity_logs
+        WHEN length(COALESCE(NEW.reason, '')) > 50
+          OR (NEW.outcome IS NOT NULL AND NEW.outcome NOT IN ('success', 'failure'))
+          OR length(COALESCE(NEW.failure_code, '')) > 100
+          OR length(COALESCE(NEW.actor_role, '')) > 50
+          OR length(COALESCE(NEW.request_ip, '')) > 100
+        BEGIN
+          SELECT RAISE(ABORT, 'ACTIVITY_LOG_STRUCTURED_AUDIT_INVALID');
+        END;
+
+        CREATE INDEX IF NOT EXISTS idx_activity_logs_action_entity_created
+          ON activity_logs(action, entity_id, created_at);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {

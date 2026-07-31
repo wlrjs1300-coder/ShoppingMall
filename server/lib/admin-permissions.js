@@ -1,5 +1,5 @@
 const ALL_PERMISSIONS = [
-  "orders:read", "orders:write",
+  "orders:read", "orders:write", "orders:pii:read",
   "inventory:read", "inventory:write",
   "purchase_orders:read", "purchase_orders:write",
   "payments:read", "payments:reconcile", "payments:cancel",
@@ -10,7 +10,7 @@ const ALL_PERMISSIONS = [
 const ROLE_PERMISSIONS = {
   super_admin: ALL_PERMISSIONS,
   operations: [
-    "orders:read", "orders:write",
+    "orders:read", "orders:write", "orders:pii:read",
     "inventory:read", "inventory:write",
     "purchase_orders:read", "purchase_orders:write",
     "payments:read", "activity_logs:read",

@@ -13,6 +13,7 @@ const {
 } = require("../middleware/customerAuth");
 const { audit, requireAuth: requireAdminAuth, requirePermission } = require("../middleware/auth");
 const { ADMIN_ROLES, permissionsForRole } = require("../lib/admin-permissions");
+const { maskName, maskPhone } = require("../lib/pii-crypto");
 const { consumePendingSocialLink } = require("../services/social-link");
 const {
   OrderPiiError,
@@ -64,8 +65,8 @@ router.get("/admin/directory", requireAdminAuth, requirePermission("orders:read"
     WHERE role='customer'
   `).all().map((user) => ({
     id: user.id,
-    name: user.name,
-    phone: user.phone,
+    name: maskName(user.name),
+    phone: maskPhone(user.phone),
     status: user.status,
     suspended: Boolean(user.login_locked_until && new Date(user.login_locked_until) > now),
   }));

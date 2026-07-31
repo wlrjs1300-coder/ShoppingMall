@@ -16,6 +16,11 @@ function rowToLog(row) {
     previousValue: row.previous_value,
     nextValue: row.next_value,
     actor: row.actor,
+    reason: row.reason,
+    outcome: row.outcome,
+    failureCode: row.failure_code,
+    actorRole: row.actor_role,
+    requestIp: row.request_ip,
     createdAt: row.created_at,
   };
 }

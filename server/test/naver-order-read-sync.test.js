@@ -113,7 +113,7 @@ function cleanup() {
 test.afterEach(cleanup);
 
 test("migration 13 creates empty constrained header and item staging tables", () => {
-  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 15);
+  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 16);
   for (const table of ["sales_channel_order_imports", "sales_channel_order_import_items"]) {
     assert.equal(db.prepare(`SELECT COUNT(*) count FROM ${table}`).get().count, 0);
   }
