@@ -11,6 +11,7 @@ const {
   applyMaskedOrderFields,
   buildOrderPiiApiFields,
   buildOrderPiiColumns,
+  buildOrderPiiStorage,
   buildMaskedOrderIdentity,
   maskOrderPii,
   readOrderPiiForOperation,
@@ -104,23 +105,52 @@ function isValidPickupDate(value) {
 }
 
 function validateCustomerFields(body) {
-  const customer = typeof body?.customer === "string" ? body.customer.trim() : "";
-  const phone = normalizePhone(typeof body?.phone === "string" ? body.phone : "");
   const fulfillmentType = body?.fulfillmentType === "delivery" ? "delivery" : body?.fulfillmentType === "pickup" ? "pickup" : "";
-  const deliveryAddress = typeof body?.deliveryAddress === "string" ? body.deliveryAddress.trim() : "";
+  const pii = validateOrderCreationPii(body, fulfillmentType);
   const pickupDate = typeof body?.pickupDate === "string" ? body.pickupDate.trim() : "";
   const pickupTime = typeof body?.pickupTime === "string" ? body.pickupTime.trim() : "";
   const memo = typeof body?.memo === "string" ? body.memo.trim() : "";
   const paymentMethod = ["card", "transfer", "mobile", "onsite"].includes(body?.paymentMethod) ? body.paymentMethod : "onsite";
-  if (!customer || customer.length > 50) return { error: "주문자 이름을 확인해 주세요." };
-  if (!isValidPhone(phone)) return { error: "연락처 형식이 올바르지 않습니다." };
   if (!fulfillmentType) return { error: "수령 방식을 확인해 주세요." };
+  if (pii.error) return pii;
   if (!isValidPickupDate(pickupDate)) return { error: "희망 날짜를 확인해 주세요." };
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(pickupTime)) return { error: "희망 시간을 확인해 주세요." };
-  if (fulfillmentType === "delivery" && (!deliveryAddress || deliveryAddress.length > 200)) return { error: "배송 주소를 확인해 주세요." };
-  if (deliveryAddress.length > 200) return { error: "배송 주소는 200자 이하로 입력해 주세요." };
   if (memo.length > 500) return { error: "요청사항은 500자 이하로 입력해 주세요." };
-  return { data: { customer, phone, fulfillmentType, deliveryAddress, pickupDate, pickupTime, memo, paymentMethod } };
+  return { data: { ...pii.data, fulfillmentType, pickupDate, pickupTime, memo, paymentMethod } };
+}
+
+function isProtectedPiiPlaceholder(value) {
+  return typeof value === "string"
+    && (value.includes("*") || value.toLowerCase().includes("[protected]"));
+}
+
+function validateOrderCreationPii(body, fulfillmentType) {
+  const customer = typeof body?.customer === "string" ? body.customer.trim() : "";
+  const rawPhone = typeof body?.phone === "string" ? body.phone.trim() : "";
+  const phone = normalizePhone(rawPhone);
+  const deliveryAddress = typeof body?.deliveryAddress === "string"
+    ? body.deliveryAddress.trim()
+    : "";
+  if (!customer || customer.length > 50 || isProtectedPiiPlaceholder(customer)) {
+    return { error: "주문자 이름을 확인해 주세요." };
+  }
+  if (!rawPhone || !isValidPhone(phone) || isProtectedPiiPlaceholder(rawPhone)) {
+    return { error: "연락처 형식이 올바르지 않습니다." };
+  }
+  if (fulfillmentType === "delivery"
+    && (!deliveryAddress || deliveryAddress.length > 200 || isProtectedPiiPlaceholder(deliveryAddress))) {
+    return { error: "배송 주소를 확인해 주세요." };
+  }
+  if (deliveryAddress.length > 200 || isProtectedPiiPlaceholder(deliveryAddress)) {
+    return { error: "배송 주소는 200자 이하로 입력해 주세요." };
+  }
+  return {
+    data: {
+      customer,
+      phone,
+      deliveryAddress: fulfillmentType === "delivery" ? deliveryAddress : null,
+    },
+  };
 }
 
 function createCheckoutPayment(order, paymentMethod, now) {
@@ -132,8 +162,49 @@ function createCheckoutPayment(order, paymentMethod, now) {
   db.prepare(`INSERT INTO payments
     (id, order_id, amount, order_name, customer_name, customer_phone, status, requested_at, link_token_hash, link_token_expires_at, payment_method)
     VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?)`)
-    .run(`pay-${crypto.randomUUID()}`, order.id, order.totalAmount, orderName, order.customer, order.phone, now, linkHash, expiresAt, paymentMethod);
+    .run(`pay-${crypto.randomUUID()}`, order.id, order.totalAmount, orderName, null, null, now, linkHash, expiresAt, paymentMethod);
   return `pay.html?orderId=${encodeURIComponent(order.id)}&token=${encodeURIComponent(linkToken)}`;
+}
+
+function rotateCheckoutPaymentLink(orderId) {
+  const payment = db.prepare("SELECT * FROM payments WHERE order_id=?").get(orderId);
+  if (!payment || payment.status !== "PENDING" || payment.link_token_used_at
+    || payment.session_token_hash) return null;
+  const linkToken = crypto.randomBytes(32).toString("base64url");
+  const linkHash = crypto.createHash("sha256").update(linkToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const result = db.prepare(`UPDATE payments SET
+    customer_name=NULL, customer_phone=NULL, link_token_hash=?, link_token_expires_at=?
+    WHERE id=? AND status='PENDING' AND link_token_used_at IS NULL
+      AND session_token_hash IS NULL`)
+    .run(linkHash, expiresAt, payment.id);
+  return result.changes === 1
+    ? `pay.html?orderId=${encodeURIComponent(orderId)}&token=${encodeURIComponent(linkToken)}`
+    : null;
+}
+
+function sendCheckoutReplay(res, checkoutId) {
+  let transactionStarted = false;
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    transactionStarted = true;
+    const order = getOrder(checkoutId);
+    if (!order) throw new Error("CHECKOUT_REPLAY_ORDER_MISSING");
+    const paymentUrl = rotateCheckoutPaymentLink(checkoutId);
+    db.exec("COMMIT");
+    transactionStarted = false;
+    return res.status(200).set("Idempotency-Replayed", "true").json({
+      checkoutId: order.id,
+      order,
+      orders: [order],
+      totalQuantity: order.quantity,
+      totalAmount: order.totalAmount,
+      paymentUrl,
+    });
+  } catch {
+    if (transactionStarted) db.exec("ROLLBACK");
+    return res.status(503).json({ error: "기존 주문 정보를 안전하게 불러오지 못했습니다." });
+  }
 }
 
 
@@ -407,19 +478,28 @@ function getProductionRecipe(productName) {
 }
 
 function insertHeader(fields) {
+  const pii = buildOrderPiiStorage({
+    customerName: fields.customer,
+    customerPhone: fields.phone,
+    deliveryAddress: fields.deliveryAddress,
+    guestAddress: fields.guestAddress,
+  });
   db.prepare(`
     INSERT INTO orders
       (id, user_id, customer_name, customer_phone, fulfillment_type, delivery_address, pickup_date, pickup_time,
        subtotal, delivery_fee, total_amount, cost, status, payment_status, amount_status, workflow_status, logistics_status, memo, created_at, updated_at,
-       guest_password_hash, guest_address)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       guest_password_hash, guest_address, pii_ciphertext, pii_iv, pii_auth_tag, pii_key_version,
+       customer_name_masked, customer_phone_masked, delivery_region_masked, pii_migrated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    fields.id, fields.userId || null, fields.customer, fields.phone, fields.fulfillmentType,
-    fields.deliveryAddress || null, fields.pickupDate || null, fields.pickupTime || null,
+    fields.id, fields.userId || null, pii.customerName, pii.customerPhone, fields.fulfillmentType,
+    pii.deliveryAddress, fields.pickupDate || null, fields.pickupTime || null,
     fields.subtotal, fields.deliveryFee || 0, fields.totalAmount, fields.cost || 0,
     fields.status || ORDER_STATUS, fields.paymentStatus || "결제대기", fields.amountStatus || "confirmed",
     fields.workflowStatus || "결제대기", fields.logisticsStatus || null, fields.memo || null, fields.createdAt, fields.createdAt,
-    fields.guestPasswordHash || null, fields.guestAddress || null,
+    fields.guestPasswordHash || null, pii.guestAddress,
+    pii.piiCiphertext, pii.piiIv, pii.piiAuthTag, pii.piiKeyVersion,
+    pii.customerNameMasked, pii.customerPhoneMasked, pii.deliveryRegionMasked, pii.piiMigratedAt,
   );
 }
 
@@ -470,6 +550,7 @@ function createOrder({ id, userId, customerData, products, requestedItems, memo,
   });
   items.forEach((item, index) => insertItem(id, item, index));
   addStatusHistory(id, null, ORDER_STATUS, "customer", createdAt);
+  return { id, items, totalAmount: subtotal };
 }
 
 router.get("/", requireAuth, requirePermission("orders:read"), (req, res) => {
@@ -589,14 +670,14 @@ router.post("/", publicOrderLimiter, optionalCustomerAuth, (req, res) => {
   }
   const id = `order-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
   try {
     createOrder({ id, userId: req.user?.id, customerData: customer.data, products: [product], requestedItems: items.data, memo: customer.data.memo, createdAt: now });
     if (key) db.prepare("INSERT INTO order_idempotency VALUES (?, ?, ?, ?)").run(key, hash, id, now);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
-    console.error("[orders] 주문 생성 실패:", error);
+    console.error(`[orders] 주문 생성 실패: ${error instanceof OrderPiiError ? error.code : "ORDER_CREATE_FAILED"}`);
     return res.status(500).json({ error: "주문 접수 중 오류가 발생했습니다." });
   }
   const order = getOrder(id);
@@ -622,38 +703,61 @@ router.post("/checkout", publicOrderLimiter, optionalCustomerAuth, (req, res) =>
   const previous = db.prepare("SELECT request_hash, checkout_id FROM checkout_idempotency WHERE idempotency_key = ?").get(key);
   if (previous) {
     if (previous.request_hash !== hash) return res.status(409).json({ error: "같은 중복 방지 키로 다른 주문을 요청할 수 없습니다." });
-    const order = getOrder(previous.checkout_id);
-    return res.status(200).set("Idempotency-Replayed", "true").json({ checkoutId: order.id, order, orders: [order], totalQuantity: order.quantity, totalAmount: order.totalAmount });
+    return sendCheckoutReplay(res, previous.checkout_id);
   }
   let guestData = null;
   if (!req.user && req.body?.guestPassword) {
     const password = String(req.body.guestPassword);
     const address = typeof req.body.guestAddress === "string" ? req.body.guestAddress.trim() : "";
     if (Buffer.byteLength(password, "utf8") < 8 || Buffer.byteLength(password, "utf8") > 72) return res.status(400).json({ error: "비회원 주문 비밀번호를 확인해 주세요." });
-    if (!address || address.length > 200) return res.status(400).json({ error: "비회원 주문 주소를 확인해 주세요." });
-    const verification = db.prepare("SELECT id FROM phone_verifications WHERE phone = ? AND verified_at IS NOT NULL AND consumed_at IS NULL ORDER BY verified_at DESC LIMIT 1").get(customer.data.phone);
-    if (!verification) return res.status(400).json({ error: "휴대폰 인증을 완료해 주세요." });
-    guestData = { verificationId: verification.id, passwordHash: bcrypt.hashSync(password, 10), address };
+    if (!address || address.length > 200 || isProtectedPiiPlaceholder(address)) {
+      return res.status(400).json({ error: "비회원 주문 주소를 확인해 주세요." });
+    }
+    guestData = { passwordHash: bcrypt.hashSync(password, 10), address };
   }
   const productQuery = db.prepare("SELECT id, name, price FROM products WHERE id = ? AND status = 'active' AND purchase_type = 'direct'");
   const products = items.data.map((item) => productQuery.get(item.productId));
   if (products.some((product) => !product)) return res.status(409).json({ error: "판매가 종료되었거나 장바구니로 주문할 수 없는 상품이 포함되어 있습니다." });
   const id = `checkout-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
-  db.exec("BEGIN");
+  let paymentUrl = null;
+  db.exec("BEGIN IMMEDIATE");
   try {
-    createOrder({ id, userId: req.user?.id, customerData: customer.data, products, requestedItems: items.data, memo: customer.data.memo, createdAt: now, guestData });
+    const concurrent = db.prepare("SELECT request_hash, checkout_id FROM checkout_idempotency WHERE idempotency_key = ?").get(key);
+    if (concurrent) {
+      if (concurrent.request_hash !== hash) throw new Error("CHECKOUT_IDEMPOTENCY_CONFLICT");
+      db.exec("ROLLBACK");
+      return sendCheckoutReplay(res, concurrent.checkout_id);
+    }
+    if (guestData) {
+      const verification = db.prepare(`SELECT id FROM phone_verifications
+        WHERE phone=? AND verified_at IS NOT NULL AND consumed_at IS NULL
+        ORDER BY verified_at DESC LIMIT 1`).get(customer.data.phone);
+      if (!verification) throw new Error("GUEST_VERIFICATION_REQUIRED");
+      guestData.verificationId = verification.id;
+    }
+    const createdOrder = createOrder({ id, userId: req.user?.id, customerData: customer.data, products, requestedItems: items.data, memo: customer.data.memo, createdAt: now, guestData });
     db.prepare("INSERT INTO checkout_idempotency VALUES (?, ?, ?, ?)").run(key, hash, id, now);
-    if (guestData?.verificationId) db.prepare("UPDATE phone_verifications SET consumed_at = ? WHERE id = ?").run(now, guestData.verificationId);
+    if (guestData?.verificationId) {
+      const consumed = db.prepare("UPDATE phone_verifications SET consumed_at=? WHERE id=? AND consumed_at IS NULL")
+        .run(now, guestData.verificationId);
+      if (consumed.changes !== 1) throw new Error("GUEST_VERIFICATION_REQUIRED");
+    }
+    paymentUrl = createCheckoutPayment(createdOrder, customer.data.paymentMethod, now);
     db.exec("COMMIT");
   } catch (error) {
-    db.exec("ROLLBACK");
-    console.error("[orders.checkout] 주문 생성 실패:", error);
+    try { db.exec("ROLLBACK"); } catch {}
+    if (error.message === "CHECKOUT_IDEMPOTENCY_CONFLICT") {
+      return res.status(409).json({ error: "같은 중복 방지 키로 다른 주문을 요청할 수 없습니다." });
+    }
+    if (error.message === "GUEST_VERIFICATION_REQUIRED") {
+      return res.status(400).json({ error: "휴대폰 인증을 완료해 주세요." });
+    }
+    console.error(`[orders.checkout] 주문 생성 실패: ${error instanceof OrderPiiError ? error.code : "CHECKOUT_CREATE_FAILED"}`);
     return res.status(500).json({ error: "주문 접수 중 오류가 발생했습니다." });
   }
   const operationalOrder = getOperationalOrder(id);
   const order = getOrder(id);
-  const paymentUrl = createCheckoutPayment(operationalOrder, customer.data.paymentMethod, now);
   notifyOrderReceived(operationalOrder).catch(() => null);
   res.status(201).json({ checkoutId: id, order, orders: [order], totalQuantity: order.quantity, totalAmount: order.totalAmount, paymentUrl });
 });
@@ -690,13 +794,16 @@ router.post("/admin", requireAuth, requirePermission("orders:write"), (req, res)
   const unitPrice = Math.max(0, Number(req.body.unitPrice || 0));
   const status = ORDER_STATUSES.has(req.body.status) ? req.body.status : ORDER_STATUS;
   const paymentStatus = PAYMENT_STATUSES.has(req.body.paymentStatus) ? req.body.paymentStatus : "결제대기";
+  const fulfillmentType = req.body.fulfillmentType === "delivery" ? "delivery" : "pickup";
+  const pii = validateOrderCreationPii(req.body, fulfillmentType);
+  if (pii.error) return res.status(400).json({ error: pii.error });
   if (req.body.pickupDate && !isValidPickupDate(req.body.pickupDate)) return res.status(400).json({ error: "희망 날짜는 오늘 이후의 올바른 날짜여야 합니다." });
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
   try {
     insertHeader({
-      id, customer: String(req.body.customer || "고객"), phone: String(req.body.phone || ""),
-      fulfillmentType: req.body.fulfillmentType === "delivery" ? "delivery" : "pickup",
-      deliveryAddress: req.body.deliveryAddress, pickupDate: req.body.pickupDate, pickupTime: req.body.pickupTime,
+      id, customer: pii.data.customer, phone: pii.data.phone,
+      fulfillmentType,
+      deliveryAddress: pii.data.deliveryAddress, pickupDate: req.body.pickupDate, pickupTime: req.body.pickupTime,
       subtotal: Math.round(unitPrice * quantity), totalAmount: Math.round(unitPrice * quantity), cost: Math.max(0, Number(req.body.cost || 0)),
       status, paymentStatus, amountStatus: req.body.amountStatus === "pending" || unitPrice === 0 ? "pending" : "confirmed",
       workflowStatus: WORKFLOW_STATUSES.has(req.body.workflowStatus) ? req.body.workflowStatus : (paymentStatus === "결제완료" ? "접수대기" : "결제대기"),
