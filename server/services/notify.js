@@ -1,5 +1,6 @@
 const https = require("https");
 const crypto = require("crypto");
+const { OrderPiiError, readOrderPiiForOperation } = require("./order-pii-service");
 
 const notifiedReminders = new Set(); // 서버 재시작 전까지 중복 발송 방지
 
@@ -112,7 +113,7 @@ async function notifyOrderReady(order) {
 }
 
 // D-1 픽업 리마인더 (매일 오전 9시 실행)
-async function notifyPickupReminders(db) {
+async function notifyPickupReminders(db, { notifyFn = notify, logger = console } = {}) {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().slice(0, 10);
@@ -131,15 +132,31 @@ async function notifyPickupReminders(db) {
   let sent = 0;
   for (const row of rows) {
     const dedupKey = `remind-${row.id}-${todayStr}`;
-    if (notifiedReminders.has(dedupKey) || !row.customer_phone) continue;
+    if (notifiedReminders.has(dedupKey)) continue;
+    let pii;
+    try {
+      pii = readOrderPiiForOperation(row);
+    } catch (error) {
+      if (error instanceof OrderPiiError) {
+        logger.warn(`[notification] ${row.id} skipped: ${error.code}`);
+        continue;
+      }
+      throw error;
+    }
+    if (!pii.customerPhone) continue;
 
-    const text = `[${storeName()}] ${row.customer_name || "고객"}님, 내일(${tomorrowStr}) ${row.product_names || "주문"} ${row.total_quantity || 1}개 픽업이 예정되어 있습니다.`;
-    const result = await notify(row.customer_phone, text, process.env.KAKAO_TEMPLATE_REMIND, {
-      customer: row.customer_name || "고객",
+    const text = `[${storeName()}] ${pii.customerName || "고객"}님, 내일(${tomorrowStr}) ${row.product_names || "주문"} ${row.total_quantity || 1}개 픽업이 예정되어 있습니다.`;
+    const result = await Promise.resolve(notifyFn(
+      pii.customerPhone,
+      text,
+      process.env.KAKAO_TEMPLATE_REMIND,
+      {
+      customer: pii.customerName || "고객",
       product: row.product_names || "주문",
       quantity: String(row.total_quantity || 1),
       pickupDate: tomorrowStr,
-    }).catch(() => null);
+      },
+    )).catch(() => null);
 
     if (result?.ok) {
       notifiedReminders.add(dedupKey);
@@ -148,7 +165,7 @@ async function notifyPickupReminders(db) {
   }
 
   if (sent > 0 || rows.length > 0) {
-    console.log(`[알림] D-1 리마인더: 대상 ${rows.length}건, 발송 ${sent}건 (${tomorrowStr} 픽업)`);
+    logger.log(`[알림] D-1 리마인더: 대상 ${rows.length}건, 발송 ${sent}건 (${tomorrowStr} 픽업)`);
   }
   return sent;
 }

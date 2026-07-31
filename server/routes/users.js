@@ -14,6 +14,10 @@ const {
 const { audit, requireAuth: requireAdminAuth, requirePermission } = require("../middleware/auth");
 const { ADMIN_ROLES, permissionsForRole } = require("../lib/admin-permissions");
 const { consumePendingSocialLink } = require("../services/social-link");
+const {
+  OrderPiiError,
+  buildOrderPiiApiFields,
+} = require("../services/order-pii-service");
 
 const router = express.Router();
 
@@ -402,6 +406,7 @@ function applyMemberOrderHistory(order) {
 }
 
 function rowToMemberOrder(row, includeAddress = false) {
+  const piiFields = buildOrderPiiApiFields(row, { includeAddress });
   const items = db.prepare(`
     SELECT
       oi.product_id,
@@ -431,21 +436,41 @@ function rowToMemberOrder(row, includeAddress = false) {
     pickupDate: row.pickup_date, pickupTime: row.pickup_time, memo: row.memo,
     createdAt: row.created_at, updatedAt: row.updated_at,
     cancelable: CANCELABLE_ORDER_STATUSES.has(row.status),
+    ...piiFields,
   };
-  if (includeAddress) result.deliveryAddress = row.delivery_address;
   return result;
 }
 
 // 아래 /me/* API는 URL의 회원 ID를 신뢰하지 않고 인증 쿠키의 req.user.id만 사용한다.
 router.get("/me/orders", requireCustomerAuth, (req, res) => {
   const rows = db.prepare("SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC").all(req.user.id);
-  res.json({ orders: rows.map((row) => applyMemberOrderHistory(rowToMemberOrder(row))) });
+  try {
+    return res.json({ orders: rows.map((row) => applyMemberOrderHistory(rowToMemberOrder(row))) });
+  } catch (error) {
+    if (error instanceof OrderPiiError) {
+      return res.status(503).json({
+        error: "주문 개인정보를 안전하게 확인할 수 없습니다.",
+        reason: "ORDER_PII_ACCESS_FAILED",
+      });
+    }
+    throw error;
+  }
 });
 
 router.get("/me/orders/:orderId", requireCustomerAuth, (req, res) => {
   const order = db.prepare("SELECT * FROM orders WHERE id=? AND user_id=?").get(req.params.orderId, req.user.id);
   if (!order) return res.status(404).json({ error: "주문을 찾을 수 없습니다." });
-  res.json({ order: applyMemberOrderHistory(rowToMemberOrder(order, true)) });
+  try {
+    return res.json({ order: applyMemberOrderHistory(rowToMemberOrder(order, true)) });
+  } catch (error) {
+    if (error instanceof OrderPiiError) {
+      return res.status(503).json({
+        error: "주문 개인정보를 안전하게 확인할 수 없습니다.",
+        reason: "ORDER_PII_ACCESS_FAILED",
+      });
+    }
+    throw error;
+  }
 });
 
 router.post("/me/orders/:orderId/cancel", requireCustomerAuth, (req, res) => {
