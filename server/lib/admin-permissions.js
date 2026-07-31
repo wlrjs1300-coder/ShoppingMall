@@ -1,5 +1,5 @@
 const ALL_PERMISSIONS = [
-  "orders:read", "orders:write", "orders:pii:read",
+  "orders:read", "orders:write", "orders:pii:read", "orders:pii:write",
   "inventory:read", "inventory:write",
   "purchase_orders:read", "purchase_orders:write",
   "payments:read", "payments:reconcile", "payments:cancel",
