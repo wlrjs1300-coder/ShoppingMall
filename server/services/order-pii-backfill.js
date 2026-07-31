@@ -1,6 +1,9 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const crypto = require("node:crypto");
+const {
+  acquireRunnerLock: acquireCommonRunnerLock,
+  isProcessAlive,
+  runBusyRetry,
+  writeSafeJsonlReport,
+} = require("../lib/operations-runner");
 const {
   buildOrderPiiColumns,
   decryptOrderPii,
@@ -173,24 +176,6 @@ function backfillOrder(db, row, keyring, migratedAt) {
     );
 }
 
-function defaultSleep(milliseconds) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
-}
-
-function runBusyRetry(action, options) {
-  const sleep = options.sleep || defaultSleep;
-  const retries = options.busyRetries ?? 3;
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      return action();
-    } catch (error) {
-      const busy = error?.code === "SQLITE_BUSY" || error?.errcode === 5;
-      if (!busy || attempt >= retries) throw error;
-      sleep(25 * (2 ** attempt));
-    }
-  }
-}
-
 function applyBackfill(db, keyring, options = {}) {
   const batchSize = options.batchSize || 100;
   const scopedInventory = inventoryOrders(db, keyring, options);
@@ -261,103 +246,20 @@ function verifyBackfill(db, keyring, options = {}) {
 }
 
 function writeSafeReport(reportPath, result) {
-  const destination = path.resolve(reportPath);
-  if (fs.existsSync(destination)) {
-    throw new OrderPiiBackfillError("ORDER_PII_REPORT_EXISTS", "Report path already exists.", 2);
-  }
-  const directory = path.dirname(destination);
-  const temporary = path.join(directory, `.${path.basename(destination)}.${process.pid}.tmp`);
-  const records = [...(result.details || []), ...(result.failures || [])]
-    .map((record) => Object.fromEntries(
-      [...REPORT_FIELDS, "safeErrorCode"]
-        .filter((field) => Object.hasOwn(record, field))
-        .map((field) => [field, record[field]]),
-    ));
-  try {
-    fs.writeFileSync(temporary, records.map((record) => JSON.stringify(record)).join("\n")
-      + (records.length ? "\n" : ""), { encoding: "utf8", flag: "wx" });
-    fs.renameSync(temporary, destination);
-  } catch (error) {
-    try { fs.rmSync(temporary, { force: true }); } catch {}
-    if (error instanceof OrderPiiBackfillError) throw error;
-    throw new OrderPiiBackfillError("ORDER_PII_REPORT_FAILED", "Safe report could not be written.", 6);
-  }
-  return destination;
-}
-
-function isProcessAlive(pid) {
-  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
-  if (pid === process.pid) return true;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    if (error?.code === "ESRCH") return false;
-    return true;
-  }
-}
-
-function readLock(file) {
-  let raw;
-  let parsed;
-  try {
-    raw = fs.readFileSync(file, "utf8");
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new OrderPiiBackfillError("ORDER_PII_LOCK_CONFLICT", "Existing runner lock is unreadable.", 8);
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)
-    || !Number.isSafeInteger(parsed.pid) || parsed.pid <= 0
-    || typeof parsed.startedAt !== "string" || !Number.isFinite(Date.parse(parsed.startedAt))
-    || typeof parsed.mode !== "string" || !parsed.mode
-    || typeof parsed.ownerToken !== "string" || !parsed.ownerToken) {
-    throw new OrderPiiBackfillError("ORDER_PII_LOCK_CONFLICT", "Existing runner lock is invalid.", 8);
-  }
-  return { raw, parsed };
+  const records = [...(result.details || []), ...(result.failures || [])];
+  return writeSafeJsonlReport(reportPath, records, [...REPORT_FIELDS, "safeErrorCode"], {
+    reportExistsCode: "ORDER_PII_REPORT_EXISTS",
+    reportFailedCode: "ORDER_PII_REPORT_FAILED",
+    errorFactory: (code, message, exitCode) => new OrderPiiBackfillError(code, message, exitCode),
+  });
 }
 
 function acquireRunnerLock(lockPath, mode, options = {}) {
-  const resolved = path.resolve(lockPath);
-  const staleMs = options.staleMs || 6 * 60 * 60 * 1000;
-  const processAlive = options.isProcessAlive || isProcessAlive;
-  if (fs.existsSync(resolved)) {
-    const stat = fs.statSync(resolved);
-    const existing = readLock(resolved);
-    if (Date.now() - stat.mtimeMs <= staleMs || processAlive(existing.parsed.pid)) {
-      throw new OrderPiiBackfillError("ORDER_PII_LOCK_CONFLICT", "Another backfill runner is active.", 8);
-    }
-    let current;
-    try {
-      current = fs.readFileSync(resolved, "utf8");
-    } catch {
-      throw new OrderPiiBackfillError("ORDER_PII_LOCK_CONFLICT", "Runner lock changed during takeover.", 8);
-    }
-    if (current !== existing.raw) {
-      throw new OrderPiiBackfillError("ORDER_PII_LOCK_CONFLICT", "Runner lock changed during takeover.", 8);
-    }
-    try {
-      fs.rmSync(resolved);
-    } catch {
-      throw new OrderPiiBackfillError("ORDER_PII_LOCK_CONFLICT", "Stale runner lock could not be replaced.", 8);
-    }
-  }
-  const ownerToken = crypto.randomUUID();
-  try {
-    fs.writeFileSync(resolved, `${JSON.stringify({
-      pid: process.pid,
-      startedAt: new Date().toISOString(),
-      mode,
-      ownerToken,
-    })}\n`, { encoding: "utf8", flag: "wx" });
-  } catch {
-    throw new OrderPiiBackfillError("ORDER_PII_LOCK_CONFLICT", "Another backfill runner is active.", 8);
-  }
-  return () => {
-    try {
-      const current = readLock(resolved);
-      if (current.parsed.ownerToken === ownerToken) fs.rmSync(resolved);
-    } catch {}
-  };
+  return acquireCommonRunnerLock(lockPath, mode, {
+    ...options,
+    lockConflictCode: "ORDER_PII_LOCK_CONFLICT",
+    errorFactory: (code, message, exitCode) => new OrderPiiBackfillError(code, message, exitCode),
+  });
 }
 
 module.exports = {
