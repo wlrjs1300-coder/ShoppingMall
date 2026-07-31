@@ -1,3 +1,15 @@
+async function requestAdminOrderPii(actionButton, orderId, reason) {
+  actionButton.disabled = true;
+  try {
+    return await apiFetch(`/orders/${encodeURIComponent(orderId)}/pii-access`, {
+      method: "POST",
+      body: { reason },
+    });
+  } finally {
+    actionButton.disabled = false;
+  }
+}
+
 document.querySelector(".admin-order-list")?.addEventListener("change", (event) => {
   const row = event.target.closest("tr[data-order-id]");
   if (!row) return;
@@ -130,6 +142,20 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
   if (!order) return;
 
   const action = actionButton.dataset.detailAction;
+  if (action === "access-pii") {
+    const reason = dialog.querySelector("[data-admin-order-pii-reason]")?.value || "";
+    if (!reason) return AppUI.alert("개인정보 접근 목적을 선택해 주세요.");
+    const pii = await requestAdminOrderPii(actionButton, orderId, reason);
+    if (!pii || pii.orderId !== orderId) return;
+    setActiveAdminOrderPii(pii);
+    openAdminOrderDetail(orderId, { preservePii: true });
+    return;
+  }
+  if (action === "hide-pii") {
+    clearActiveAdminOrderPii();
+    openAdminOrderDetail(orderId);
+    return;
+  }
   if (action === "reconcile-payment") {
     await reconcileAdminPayment(orderId, actionButton);
     return;
@@ -887,16 +913,20 @@ document.querySelector(".admin-recipe-list")?.addEventListener("click", async (e
 document.querySelector(".admin-sidebar-nav")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-tab]");
   if (!button) return;
+  clearActiveAdminOrderPii();
   setAdminTab(button.dataset.adminTab);
 });
 
 document.querySelector(".admin-sidebar-alerts")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-flow-tab]");
   if (!button) return;
+  clearActiveAdminOrderPii();
   setAdminTab(button.dataset.adminFlowTab);
   if (button.dataset.alertType === "purchases") setAdminSubtab("inventory", "purchases");
   if (button.dataset.alertType === "inventory") setAdminSubtab("inventory", "stock");
 });
+
+window.addEventListener("pagehide", () => clearActiveAdminOrderPii());
 
 document.querySelector(".admin-main")?.addEventListener("click", (event) => {
   const formOpen = event.target.closest("[data-admin-form-open]");

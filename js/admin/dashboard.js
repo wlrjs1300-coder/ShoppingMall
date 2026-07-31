@@ -316,6 +316,7 @@ function showAdminLoginRequired() {
 }
 
 function lockAdmin() {
+  if (typeof clearActiveAdminOrderPii === "function") clearActiveAdminOrderPii();
   try {
     sessionStorage.removeItem(adminAccessStorageKey);
     setApiToken(null);

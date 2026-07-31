@@ -82,11 +82,14 @@ function requireAuth(req, res, next) {
   return res.status(403).json({ error: "관리자 권한이 없습니다." });
 }
 
-function requirePermission(permission) {
+function requirePermission(permission, options = {}) {
   return (req, res, next) => {
     if (!req.admin?.permissions?.includes(permission)) {
       audit("admin_permission_denied", req.admin?.id, "Blocked unauthorized admin API request", permission);
-      return res.status(403).json({ error: "이 작업을 수행할 권한이 없습니다.", reason: "INSUFFICIENT_PERMISSION" });
+      return res.status(403).json({
+        error: "이 작업을 수행할 권한이 없습니다.",
+        reason: options.reason || "INSUFFICIENT_PERMISSION",
+      });
     }
     next();
   };
