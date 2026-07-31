@@ -566,7 +566,7 @@ orderRequestForm?.addEventListener("submit", async (event) => {
   */
 });
 
-adminOrderCreateForm?.addEventListener("submit", (event) => {
+adminOrderCreateForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(adminOrderCreateForm);
   const product = String(formData.get("product") || "").trim();
@@ -579,35 +579,45 @@ adminOrderCreateForm?.addEventListener("submit", (event) => {
   const revenue = unitPrice * quantity;
   const previousOrder = editingAdminOrderId ? readOrders().find((order) => order.id === editingAdminOrderId) : null;
   const fulfillmentType = String(formData.get("fulfillmentType") || "pickup");
-  const order = {
-    ...(previousOrder || {}),
-    id: previousOrder?.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
-    createdAt: previousOrder?.createdAt || new Date().toISOString(),
+  const customer = String(formData.get("customer") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const deliveryAddress = String(formData.get("deliveryAddress") || "").trim();
+  if (!customer || !/^01[0-9]{8,9}$/.test(phone.replace(/\D/g, ""))
+    || (fulfillmentType === "delivery" && !deliveryAddress)) {
+    if (adminOrderCreateStatus) adminOrderCreateStatus.textContent = "고객명, 연락처와 배송 정보를 확인해 주세요.";
+    return;
+  }
+  const payload = {
     product,
-    priceText: unitPrice ? formatWon(unitPrice) : "상담 후 안내",
     quantity,
     pickupDate: String(formData.get("pickupDate") || ""),
     pickupTime: String(formData.get("pickupTime") || ""),
     fulfillmentType,
-    deliveryAddress: String(formData.get("deliveryAddress") || "").trim(),
     logisticsStatus: String(formData.get("logisticsStatus") || previousOrder?.logisticsStatus || getDefaultLogisticsStatus(fulfillmentType)),
-    customer: String(formData.get("customer") || "").trim(),
-    phone: String(formData.get("phone") || "").trim(),
     memo: String(formData.get("memo") || "").trim(),
     status: previousOrder?.status || "접수대기",
     unitPrice,
     revenue,
     cost: Number(formData.get("cost") || 0),
+    ...(!previousOrder ? { customer, phone, deliveryAddress } : {}),
   };
-
-  const nextOrders = previousOrder
-    ? readOrders().map((current) => (current.id === previousOrder.id ? order : current))
-    : [order, ...readOrders()];
-  writeOrders(nextOrders);
-  addActivityLog("주문", `${order.product} 주문을 ${previousOrder ? "수정" : "등록"}했습니다.`, "orders");
-  renderAdminDashboard();
-  setAdminTab("orders");
-  if (adminOrderCreateStatus) adminOrderCreateStatus.textContent = previousOrder ? "주문이 수정되었습니다." : "주문이 등록되었습니다.";
-  setAdminFeedback(previousOrder ? "주문 정보가 수정되었습니다." : "새 주문이 등록되었습니다.");
-  setTimeout(closeAdminOrderCreate, 700);
+  const submitButton = adminOrderCreateForm.querySelector('[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
+  try {
+    const saved = await apiFetch(
+      previousOrder ? `/orders/${encodeURIComponent(previousOrder.id)}` : "/orders/admin",
+      { method: previousOrder ? "PUT" : "POST", body: payload },
+    );
+    if (!saved) return;
+    await loadFromApi();
+    addActivityLog("주문", `${product} 주문을 ${previousOrder ? "수정" : "등록"}했습니다.`, "orders");
+    renderAdminDashboard();
+    setAdminTab("orders");
+    adminOrderCreateForm.reset();
+    if (adminOrderCreateStatus) adminOrderCreateStatus.textContent = previousOrder ? "주문이 수정되었습니다." : "주문이 등록되었습니다.";
+    setAdminFeedback(previousOrder ? "주문 정보가 수정되었습니다." : "새 주문이 등록되었습니다.");
+    setTimeout(closeAdminOrderCreate, 700);
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
 });

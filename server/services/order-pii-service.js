@@ -114,6 +114,42 @@ function buildOrderPiiColumns(value, keyring, migratedAt = null) {
   };
 }
 
+function buildOrderPiiStorage(value) {
+  const pii = normalizeOrderPii(value);
+  if (!isOrderPiiProtectionEnabled()) {
+    return {
+      customerName: pii.customerName,
+      customerPhone: pii.customerPhone,
+      deliveryAddress: pii.deliveryAddress,
+      guestAddress: pii.guestAddress,
+      piiCiphertext: null,
+      piiIv: null,
+      piiAuthTag: null,
+      piiKeyVersion: null,
+      customerNameMasked: null,
+      customerPhoneMasked: null,
+      deliveryRegionMasked: null,
+      piiMigratedAt: null,
+    };
+  }
+  let keyring;
+  try {
+    keyring = getDefaultOrderPiiKeyring();
+  } catch (error) {
+    if (error instanceof PiiKeyringError) {
+      throw new OrderPiiError("ORDER_PII_ENCRYPTION_FAILED");
+    }
+    throw error;
+  }
+  return {
+    customerName: "[protected]",
+    customerPhone: "[protected]",
+    deliveryAddress: null,
+    guestAddress: null,
+    ...buildOrderPiiColumns(pii, keyring, null),
+  };
+}
+
 function hasEncryptedTuple(row) {
   return ["pii_ciphertext", "pii_iv", "pii_auth_tag", "pii_key_version"]
     .every((field) => typeof row?.[field] === "string" && row[field] !== "");
@@ -204,6 +240,7 @@ module.exports = {
   applyMaskedOrderFields,
   buildOrderPiiApiFields,
   buildOrderPiiColumns,
+  buildOrderPiiStorage,
   buildMaskedOrderIdentity,
   decryptOrderPii,
   encryptOrderPii,

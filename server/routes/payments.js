@@ -398,9 +398,8 @@ router.post("/", requireAuth, requirePermission("payments:reconcile"), (req, res
   const expiresAt = new Date(Date.now() + LINK_TTL_MS).toISOString();
   const orderName = `${items[0].product_name}${items.length > 1 ? `외 ${items.length - 1}건` : ""}`;
 
-  let pii;
   try {
-    pii = readOrderPiiForOperation(order);
+    readOrderPiiForOperation(order);
   } catch (error) {
     if (error instanceof OrderPiiError) {
       return res.status(503).json({
@@ -416,12 +415,12 @@ router.post("/", requireAuth, requirePermission("payments:reconcile"), (req, res
       `UPDATE payments SET amount=?, order_name=?, customer_name=?, customer_phone=?, status='PENDING', requested_at=?,
       link_token_hash=?, link_token_expires_at=?, link_token_used_at=NULL, session_token_hash=NULL, session_token_expires_at=NULL,
       confirm_idempotency_key=NULL, last_error=NULL WHERE order_id=?`
-    ).run(order.total_amount, orderName, pii.customerName, pii.customerPhone, now, hash(linkToken), expiresAt, orderId);
+    ).run(order.total_amount, orderName, null, null, now, hash(linkToken), expiresAt, orderId);
   } else {
     db.prepare(
       `INSERT INTO payments (id, order_id, amount, order_name, customer_name, customer_phone, status, requested_at, link_token_hash, link_token_expires_at)
       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`
-    ).run(`pay-${uuid()}`, orderId, order.total_amount, orderName, pii.customerName, pii.customerPhone, now, hash(linkToken), expiresAt);
+    ).run(`pay-${uuid()}`, orderId, order.total_amount, orderName, null, null, now, hash(linkToken), expiresAt);
   }
 
   res.status(existing ? 200 : 201).json({ orderId, amount: order.total_amount, orderName, status: "PENDING", linkToken, expiresAt });
