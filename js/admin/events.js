@@ -10,6 +10,22 @@ async function requestAdminOrderPii(actionButton, orderId, reason) {
   }
 }
 
+async function requestAdminOrderPiiUpdate(actionButton, orderId, patch) {
+  actionButton.disabled = true;
+  actionButton.setAttribute("aria-busy", "true");
+  try {
+    return await apiFetch(`/orders/${encodeURIComponent(orderId)}/pii`, {
+      method: "PATCH",
+      body: patch,
+    });
+  } finally {
+    if (actionButton.isConnected) {
+      actionButton.disabled = false;
+      actionButton.removeAttribute("aria-busy");
+    }
+  }
+}
+
 document.querySelector(".admin-order-list")?.addEventListener("change", (event) => {
   const row = event.target.closest("tr[data-order-id]");
   if (!row) return;
@@ -156,6 +172,37 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
     openAdminOrderDetail(orderId);
     return;
   }
+  if (action === "cancel-pii-update") {
+    dialog.querySelector("[data-admin-order-pii-update-form]")?.reset();
+    return;
+  }
+  if (action === "update-pii") {
+    const form = dialog.querySelector("[data-admin-order-pii-update-form]");
+    const reason = form?.querySelector("[data-admin-order-pii-update-reason]")?.value || "";
+    const customer = form?.querySelector("[data-admin-order-pii-update-customer]")?.value.trim() || "";
+    const phone = form?.querySelector("[data-admin-order-pii-update-phone]")?.value.trim() || "";
+    const deliveryAddress = form?.querySelector("[data-admin-order-pii-update-address]")?.value.trim() || "";
+    if (!reason) return AppUI.alert("개인정보 수정 사유를 선택해 주세요.");
+    const patch = {
+      reason,
+      ...(customer ? { customer } : {}),
+      ...(phone ? { phone } : {}),
+      ...(deliveryAddress ? { deliveryAddress } : {}),
+      ...(order.updatedAt ? { expectedUpdatedAt: order.updatedAt } : {}),
+    };
+    if (!customer && !phone && !deliveryAddress) {
+      return AppUI.alert("변경할 개인정보를 한 항목 이상 입력해 주세요.");
+    }
+    const result = await requestAdminOrderPiiUpdate(actionButton, orderId, patch);
+    if (!result || result.orderId !== orderId) throw new Error("ORDER_PII_UPDATE_RESPONSE_INVALID");
+    clearActiveAdminOrderPii();
+    form?.reset();
+    await loadFromApi();
+    renderAdminDashboard();
+    openAdminOrderDetail(orderId);
+    AppUI.toast("주문 개인정보를 수정했습니다.", "success");
+    return;
+  }
   if (action === "reconcile-payment") {
     await reconcileAdminPayment(orderId, actionButton);
     return;
@@ -203,7 +250,7 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
     actionButton.hidden = true;
     dialog.querySelector('[data-detail-action="edit-cancel"]')?.removeAttribute("hidden");
     dialog.querySelector('[data-detail-action="edit-save"]')?.removeAttribute("hidden");
-    dialog.querySelector("[data-inline-customer]")?.focus();
+    dialog.querySelector("[data-inline-product]")?.focus();
     return;
   }
   if (action === "edit-cancel") {
@@ -217,16 +264,13 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
   if (action === "edit-save") {
     const value = (selector) => dialog.querySelector(selector)?.value.trim() || "";
     const product = value("[data-inline-product]");
-    const customer = value("[data-inline-customer]");
     const quantity = Math.max(1, Math.min(99, Number(value("[data-inline-quantity]")) || 1));
     const unitPrice = Math.max(0, Number(value("[data-inline-unit-price]")) || 0);
-    if (!product || !customer) return AppUI.alert("고객명과 상품명을 입력해 주세요.");
+    if (!product) return AppUI.alert("상품명을 입력해 주세요.");
     const items = Array.isArray(order.items) && order.items.length
       ? order.items.map((item, index) => index ? item : { ...item, productName: product, unitPrice, quantity, lineTotal: unitPrice * quantity })
       : order.items;
     updateAdminOrder(orderId, {
-      customer,
-      phone: value("[data-inline-phone]"),
       product,
       quantity,
       unitPrice,
@@ -236,7 +280,6 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
       fulfillmentType: dialog.querySelector("[data-inline-fulfillment]")?.value || "pickup",
       pickupDate: value("[data-inline-pickup-date]"),
       pickupTime: value("[data-inline-pickup-time]"),
-      deliveryAddress: value("[data-inline-address]"),
       memo: value("[data-inline-memo]"),
       ...(items ? { items } : {}),
     });

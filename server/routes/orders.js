@@ -10,17 +10,25 @@ const {
   OrderPiiError,
   applyMaskedOrderFields,
   buildOrderPiiApiFields,
+  buildOrderPiiColumns,
   buildMaskedOrderIdentity,
+  maskOrderPii,
   readOrderPiiForOperation,
 } = require("../services/order-pii-service");
-const { isOrderPiiProtectionEnabled } = require("../lib/pii-keyring");
+const {
+  getDefaultOrderPiiKeyring,
+  isOrderPiiProtectionEnabled,
+} = require("../lib/pii-keyring");
 const { normalizePhone, isValidPhone } = require("../utils/normalize");
 const {
   insertOrderPiiAudit,
   normalizeOrderPiiAccessReason,
+  normalizeOrderPiiUpdateReason,
   normalizeRequestIp,
   orderPiiAccessLimiter,
+  orderPiiUpdateLimiter,
   recordOrderPiiAccessFailure,
+  recordOrderPiiUpdateFailure,
 } = require("../lib/order-pii-access");
 
 const router = express.Router();
@@ -278,6 +286,112 @@ function sendStrictPiiFailureAudit(req, res, { orderId = null, reason = null, fa
   }
   return res.status(status).json({
     error: "주문 개인정보에 접근할 수 없습니다.",
+    reason: failureCode,
+  });
+}
+
+const ORDER_PII_UPDATE_FIELDS = Object.freeze([
+  "customer",
+  "phone",
+  "deliveryAddress",
+  "guestAddress",
+]);
+const ORDER_PII_UPDATE_REQUEST_FIELDS = new Set([
+  ...ORDER_PII_UPDATE_FIELDS,
+  "reason",
+  "expectedUpdatedAt",
+]);
+
+class OrderPiiUpdateError extends Error {
+  constructor(code, status) {
+    super(code);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function hasMaskedPiiInput(value) {
+  return typeof value === "string"
+    && (value.includes("*") || value.toLowerCase().includes("[protected]"));
+}
+
+function normalizeOrderPiiPatch(body, existingPii, fulfillmentType) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+  }
+  if (Object.keys(body).some((field) => !ORDER_PII_UPDATE_REQUEST_FIELDS.has(field))) {
+    throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+  }
+  const suppliedFields = ORDER_PII_UPDATE_FIELDS.filter((field) => Object.hasOwn(body, field));
+  if (!suppliedFields.length) throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+
+  const next = { ...existingPii };
+  for (const field of suppliedFields) {
+    const value = body[field];
+    if (hasMaskedPiiInput(value)) throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+    if (field === "customer") {
+      if (typeof value !== "string") throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+      const customer = value.trim();
+      if (!customer || customer.length > 50) throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+      next.customerName = customer;
+    } else if (field === "phone") {
+      if (typeof value !== "string") throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+      const phone = normalizePhone(value);
+      if (!value.trim() || !isValidPhone(phone)) throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+      next.customerPhone = phone;
+    } else {
+      if (value === null) {
+        if (field === "deliveryAddress" && fulfillmentType === "delivery") {
+          throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+        }
+        next[field] = null;
+      } else {
+        if (typeof value !== "string") throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+        const normalized = value.trim();
+        if (!normalized || normalized.length > 200) {
+          throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+        }
+        next[field] = normalized;
+      }
+    }
+  }
+  if (fulfillmentType === "delivery" && !next.deliveryAddress) {
+    throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+  }
+  const changedFields = suppliedFields.filter((field) => {
+    const piiField = field === "customer"
+      ? "customerName"
+      : field === "phone"
+        ? "customerPhone"
+        : field;
+    return next[piiField] !== existingPii[piiField];
+  });
+  if (!changedFields.length) throw new OrderPiiUpdateError("ORDER_PII_UPDATE_INVALID", 400);
+  return { next, changedFields };
+}
+
+function sendStrictPiiUpdateFailure(req, res, {
+  orderId,
+  reason = null,
+  failureCode,
+  status,
+  changedFields = [],
+}) {
+  try {
+    recordOrderPiiUpdateFailure(req, {
+      orderId,
+      reason,
+      failureCode,
+      changedFields,
+    });
+  } catch {
+    return res.status(503).json({
+      error: "개인정보 수정 감사 기록을 완료하지 못했습니다.",
+      reason: "ORDER_PII_AUDIT_FAILED",
+    });
+  }
+  return res.status(status).json({
+    error: "주문 개인정보를 수정할 수 없습니다.",
     reason: failureCode,
   });
 }
@@ -736,6 +850,168 @@ router.post("/production/complete", requireAuth, requirePermission("orders:write
   }
 });
 
+router.patch(
+  "/:id/pii",
+  setOrderPiiNoStoreHeaders,
+  requireAuth,
+  requirePermission("orders:pii:write", { reason: "ORDER_PII_UPDATE_FORBIDDEN" }),
+  orderPiiUpdateLimiter,
+  (req, res) => {
+    const reason = normalizeOrderPiiUpdateReason(req.body?.reason);
+    const requestedFields = ORDER_PII_UPDATE_FIELDS.filter((field) => Object.hasOwn(req.body || {}, field));
+    if (!reason) {
+      return sendStrictPiiUpdateFailure(req, res, {
+        orderId: req.params.id,
+        failureCode: "ORDER_PII_UPDATE_INVALID",
+        status: 400,
+        changedFields: requestedFields,
+      });
+    }
+
+    let transactionStarted = false;
+    let auditPhase = false;
+    let result;
+    try {
+      db.exec("BEGIN IMMEDIATE");
+      transactionStarted = true;
+      const existing = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id);
+      if (!existing) throw new OrderPiiUpdateError("ORDER_PII_UPDATE_FAILED", 404);
+      if (Object.hasOwn(req.body, "expectedUpdatedAt")) {
+        if (typeof req.body.expectedUpdatedAt !== "string"
+          || req.body.expectedUpdatedAt !== existing.updated_at) {
+          throw new OrderPiiUpdateError("ORDER_PII_UPDATE_CONFLICT", 409);
+        }
+      }
+
+      const encryptedExisting = [
+        existing.pii_ciphertext,
+        existing.pii_iv,
+        existing.pii_auth_tag,
+        existing.pii_key_version,
+      ].some((value) => value !== null && value !== undefined && value !== "");
+      const protectionEnabled = isOrderPiiProtectionEnabled();
+      if (!protectionEnabled && encryptedExisting) {
+        throw new OrderPiiUpdateError("ORDER_PII_UPDATE_FORBIDDEN", 403);
+      }
+
+      let currentPii;
+      try {
+        currentPii = readOrderPiiForOperation(existing);
+      } catch (error) {
+        if (error instanceof OrderPiiError) {
+          throw new OrderPiiUpdateError("ORDER_PII_UPDATE_FAILED", 503);
+        }
+        throw error;
+      }
+      const { next, changedFields } = normalizeOrderPiiPatch(
+        req.body,
+        currentPii,
+        existing.fulfillment_type,
+      );
+      const now = new Date().toISOString();
+      let updateResult;
+      if (protectionEnabled) {
+        let protectedColumns;
+        try {
+          protectedColumns = buildOrderPiiColumns(
+            next,
+            getDefaultOrderPiiKeyring(),
+            existing.pii_migrated_at || now,
+          );
+        } catch (error) {
+          if (error instanceof OrderPiiError) {
+            throw new OrderPiiUpdateError("ORDER_PII_UPDATE_FAILED", 503);
+          }
+          throw error;
+        }
+        updateResult = db.prepare(`UPDATE orders SET
+          customer_name='[protected]', customer_phone='[protected]',
+          delivery_address=NULL, guest_address=NULL,
+          pii_ciphertext=?, pii_iv=?, pii_auth_tag=?, pii_key_version=?,
+          customer_name_masked=?, customer_phone_masked=?, delivery_region_masked=?,
+          pii_migrated_at=?, updated_at=? WHERE id=?`)
+          .run(
+            protectedColumns.piiCiphertext,
+            protectedColumns.piiIv,
+            protectedColumns.piiAuthTag,
+            protectedColumns.piiKeyVersion,
+            protectedColumns.customerNameMasked,
+            protectedColumns.customerPhoneMasked,
+            protectedColumns.deliveryRegionMasked,
+            protectedColumns.piiMigratedAt,
+            now,
+            existing.id,
+          );
+      } else {
+        const masked = maskOrderPii(next);
+        updateResult = db.prepare(`UPDATE orders SET
+          customer_name=?, customer_phone=?, delivery_address=?, guest_address=?,
+          customer_name_masked=?, customer_phone_masked=?, delivery_region_masked=?,
+          updated_at=? WHERE id=?`)
+          .run(
+            next.customerName,
+            next.customerPhone,
+            next.deliveryAddress,
+            next.guestAddress,
+            masked.customerNameMasked,
+            masked.customerPhoneMasked,
+            masked.deliveryRegionMasked,
+            now,
+            existing.id,
+          );
+      }
+      if (updateResult.changes !== 1) {
+        throw new OrderPiiUpdateError("ORDER_PII_UPDATE_FAILED", 503);
+      }
+
+      auditPhase = true;
+      insertOrderPiiAudit({
+        action: "order_pii_updated",
+        orderId: existing.id,
+        actor: req.admin.id,
+        actorRole: req.admin.role,
+        reason,
+        outcome: "success",
+        requestIp: normalizeRequestIp(req),
+        changedFields,
+      });
+      const masked = maskOrderPii(next);
+      result = {
+        orderId: existing.id,
+        customer: masked.customerNameMasked,
+        phone: masked.customerPhoneMasked,
+        deliveryAddress: null,
+        customerNameMasked: masked.customerNameMasked,
+        customerPhoneMasked: masked.customerPhoneMasked,
+        deliveryRegionMasked: masked.deliveryRegionMasked,
+        updatedFields: changedFields,
+        updatedAt: now,
+      };
+      db.exec("COMMIT");
+      transactionStarted = false;
+    } catch (error) {
+      if (transactionStarted) db.exec("ROLLBACK");
+      if (auditPhase && !(error instanceof OrderPiiUpdateError)) {
+        return res.status(503).json({
+          error: "개인정보 수정 감사 기록을 완료하지 못했습니다.",
+          reason: "ORDER_PII_AUDIT_FAILED",
+        });
+      }
+      const safeError = error instanceof OrderPiiUpdateError
+        ? error
+        : new OrderPiiUpdateError("ORDER_PII_UPDATE_FAILED", 503);
+      return sendStrictPiiUpdateFailure(req, res, {
+        orderId: req.params.id,
+        reason,
+        failureCode: safeError.code,
+        status: safeError.status,
+        changedFields: requestedFields,
+      });
+    }
+    return res.json(result);
+  },
+);
+
 router.put("/:id", requireAuth, requirePermission("orders:write"), (req, res) => {
   const existing = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "주문을 찾을 수 없습니다." });
@@ -797,40 +1073,23 @@ router.put("/:id", requireAuth, requirePermission("orders:write"), (req, res) =>
     const packagingType = String(req.body.packagingType ?? existing.packaging_type ?? "기본 포장").trim().slice(0, 50) || "기본 포장";
     const maskedInput = (value) => typeof value === "string"
       && (value.includes("*") || value.trim() === "[protected]");
-    const encryptedExisting = Boolean(existing.pii_ciphertext);
     const hasOwn = (field) => Object.hasOwn(req.body, field);
-    const hasExplicitPiiChange = ["customer", "phone", "deliveryAddress"].some((field) => {
+    const hasExplicitPiiChange = ["customer", "phone", "deliveryAddress", "guestAddress"].some((field) => {
       if (!hasOwn(field)) return false;
       const value = req.body[field];
       if (value === null || value === undefined || maskedInput(value)) return false;
-      const current = {
-        customer: existing.customer_name,
-        phone: existing.customer_phone,
-        deliveryAddress: existing.delivery_address,
-      }[field];
-      return value !== current;
+      return true;
     });
-    if ((encryptedExisting || isOrderPiiProtectionEnabled()) && hasExplicitPiiChange) {
-      throw new Error("PII_UPDATE_UNSUPPORTED");
+    if (hasExplicitPiiChange) {
+      throw new Error("PII_UPDATE_FORBIDDEN");
     }
-    const nextCustomer = encryptedExisting || maskedInput(req.body.customer)
-      ? existing.customer_name
-      : req.body.customer ?? existing.customer_name;
-    const nextPhone = encryptedExisting || maskedInput(req.body.phone)
-      ? existing.customer_phone
-      : req.body.phone ?? existing.customer_phone;
-    const nextDeliveryAddress = encryptedExisting
-      ? existing.delivery_address
-      : req.body.deliveryAddress === "" && existing.delivery_address
-      ? existing.delivery_address
-      : req.body.deliveryAddress ?? existing.delivery_address;
     db.prepare(`
       UPDATE orders SET customer_name=?, customer_phone=?, fulfillment_type=?, delivery_address=?, pickup_date=?, pickup_time=?,
         subtotal=?, total_amount=?, cost=?, status=?, payment_status=?, amount_status=?, workflow_status=?, logistics_status=?, memo=?,
         production_status=?, production_assignee=?, packaging_type=?, updated_at=? WHERE id=?
     `).run(
-      nextCustomer, nextPhone,
-      req.body.fulfillmentType ?? existing.fulfillment_type, nextDeliveryAddress,
+      existing.customer_name, existing.customer_phone,
+      req.body.fulfillmentType ?? existing.fulfillment_type, existing.delivery_address,
       pickupDate, req.body.pickupTime ?? existing.pickup_time,
       subtotal, requestedTotal, Math.max(0, Number(req.body.cost ?? existing.cost)),
       workflowOrderStatus, nextPaymentStatus, amountStatus, nextWorkflow, req.body.logisticsStatus ?? existing.logistics_status, req.body.memo ?? existing.memo,
@@ -863,8 +1122,11 @@ router.put("/:id", requireAuth, requirePermission("orders:write"), (req, res) =>
     if (["INVALID_ORDER_STATUS", "INVALID_STATUS_TRANSITION", "INVALID_WORKFLOW_STATUS", "INVALID_WORKFLOW_TRANSITION", "INVALID_STATE_COMBINATION", "CHANGE_REASON_REQUIRED"].includes(error.message)) {
       return res.status(400).json({ error: "주문·결제 상태 조합을 확인해 주세요." });
     }
-    if (error.message === "PII_UPDATE_UNSUPPORTED") {
-      return res.status(400).json({ error: "보호된 주문 개인정보는 현재 수정할 수 없습니다." });
+    if (error.message === "PII_UPDATE_FORBIDDEN") {
+      return res.status(400).json({
+        error: "주문 개인정보는 개인정보 수정 기능에서만 변경할 수 있습니다.",
+        reason: "ORDER_PII_UPDATE_FORBIDDEN",
+      });
     }
     return res.status(500).json({ error: "주문 수정 중 오류가 발생했습니다." });
   }
