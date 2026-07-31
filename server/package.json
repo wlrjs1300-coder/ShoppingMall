@@ -15,6 +15,8 @@
     "backup:create": "node scripts/backup-database.js",
     "backup:verify": "node scripts/verify-backup.js",
     "db:backup": "node scripts/backup-database.js",
+    "pii:orders:dry-run": "node scripts/backfill-order-pii.js --dry-run",
+    "pii:orders:verify": "node scripts/backfill-order-pii.js --verify",
     "user:promote": "node scripts/promote-user.js",
     "users:portfolio": "node scripts/seed-portfolio-users.js",
     "demo:seed": "node scripts/seed-demo.js",
