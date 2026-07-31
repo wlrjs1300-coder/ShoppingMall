@@ -3,6 +3,11 @@ const express = require("express");
 const db = require("../db");
 const { requireAuth, requirePermission } = require("../middleware/auth");
 const toss = require("../services/toss-payments");
+const {
+  OrderPiiError,
+  buildMaskedOrderIdentity,
+  readOrderPiiForOperation,
+} = require("../services/order-pii-service");
 
 const router = express.Router();
 const LINK_TTL_MS = 24 * 60 * 60 * 1000;
@@ -343,14 +348,29 @@ router.get("/info/:orderId", (req, res) => {
   const sessionToken = token();
   const now = new Date().toISOString();
   const sessionExpiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+
+  const order = db.prepare("SELECT * FROM orders WHERE id=?").get(pay.order_id);
+  let customerName;
+  try {
+    customerName = order
+      ? buildMaskedOrderIdentity(order).customerNameMasked
+      : maskName(pay.customer_name);
+  } catch (error) {
+    if (error instanceof OrderPiiError) {
+      return res.status(503).json({
+        error: "주문 개인정보를 안전하게 확인할 수 없습니다.",
+        reason: "ORDER_PII_ACCESS_FAILED",
+      });
+    }
+    throw error;
+  }
   db.prepare("UPDATE payments SET link_token_used_at=?, session_token_hash=?, session_token_expires_at=? WHERE order_id=?")
     .run(now, hash(sessionToken), sessionExpiresAt, pay.order_id);
-
   res.json({
     orderId: pay.order_id,
     amount: pay.amount,
     orderName: pay.order_name,
-    customerName: maskName(pay.customer_name),
+    customerName,
     status: pay.status,
     paymentMethod: pay.payment_method || "card",
     sessionToken,
@@ -378,17 +398,30 @@ router.post("/", requireAuth, requirePermission("payments:reconcile"), (req, res
   const expiresAt = new Date(Date.now() + LINK_TTL_MS).toISOString();
   const orderName = `${items[0].product_name}${items.length > 1 ? `외 ${items.length - 1}건` : ""}`;
 
+  let pii;
+  try {
+    pii = readOrderPiiForOperation(order);
+  } catch (error) {
+    if (error instanceof OrderPiiError) {
+      return res.status(503).json({
+        error: "주문 개인정보를 안전하게 확인할 수 없습니다.",
+        reason: "ORDER_PII_ACCESS_FAILED",
+      });
+    }
+    throw error;
+  }
+
   if (existing) {
     db.prepare(
       `UPDATE payments SET amount=?, order_name=?, customer_name=?, customer_phone=?, status='PENDING', requested_at=?,
       link_token_hash=?, link_token_expires_at=?, link_token_used_at=NULL, session_token_hash=NULL, session_token_expires_at=NULL,
       confirm_idempotency_key=NULL, last_error=NULL WHERE order_id=?`
-    ).run(order.total_amount, orderName, order.customer_name, order.customer_phone, now, hash(linkToken), expiresAt, orderId);
+    ).run(order.total_amount, orderName, pii.customerName, pii.customerPhone, now, hash(linkToken), expiresAt, orderId);
   } else {
     db.prepare(
       `INSERT INTO payments (id, order_id, amount, order_name, customer_name, customer_phone, status, requested_at, link_token_hash, link_token_expires_at)
       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`
-    ).run(`pay-${uuid()}`, orderId, order.total_amount, orderName, order.customer_name, order.customer_phone, now, hash(linkToken), expiresAt);
+    ).run(`pay-${uuid()}`, orderId, order.total_amount, orderName, pii.customerName, pii.customerPhone, now, hash(linkToken), expiresAt);
   }
 
   res.status(existing ? 200 : 201).json({ orderId, amount: order.total_amount, orderName, status: "PENDING", linkToken, expiresAt });

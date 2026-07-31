@@ -7,7 +7,8 @@ const { DatabaseSync } = require("node:sqlite");
 const db = require("../db");
 const { migrations } = require("../migrations");
 const {
-  PiiKeyringError, getPiiKey, parsePiiKeyring,
+  PiiKeyringError, getDefaultOrderPiiKeyring, getPiiKey,
+  isOrderPiiProtectionEnabled, parsePiiKeyring, resetOrderPiiKeyringForTest,
 } = require("../lib/pii-keyring");
 const {
   OrderPiiError, buildOrderPiiColumns, decryptOrderPii, encryptOrderPii,
@@ -153,6 +154,41 @@ test("keyring encapsulates key buffers and returns a fresh copy for every access
   exposed.fill(0);
   assert.deepEqual(ring.getKey("v1"), Buffer.alloc(32, 11));
   assert.notStrictEqual(ring.getKey("v1"), ring.getKey("v1"));
+});
+
+test("default order PII keyring is lazy, reused, resettable in tests and disabled safely", () => {
+  const previous = {
+    enabled: process.env.ORDER_PII_PROTECTION_ENABLED,
+    keys: process.env.ORDER_PII_KEYS_JSON,
+    active: process.env.ORDER_PII_ACTIVE_KEY_VERSION,
+  };
+  try {
+    process.env.ORDER_PII_PROTECTION_ENABLED = "true";
+    process.env.ORDER_PII_KEYS_JSON = keysJson;
+    process.env.ORDER_PII_ACTIVE_KEY_VERSION = "v2";
+    resetOrderPiiKeyringForTest();
+    assert.equal(isOrderPiiProtectionEnabled(), true);
+    const first = getDefaultOrderPiiKeyring();
+    assert.strictEqual(getDefaultOrderPiiKeyring(), first);
+    resetOrderPiiKeyringForTest();
+    assert.notStrictEqual(getDefaultOrderPiiKeyring(), first);
+
+    process.env.ORDER_PII_PROTECTION_ENABLED = "false";
+    resetOrderPiiKeyringForTest();
+    assert.equal(isOrderPiiProtectionEnabled(), false);
+    assert.throws(
+      () => getDefaultOrderPiiKeyring(),
+      (error) => error instanceof PiiKeyringError && error.code === "ORDER_PII_NOT_CONFIGURED",
+    );
+  } finally {
+    if (previous.enabled === undefined) delete process.env.ORDER_PII_PROTECTION_ENABLED;
+    else process.env.ORDER_PII_PROTECTION_ENABLED = previous.enabled;
+    if (previous.keys === undefined) delete process.env.ORDER_PII_KEYS_JSON;
+    else process.env.ORDER_PII_KEYS_JSON = previous.keys;
+    if (previous.active === undefined) delete process.env.ORDER_PII_ACTIVE_KEY_VERSION;
+    else process.env.ORDER_PII_ACTIVE_KEY_VERSION = previous.active;
+    resetOrderPiiKeyringForTest();
+  }
 });
 
 test("order PII uses the active key, decrypts historical keys and randomizes IVs", () => {

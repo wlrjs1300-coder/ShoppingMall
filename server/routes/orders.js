@@ -6,6 +6,14 @@ const db = require("../db");
 const { requireAuth, requirePermission } = require("../middleware/auth");
 const { optionalCustomerAuth } = require("../middleware/customerAuth");
 const { notifyOrderReceived, notifyOrderReady } = require("../services/notify");
+const {
+  OrderPiiError,
+  applyMaskedOrderFields,
+  buildOrderPiiApiFields,
+  buildMaskedOrderIdentity,
+  readOrderPiiForOperation,
+} = require("../services/order-pii-service");
+const { isOrderPiiProtectionEnabled } = require("../lib/pii-keyring");
 const { normalizePhone, isValidPhone } = require("../utils/normalize");
 
 const router = express.Router();
@@ -154,7 +162,7 @@ function getOrderItems(orderId) {
 }
 
 
-function rowToOrder(row, { includePaymentSummary = false } = {}) {
+function rowToOrderBase(row, { includePaymentSummary = false } = {}) {
   const items = getOrderItems(row.id);
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
   const first = items[0];
@@ -163,8 +171,6 @@ function rowToOrder(row, { includePaymentSummary = false } = {}) {
     id: row.id,
     checkoutId: row.id,
     userId: row.user_id,
-    customer: row.customer_name,
-    phone: row.customer_phone,
     product: productSummary,
     productId: items.length === 1 ? first.productId : null,
     priceText: `${Number(row.total_amount).toLocaleString("ko-KR")}원`,
@@ -176,7 +182,6 @@ function rowToOrder(row, { includePaymentSummary = false } = {}) {
     pickupTime: row.pickup_time,
     fulfillmentType: row.fulfillment_type,
     logisticsStatus: row.logistics_status,
-    deliveryAddress: row.delivery_address,
     status: row.status,
     paymentStatus: row.payment_status,
     amountStatus: row.amount_status,
@@ -200,9 +205,52 @@ function rowToOrder(row, { includePaymentSummary = false } = {}) {
   return order;
 }
 
+function rowToOperationalOrder(row, options = {}) {
+  const pii = readOrderPiiForOperation(row);
+  return {
+    ...rowToOrderBase(row, options),
+    customer: pii.customerName,
+    phone: pii.customerPhone,
+    deliveryAddress: pii.deliveryAddress,
+    guestAddress: pii.guestAddress,
+  };
+}
+
+function rowToMaskedOrder(row, options = {}) {
+  return applyMaskedOrderFields(
+    rowToOrderBase(row, options),
+    buildMaskedOrderIdentity(row),
+  );
+}
+
+function rowToLegacyCompatibleOrder(row, options = {}) {
+  return {
+    ...rowToOrderBase(row, options),
+    ...buildOrderPiiApiFields(row),
+  };
+}
+
+function rowToPublicOrder(row, options = {}) {
+  return isOrderPiiProtectionEnabled()
+    ? rowToMaskedOrder(row, options)
+    : rowToLegacyCompatibleOrder(row, options);
+}
+
 function getOrder(orderId) {
   const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId);
-  return row ? rowToOrder(row) : null;
+  return row ? rowToPublicOrder(row) : null;
+}
+
+function getOperationalOrder(orderId) {
+  const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId);
+  return row ? rowToOperationalOrder(row) : null;
+}
+
+function sendPiiAccessError(res) {
+  return res.status(503).json({
+    error: "주문 개인정보를 안전하게 확인할 수 없습니다.",
+    reason: "ORDER_PII_ACCESS_FAILED",
+  });
 }
 
 function normalizeProductionProductName(value) {
@@ -291,7 +339,12 @@ router.get("/", requireAuth, requirePermission("orders:read"), (req, res) => {
     LEFT JOIN payments p ON p.order_id = o.id
     ORDER BY o.created_at DESC
   `).all();
-  res.json(rows.map((row) => rowToOrder(row, { includePaymentSummary: true })));
+  try {
+    return res.json(rows.map((row) => rowToPublicOrder(row, { includePaymentSummary: true })));
+  } catch (error) {
+    if (error instanceof OrderPiiError) return sendPiiAccessError(res);
+    throw error;
+  }
 });
 
 router.get("/:id/history", requireAuth, requirePermission("orders:read"), (req, res) => {
@@ -333,7 +386,7 @@ router.post("/", publicOrderLimiter, optionalCustomerAuth, (req, res) => {
     return res.status(500).json({ error: "주문 접수 중 오류가 발생했습니다." });
   }
   const order = getOrder(id);
-  notifyOrderReceived(order).catch(() => null);
+  notifyOrderReceived(getOperationalOrder(id)).catch(() => null);
   res.status(201).json(order);
 });
 
@@ -384,9 +437,10 @@ router.post("/checkout", publicOrderLimiter, optionalCustomerAuth, (req, res) =>
     console.error("[orders.checkout] 주문 생성 실패:", error);
     return res.status(500).json({ error: "주문 접수 중 오류가 발생했습니다." });
   }
+  const operationalOrder = getOperationalOrder(id);
   const order = getOrder(id);
-  const paymentUrl = createCheckoutPayment(order, customer.data.paymentMethod, now);
-  notifyOrderReceived(order).catch(() => null);
+  const paymentUrl = createCheckoutPayment(operationalOrder, customer.data.paymentMethod, now);
+  notifyOrderReceived(operationalOrder).catch(() => null);
   res.status(201).json({ checkoutId: id, order, orders: [order], totalQuantity: order.quantity, totalAmount: order.totalAmount, paymentUrl });
 });
 
@@ -394,9 +448,21 @@ router.post("/guest/lookup", publicOrderLimiter, (req, res) => {
   const orderId = typeof req.body?.orderId === "string" ? req.body.orderId.trim() : "";
   const phone = normalizePhone(typeof req.body?.phone === "string" ? req.body.phone : "");
   const password = typeof req.body?.password === "string" ? req.body.password : "";
-  const row = db.prepare("SELECT * FROM orders WHERE id = ? AND customer_phone = ? AND user_id IS NULL AND guest_password_hash IS NOT NULL").get(orderId, phone);
-  if (!row || !bcrypt.compareSync(password, row.guest_password_hash)) return res.status(401).json({ error: "주문 정보를 확인해 주세요." });
-  res.json(rowToOrder(row));
+  const row = db.prepare("SELECT * FROM orders WHERE id = ? AND user_id IS NULL AND guest_password_hash IS NOT NULL").get(orderId);
+  if (!row) return res.status(401).json({ error: "주문 정보를 확인해 주세요." });
+  let pii;
+  try {
+    pii = readOrderPiiForOperation(row);
+  } catch (error) {
+    if (error instanceof OrderPiiError) return sendPiiAccessError(res);
+    throw error;
+  }
+  const suppliedPhoneHash = crypto.createHash("sha256").update(phone).digest();
+  const storedPhoneHash = crypto.createHash("sha256").update(pii.customerPhone).digest();
+  const phoneMatches = crypto.timingSafeEqual(suppliedPhoneHash, storedPhoneHash);
+  const passwordMatches = bcrypt.compareSync(password, row.guest_password_hash);
+  if (!phoneMatches || !passwordMatches) return res.status(401).json({ error: "주문 정보를 확인해 주세요." });
+  return res.json(rowToPublicOrder(row));
 });
 
 router.post("/admin", requireAuth, requirePermission("orders:write"), (req, res) => {
@@ -629,13 +695,42 @@ router.put("/:id", requireAuth, requirePermission("orders:write"), (req, res) =>
     if (advancesUnpaidOnlineOrder) throw new Error("ONLINE_PAYMENT_NOT_COMPLETED");
     const productionAssignee = String(req.body.productionAssignee ?? existing.production_assignee ?? "").trim().slice(0, 50);
     const packagingType = String(req.body.packagingType ?? existing.packaging_type ?? "기본 포장").trim().slice(0, 50) || "기본 포장";
+    const maskedInput = (value) => typeof value === "string"
+      && (value.includes("*") || value.trim() === "[protected]");
+    const encryptedExisting = Boolean(existing.pii_ciphertext);
+    const hasOwn = (field) => Object.hasOwn(req.body, field);
+    const hasExplicitPiiChange = ["customer", "phone", "deliveryAddress"].some((field) => {
+      if (!hasOwn(field)) return false;
+      const value = req.body[field];
+      if (value === null || value === undefined || maskedInput(value)) return false;
+      const current = {
+        customer: existing.customer_name,
+        phone: existing.customer_phone,
+        deliveryAddress: existing.delivery_address,
+      }[field];
+      return value !== current;
+    });
+    if ((encryptedExisting || isOrderPiiProtectionEnabled()) && hasExplicitPiiChange) {
+      throw new Error("PII_UPDATE_UNSUPPORTED");
+    }
+    const nextCustomer = encryptedExisting || maskedInput(req.body.customer)
+      ? existing.customer_name
+      : req.body.customer ?? existing.customer_name;
+    const nextPhone = encryptedExisting || maskedInput(req.body.phone)
+      ? existing.customer_phone
+      : req.body.phone ?? existing.customer_phone;
+    const nextDeliveryAddress = encryptedExisting
+      ? existing.delivery_address
+      : req.body.deliveryAddress === "" && existing.delivery_address
+      ? existing.delivery_address
+      : req.body.deliveryAddress ?? existing.delivery_address;
     db.prepare(`
       UPDATE orders SET customer_name=?, customer_phone=?, fulfillment_type=?, delivery_address=?, pickup_date=?, pickup_time=?,
         subtotal=?, total_amount=?, cost=?, status=?, payment_status=?, amount_status=?, workflow_status=?, logistics_status=?, memo=?,
         production_status=?, production_assignee=?, packaging_type=?, updated_at=? WHERE id=?
     `).run(
-      req.body.customer ?? existing.customer_name, req.body.phone ?? existing.customer_phone,
-      req.body.fulfillmentType ?? existing.fulfillment_type, req.body.deliveryAddress ?? existing.delivery_address,
+      nextCustomer, nextPhone,
+      req.body.fulfillmentType ?? existing.fulfillment_type, nextDeliveryAddress,
       pickupDate, req.body.pickupTime ?? existing.pickup_time,
       subtotal, requestedTotal, Math.max(0, Number(req.body.cost ?? existing.cost)),
       workflowOrderStatus, nextPaymentStatus, amountStatus, nextWorkflow, req.body.logisticsStatus ?? existing.logistics_status, req.body.memo ?? existing.memo,
@@ -668,10 +763,15 @@ router.put("/:id", requireAuth, requirePermission("orders:write"), (req, res) =>
     if (["INVALID_ORDER_STATUS", "INVALID_STATUS_TRANSITION", "INVALID_WORKFLOW_STATUS", "INVALID_WORKFLOW_TRANSITION", "INVALID_STATE_COMBINATION", "CHANGE_REASON_REQUIRED"].includes(error.message)) {
       return res.status(400).json({ error: "주문·결제 상태 조합을 확인해 주세요." });
     }
+    if (error.message === "PII_UPDATE_UNSUPPORTED") {
+      return res.status(400).json({ error: "보호된 주문 개인정보는 현재 수정할 수 없습니다." });
+    }
     return res.status(500).json({ error: "주문 수정 중 오류가 발생했습니다." });
   }
   const updated = getOrder(existing.id);
-  if (req.body.status === "준비완료" && existing.status !== "준비완료") notifyOrderReady(updated).catch(() => null);
+  if (req.body.status === "준비완료" && existing.status !== "준비완료") {
+    notifyOrderReady(getOperationalOrder(existing.id)).catch(() => null);
+  }
   res.json(updated);
 });
 

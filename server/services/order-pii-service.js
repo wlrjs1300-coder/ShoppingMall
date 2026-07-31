@@ -5,7 +5,12 @@ const {
   maskName,
   maskPhone,
 } = require("../lib/pii-crypto");
-const { PiiKeyringError, getPiiKey } = require("../lib/pii-keyring");
+const {
+  PiiKeyringError,
+  getDefaultOrderPiiKeyring,
+  getPiiKey,
+  isOrderPiiProtectionEnabled,
+} = require("../lib/pii-keyring");
 
 class OrderPiiError extends Error {
   constructor(code) {
@@ -124,9 +129,82 @@ function readOrderPii(row, keyring) {
   return normalizeLegacyOrderPii(row);
 }
 
+function readOrderPiiForOperation(row, keyring) {
+  const tupleValues = ["pii_ciphertext", "pii_iv", "pii_auth_tag", "pii_key_version"]
+    .map((field) => row?.[field]);
+  const hasAnyEncryptedValue = tupleValues.some(
+    (value) => value !== null && value !== undefined && value !== "",
+  );
+  if (!hasAnyEncryptedValue) return normalizeLegacyOrderPii(row);
+  if (!hasEncryptedTuple(row)) throw new OrderPiiError("ORDER_PII_ENCRYPTED_DATA_INVALID");
+  let resolvedKeyring = keyring;
+  try {
+    resolvedKeyring ||= getDefaultOrderPiiKeyring();
+  } catch (error) {
+    if (error instanceof PiiKeyringError) {
+      throw new OrderPiiError(
+        error.code === "ORDER_PII_NOT_CONFIGURED"
+          ? "ORDER_PII_NOT_CONFIGURED"
+          : "ORDER_PII_ACCESS_FAILED",
+      );
+    }
+    throw error;
+  }
+  return decryptOrderPii(row, resolvedKeyring);
+}
+
+function buildMaskedOrderIdentity(row, keyring) {
+  const pii = readOrderPiiForOperation(row, keyring);
+  return {
+    customerNameMasked: maskName(pii.customerName),
+    customerPhoneMasked: maskPhone(pii.customerPhone),
+    deliveryRegionMasked: null,
+  };
+}
+
+function applyMaskedOrderFields(order, identity) {
+  return {
+    ...order,
+    customer: identity.customerNameMasked,
+    phone: identity.customerPhoneMasked,
+    deliveryAddress: null,
+    customerNameMasked: identity.customerNameMasked,
+    customerPhoneMasked: identity.customerPhoneMasked,
+    deliveryRegionMasked: null,
+  };
+}
+
+function buildOrderPiiApiFields(row, { includeAddress = true } = {}) {
+  const pii = readOrderPiiForOperation(row);
+  if (!isOrderPiiProtectionEnabled()) {
+    return {
+      customer: pii.customerName,
+      phone: pii.customerPhone,
+      ...(includeAddress ? { deliveryAddress: pii.deliveryAddress } : {}),
+    };
+  }
+  const identity = {
+    customerNameMasked: maskName(pii.customerName),
+    customerPhoneMasked: maskPhone(pii.customerPhone),
+    deliveryRegionMasked: null,
+  };
+  const fields = {
+    customer: identity.customerNameMasked,
+    phone: identity.customerPhoneMasked,
+    customerNameMasked: identity.customerNameMasked,
+    customerPhoneMasked: identity.customerPhoneMasked,
+    deliveryRegionMasked: null,
+  };
+  if (includeAddress) fields.deliveryAddress = null;
+  return fields;
+}
+
 module.exports = {
   OrderPiiError,
+  applyMaskedOrderFields,
+  buildOrderPiiApiFields,
   buildOrderPiiColumns,
+  buildMaskedOrderIdentity,
   decryptOrderPii,
   encryptOrderPii,
   maskDeliveryRegion,
@@ -134,4 +212,5 @@ module.exports = {
   normalizeLegacyOrderPii,
   normalizeOrderPii,
   readOrderPii,
+  readOrderPiiForOperation,
 };

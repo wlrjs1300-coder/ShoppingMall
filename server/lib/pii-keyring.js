@@ -87,9 +87,30 @@ function loadOrderPiiKeyring(env = process.env) {
   return parsePiiKeyring(env.ORDER_PII_KEYS_JSON, env.ORDER_PII_ACTIVE_KEY_VERSION);
 }
 
+let defaultOrderPiiKeyring;
+
+function isOrderPiiProtectionEnabled(env = process.env) {
+  return typeof env.ORDER_PII_PROTECTION_ENABLED === "string"
+    && env.ORDER_PII_PROTECTION_ENABLED.trim().toLowerCase() === "true";
+}
+
+function getDefaultOrderPiiKeyring() {
+  if (!isOrderPiiProtectionEnabled()) invalid("ORDER_PII_NOT_CONFIGURED");
+  if (!defaultOrderPiiKeyring) defaultOrderPiiKeyring = loadOrderPiiKeyring(process.env);
+  return defaultOrderPiiKeyring;
+}
+
+function resetOrderPiiKeyringForTest() {
+  if (process.env.NODE_ENV !== "test") invalid("ORDER_PII_RESET_FORBIDDEN");
+  defaultOrderPiiKeyring = undefined;
+}
+
 module.exports = {
   PiiKeyringError,
+  getDefaultOrderPiiKeyring,
   getPiiKey,
+  isOrderPiiProtectionEnabled,
   loadOrderPiiKeyring,
   parsePiiKeyring,
+  resetOrderPiiKeyringForTest,
 };
