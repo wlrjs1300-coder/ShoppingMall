@@ -12,6 +12,8 @@
     "test": "node --test",
     "test:e2e": "playwright test",
     "deploy:check": "node scripts/deployment-preflight.js",
+    "staging:seed": "node scripts/seed-staging-synthetic.js",
+    "staging:smoke": "node scripts/run-staging-smoke.js",
     "backup:create": "node scripts/backup-database.js",
     "backup:verify": "node scripts/verify-backup.js",
     "db:backup": "node scripts/backup-database.js",

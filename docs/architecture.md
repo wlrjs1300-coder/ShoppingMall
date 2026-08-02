@@ -241,7 +241,7 @@ Migration이나 server startup hook으로 실행하지 않기 때문에 예상�
 - 주문 PII 암호화, 마스킹, 열람·수정 감사
 - backup, backfill, purge와 production preflight 도구
 - Naver Commerce 인증·상품 매핑·주문 수집 기반
-- 478개 자동 테스트
+- 488개 자동 테스트
 
 ### Operationally Prepared
 
