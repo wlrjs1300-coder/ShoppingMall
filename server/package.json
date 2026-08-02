@@ -4,7 +4,7 @@
   "description": "따뜻한 떡집 API 서버",
   "main": "index.js",
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=22.16.0"
   },
   "scripts": {
     "start": "node index.js",
@@ -12,8 +12,13 @@
     "test": "node --test",
     "test:e2e": "playwright test",
     "deploy:check": "node scripts/deployment-preflight.js",
-    "db:backup": "node scripts/backup-db.js",
-    "db:restore": "node scripts/restore-db.js",
+    "backup:create": "node scripts/backup-database.js",
+    "backup:verify": "node scripts/verify-backup.js",
+    "db:backup": "node scripts/backup-database.js",
+    "pii:orders:dry-run": "node scripts/backfill-order-pii.js --dry-run",
+    "pii:orders:verify": "node scripts/backfill-order-pii.js --verify",
+    "pii:payments:dry-run": "node scripts/purge-payment-pii.js --dry-run",
+    "pii:payments:verify": "node scripts/purge-payment-pii.js --verify",
     "user:promote": "node scripts/promote-user.js",
     "users:portfolio": "node scripts/seed-portfolio-users.js",
     "demo:seed": "node scripts/seed-demo.js",

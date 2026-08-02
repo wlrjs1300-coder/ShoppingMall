@@ -164,6 +164,360 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 11,
+    name: "admin_accounts_rbac",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS admin_accounts (
+          user_id TEXT PRIMARY KEY,
+          role TEXT NOT NULL CHECK (role IN ('super_admin','operations','finance','viewer')),
+          is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+          token_version INTEGER NOT NULL DEFAULT 0 CHECK (token_version >= 0),
+          last_login_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES user_accounts(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_admin_accounts_active_role
+          ON admin_accounts(is_active, role);
+      `);
+    },
+  },
+  {
+    version: 12,
+    name: "naver_product_mappings",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sales_channel_product_mappings (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL DEFAULT 'naver' CHECK (channel = 'naver'),
+          internal_product_id TEXT NOT NULL,
+          external_origin_product_no TEXT NOT NULL CHECK (external_origin_product_no GLOB '[0-9]*' AND external_origin_product_no NOT GLOB '*[^0-9]*'),
+          external_channel_product_no TEXT NOT NULL CHECK (external_channel_product_no GLOB '[0-9]*' AND external_channel_product_no NOT GLOB '*[^0-9]*'),
+          external_group_product_no TEXT CHECK (external_group_product_no IS NULL OR (external_group_product_no GLOB '[0-9]*' AND external_group_product_no NOT GLOB '*[^0-9]*')),
+          external_option_id TEXT CHECK (external_option_id IS NULL OR (external_option_id GLOB '[0-9]*' AND external_option_id NOT GLOB '*[^0-9]*')),
+          seller_management_code TEXT,
+          channel_service_type TEXT NOT NULL,
+          external_product_name TEXT NOT NULL,
+          external_status TEXT NOT NULL,
+          mapping_status TEXT NOT NULL DEFAULT 'PENDING_VERIFICATION'
+            CHECK (mapping_status IN ('ACTIVE','DISABLED','PENDING_VERIFICATION','UNSUPPORTED_OPTION','INVALID_INTERNAL_PRODUCT','EXTERNAL_NOT_FOUND','CONFLICT')),
+          inventory_sync_enabled INTEGER NOT NULL DEFAULT 0 CHECK (inventory_sync_enabled IN (0,1)),
+          price_sync_enabled INTEGER NOT NULL DEFAULT 0 CHECK (price_sync_enabled IN (0,1)),
+          safety_stock INTEGER NOT NULL DEFAULT 0 CHECK (safety_stock >= 0 AND typeof(safety_stock) = 'integer'),
+          last_verified_at TEXT,
+          last_product_sync_at TEXT,
+          last_error_code TEXT,
+          last_error_message TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (internal_product_id) REFERENCES products(id) ON DELETE RESTRICT,
+          UNIQUE (channel, internal_product_id),
+          UNIQUE (channel, external_channel_product_no)
+        );
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_product_mappings_status
+          ON sales_channel_product_mappings(channel, mapping_status, updated_at);
+      `);
+    },
+  },
+  {
+    version: 13,
+    name: "naver_order_read_imports",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sales_channel_order_imports (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          external_order_id TEXT NOT NULL,
+          import_status TEXT NOT NULL CHECK (import_status IN (
+            'DISCOVERED','IMPORTED','PARTIAL','RETRY_PENDING','FAILED','MANUAL_REVIEW'
+          )),
+          external_payment_status TEXT,
+          payment_method TEXT,
+          order_amount INTEGER CHECK (order_amount IS NULL OR order_amount >= 0),
+          payment_amount INTEGER CHECK (payment_amount IS NULL OR payment_amount >= 0),
+          ordered_at TEXT,
+          paid_at TEXT,
+          orderer_name_masked TEXT,
+          orderer_phone_masked TEXT,
+          order_pii_ciphertext TEXT,
+          order_pii_iv TEXT,
+          order_pii_auth_tag TEXT,
+          order_pii_key_version TEXT,
+          source_changed_at TEXT,
+          last_synced_at TEXT,
+          payload_hash TEXT,
+          last_error_code TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (channel, external_order_id),
+          CHECK (
+            (order_pii_ciphertext IS NULL AND order_pii_iv IS NULL AND order_pii_auth_tag IS NULL AND order_pii_key_version IS NULL)
+            OR
+            (order_pii_ciphertext IS NOT NULL AND order_pii_iv IS NOT NULL AND order_pii_auth_tag IS NOT NULL AND order_pii_key_version IS NOT NULL)
+          )
+        );
+
+        CREATE TABLE IF NOT EXISTS sales_channel_order_import_items (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          channel_order_import_id TEXT NOT NULL,
+          external_product_order_id TEXT NOT NULL,
+          external_channel_product_no TEXT,
+          external_origin_product_no TEXT,
+          external_claim_id TEXT,
+          external_group_product_id TEXT,
+          external_package_number TEXT,
+          external_item_no TEXT,
+          external_option_manage_code TEXT,
+          product_mapping_id TEXT,
+          internal_product_id TEXT,
+          product_name_snapshot TEXT,
+          option_name_snapshot TEXT,
+          seller_product_code TEXT,
+          initial_quantity INTEGER CHECK (initial_quantity IS NULL OR initial_quantity >= 0),
+          remaining_quantity INTEGER CHECK (remaining_quantity IS NULL OR remaining_quantity >= 0),
+          unit_price INTEGER CHECK (unit_price IS NULL OR unit_price >= 0),
+          initial_payment_amount INTEGER CHECK (initial_payment_amount IS NULL OR initial_payment_amount >= 0),
+          remaining_payment_amount INTEGER CHECK (remaining_payment_amount IS NULL OR remaining_payment_amount >= 0),
+          external_product_order_status TEXT,
+          external_claim_type TEXT,
+          external_claim_status TEXT,
+          last_changed_type TEXT,
+          source_changed_at TEXT,
+          recipient_name_masked TEXT,
+          recipient_phone_masked TEXT,
+          item_pii_ciphertext TEXT,
+          item_pii_iv TEXT,
+          item_pii_auth_tag TEXT,
+          item_pii_key_version TEXT,
+          mapping_status TEXT NOT NULL CHECK (mapping_status IN ('MAPPED','UNMAPPED')),
+          payload_hash TEXT,
+          last_error_code TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (channel, external_product_order_id),
+          FOREIGN KEY (channel_order_import_id) REFERENCES sales_channel_order_imports(id) ON DELETE CASCADE,
+          FOREIGN KEY (product_mapping_id) REFERENCES sales_channel_product_mappings(id) ON DELETE SET NULL,
+          FOREIGN KEY (internal_product_id) REFERENCES products(id) ON DELETE SET NULL,
+          CHECK (
+            (item_pii_ciphertext IS NULL AND item_pii_iv IS NULL AND item_pii_auth_tag IS NULL AND item_pii_key_version IS NULL)
+            OR
+            (item_pii_ciphertext IS NOT NULL AND item_pii_iv IS NOT NULL AND item_pii_auth_tag IS NOT NULL AND item_pii_key_version IS NOT NULL)
+          )
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_imports_status_changed
+          ON sales_channel_order_imports(channel, import_status, source_changed_at);
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_import_items_header
+          ON sales_channel_order_import_items(channel_order_import_id);
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_import_items_mapping
+          ON sales_channel_order_import_items(mapping_status, external_product_order_status);
+      `);
+    },
+  },
+  {
+    version: 14,
+    name: "naver_order_import_orchestration",
+    up(db) {
+      db.exec(`
+        CREATE TABLE sales_channel_sync_cursors (
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          stream TEXT NOT NULL CHECK (stream = 'order-import'),
+          initial_from TEXT,
+          window_from TEXT,
+          window_to TEXT,
+          more_from TEXT,
+          more_sequence TEXT CHECK (more_sequence IS NULL OR (
+            more_sequence <> '' AND more_sequence NOT GLOB '*[^0-9]*'
+          )),
+          committed_through TEXT,
+          lease_run_id TEXT,
+          lease_expires_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (channel, stream),
+          CHECK ((lease_run_id IS NULL AND lease_expires_at IS NULL)
+            OR (lease_run_id IS NOT NULL AND lease_expires_at IS NOT NULL))
+        );
+
+        CREATE TABLE sales_channel_sync_runs (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          sync_type TEXT NOT NULL CHECK (sync_type IN ('PULL','REFRESH')),
+          target_import_id TEXT,
+          status TEXT NOT NULL CHECK (status IN ('RUNNING','SUCCEEDED','PARTIAL','FAILED','ABORTED')),
+          requested_from TEXT,
+          requested_to TEXT,
+          pages_fetched INTEGER NOT NULL DEFAULT 0 CHECK (pages_fetched >= 0),
+          discovered_count INTEGER NOT NULL DEFAULT 0 CHECK (discovered_count >= 0),
+          detailed_count INTEGER NOT NULL DEFAULT 0 CHECK (detailed_count >= 0),
+          imported_count INTEGER NOT NULL DEFAULT 0 CHECK (imported_count >= 0),
+          failed_count INTEGER NOT NULL DEFAULT 0 CHECK (failed_count >= 0),
+          provider_trace_id TEXT,
+          safe_error_code TEXT,
+          lock_expires_at TEXT CHECK (lock_expires_at IS NULL OR (
+            lock_expires_at GLOB '????-??-??T??:??:??*'
+            AND julianday(lock_expires_at) IS NOT NULL
+            AND (substr(lock_expires_at, -1) = 'Z'
+              OR substr(lock_expires_at, -6, 1) IN ('+','-'))
+          )),
+          actor TEXT,
+          started_at TEXT NOT NULL,
+          completed_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          CHECK ((sync_type = 'PULL' AND target_import_id IS NULL)
+            OR (sync_type = 'REFRESH' AND target_import_id IS NOT NULL)),
+          CHECK ((status = 'RUNNING' AND completed_at IS NULL AND lock_expires_at IS NOT NULL)
+            OR (status <> 'RUNNING' AND completed_at IS NOT NULL AND lock_expires_at IS NULL))
+        );
+
+        CREATE TABLE sales_channel_sync_run_failures (
+          id TEXT PRIMARY KEY,
+          sync_run_id TEXT NOT NULL,
+          external_product_order_id TEXT,
+          stage TEXT NOT NULL CHECK (stage IN (
+            'CHANGE_FEED','DETAIL_FETCH','NORMALIZATION','PERSISTENCE','REFRESH'
+          )),
+          safe_error_code TEXT NOT NULL,
+          attempt_count INTEGER NOT NULL DEFAULT 1 CHECK (attempt_count >= 1),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (sync_run_id) REFERENCES sales_channel_sync_runs(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX idx_sales_channel_sync_cursors_channel_stream
+          ON sales_channel_sync_cursors(channel, stream);
+        CREATE INDEX idx_sales_channel_sync_runs_channel_status_started
+          ON sales_channel_sync_runs(channel, status, started_at);
+        CREATE UNIQUE INDEX idx_sales_channel_sync_runs_active_refresh
+          ON sales_channel_sync_runs(channel, target_import_id)
+          WHERE sync_type='REFRESH' AND status='RUNNING';
+        CREATE INDEX idx_sales_channel_sync_failures_run_stage
+          ON sales_channel_sync_run_failures(sync_run_id, stage);
+        CREATE INDEX idx_sales_channel_sync_failures_product_order
+          ON sales_channel_sync_run_failures(external_product_order_id);
+      `);
+    },
+  },
+  {
+    version: 15,
+    name: "order_pii_protection_foundation",
+    up(db) {
+      const columns = new Set(
+        db.prepare("PRAGMA table_info(orders)").all().map((column) => column.name),
+      );
+      const additions = [
+        ["pii_ciphertext", "TEXT"],
+        ["pii_iv", "TEXT"],
+        ["pii_auth_tag", "TEXT"],
+        ["pii_key_version", "TEXT"],
+        ["customer_name_masked", "TEXT"],
+        ["customer_phone_masked", "TEXT"],
+        ["delivery_region_masked", "TEXT"],
+        ["pii_migrated_at", "TEXT"],
+      ];
+      for (const [name, type] of additions) {
+        if (!columns.has(name)) db.exec(`ALTER TABLE orders ADD COLUMN ${name} ${type}`);
+      }
+      db.exec(`
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_tuple_insert
+        BEFORE INSERT ON orders
+        WHEN NOT (
+          (NEW.pii_ciphertext IS NULL AND NEW.pii_iv IS NULL
+            AND NEW.pii_auth_tag IS NULL AND NEW.pii_key_version IS NULL)
+          OR
+          (NEW.pii_ciphertext IS NOT NULL AND NEW.pii_iv IS NOT NULL
+            AND NEW.pii_auth_tag IS NOT NULL AND NEW.pii_key_version IS NOT NULL)
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_TUPLE_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_tuple_update
+        BEFORE UPDATE OF pii_ciphertext, pii_iv, pii_auth_tag, pii_key_version ON orders
+        WHEN NOT (
+          (NEW.pii_ciphertext IS NULL AND NEW.pii_iv IS NULL
+            AND NEW.pii_auth_tag IS NULL AND NEW.pii_key_version IS NULL)
+          OR
+          (NEW.pii_ciphertext IS NOT NULL AND NEW.pii_iv IS NOT NULL
+            AND NEW.pii_auth_tag IS NOT NULL AND NEW.pii_key_version IS NOT NULL)
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_TUPLE_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_metadata_insert
+        BEFORE INSERT ON orders
+        WHEN length(COALESCE(NEW.pii_key_version, '')) > 100
+          OR length(COALESCE(NEW.customer_name_masked, '')) > 200
+          OR length(COALESCE(NEW.customer_phone_masked, '')) > 100
+          OR length(COALESCE(NEW.delivery_region_masked, '')) > 300
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_METADATA_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_orders_pii_metadata_update
+        BEFORE UPDATE OF pii_key_version, customer_name_masked,
+          customer_phone_masked, delivery_region_masked ON orders
+        WHEN length(COALESCE(NEW.pii_key_version, '')) > 100
+          OR length(COALESCE(NEW.customer_name_masked, '')) > 200
+          OR length(COALESCE(NEW.customer_phone_masked, '')) > 100
+          OR length(COALESCE(NEW.delivery_region_masked, '')) > 300
+        BEGIN
+          SELECT RAISE(ABORT, 'ORDER_PII_METADATA_INVALID');
+        END;
+      `);
+    },
+  },
+  {
+    version: 16,
+    name: "structured_order_pii_access_audit",
+    up(db) {
+      const columns = new Set(
+        db.prepare("PRAGMA table_info(activity_logs)").all().map((column) => column.name),
+      );
+      const additions = [
+        ["reason", "TEXT"],
+        ["outcome", "TEXT"],
+        ["failure_code", "TEXT"],
+        ["actor_role", "TEXT"],
+        ["request_ip", "TEXT"],
+      ];
+      for (const [name, type] of additions) {
+        if (!columns.has(name)) db.exec(`ALTER TABLE activity_logs ADD COLUMN ${name} ${type}`);
+      }
+      db.exec(`
+        CREATE TRIGGER IF NOT EXISTS trg_activity_logs_pii_audit_insert
+        BEFORE INSERT ON activity_logs
+        WHEN length(COALESCE(NEW.reason, '')) > 50
+          OR (NEW.outcome IS NOT NULL AND NEW.outcome NOT IN ('success', 'failure'))
+          OR length(COALESCE(NEW.failure_code, '')) > 100
+          OR length(COALESCE(NEW.actor_role, '')) > 50
+          OR length(COALESCE(NEW.request_ip, '')) > 100
+        BEGIN
+          SELECT RAISE(ABORT, 'ACTIVITY_LOG_STRUCTURED_AUDIT_INVALID');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_activity_logs_pii_audit_update
+        BEFORE UPDATE OF reason, outcome, failure_code, actor_role, request_ip
+        ON activity_logs
+        WHEN length(COALESCE(NEW.reason, '')) > 50
+          OR (NEW.outcome IS NOT NULL AND NEW.outcome NOT IN ('success', 'failure'))
+          OR length(COALESCE(NEW.failure_code, '')) > 100
+          OR length(COALESCE(NEW.actor_role, '')) > 50
+          OR length(COALESCE(NEW.request_ip, '')) > 100
+        BEGIN
+          SELECT RAISE(ABORT, 'ACTIVITY_LOG_STRUCTURED_AUDIT_INVALID');
+        END;
+
+        CREATE INDEX IF NOT EXISTS idx_activity_logs_action_entity_created
+          ON activity_logs(action, entity_id, created_at);
+      `);
+    },
+  },
 ];
 
 function runMigrations(db) {

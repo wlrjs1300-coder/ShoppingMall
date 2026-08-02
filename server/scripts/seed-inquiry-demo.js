@@ -1,4 +1,6 @@
 const crypto = require("crypto");
+const { assertNonProductionScript } = require("./production-guard");
+assertNonProductionScript("문의 데모 데이터 생성");
 const db = require("../db");
 
 const samples = [

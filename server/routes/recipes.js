@@ -1,11 +1,11 @@
 const express = require("express");
 const db = require("../db");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission } = require("../middleware/auth");
 
 const router = express.Router();
 
 // GET /api/recipes
-router.get("/", requireAuth, (req, res) => {
+router.get("/", requireAuth, requirePermission("inventory:read"), (req, res) => {
   const rows = db.prepare("SELECT * FROM recipes ORDER BY product, ingredient").all();
   res.json(rows.map((row) => ({
     product: row.product,
@@ -16,7 +16,7 @@ router.get("/", requireAuth, (req, res) => {
 });
 
 // PUT /api/recipes — 전체 배합 기준 교체
-router.put("/", requireAuth, (req, res) => {
+router.put("/", requireAuth, requirePermission("inventory:write"), (req, res) => {
   const recipes = req.body;
   if (!Array.isArray(recipes)) return res.status(400).json({ error: "배합 기준 배열이 필요합니다." });
 
@@ -43,7 +43,7 @@ router.put("/", requireAuth, (req, res) => {
 });
 
 // DELETE /api/recipes/:product/:ingredient — 단건 삭제
-router.delete("/:product/:ingredient", requireAuth, (req, res) => {
+router.delete("/:product/:ingredient", requireAuth, requirePermission("inventory:write"), (req, res) => {
   db.prepare("DELETE FROM recipes WHERE product = ? AND ingredient = ?")
     .run(decodeURIComponent(req.params.product), decodeURIComponent(req.params.ingredient));
   res.json({ ok: true });

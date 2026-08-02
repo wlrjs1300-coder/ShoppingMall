@@ -632,6 +632,7 @@ function updateAdminSummaryCards(tabName) {
 }
 
 function setAdminTab(tabName) {
+  if (typeof clearActiveAdminOrderPii === "function") clearActiveAdminOrderPii();
   if (tabName === "logistics") tabName = "orders";
   const panels = {
     orders: document.querySelector(".admin-order-panel"),

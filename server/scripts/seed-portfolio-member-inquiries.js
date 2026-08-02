@@ -1,3 +1,5 @@
+const { assertNonProductionScript } = require("./production-guard");
+assertNonProductionScript("포트폴리오 회원 문의 데이터 생성");
 const db = require("../db");
 
 const user = db.prepare("SELECT id, name, phone FROM user_accounts WHERE username = ?").get("portfolio_admin");

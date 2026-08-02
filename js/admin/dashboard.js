@@ -39,8 +39,8 @@ const adminAccountingEnd = document.querySelector(".admin-accounting-end");
 const adminAccountingReset = document.querySelector(".admin-accounting-reset");
 const adminAccountingCsv = document.querySelector(".admin-accounting-csv");
 const adminFormDrawerBackdrop = document.querySelector(".admin-form-drawer-backdrop");
-const adminAccessCode = "";
 const adminAccessStorageKey = "tteokAdminAccess";
+let currentAdminPermissions = new Set();
 let editingAdminOrderId = "";
 let adminFeedbackTimer = 0;
 let activeDetailItem = null;
@@ -316,6 +316,7 @@ function showAdminLoginRequired() {
 }
 
 function lockAdmin() {
+  if (typeof clearActiveAdminOrderPii === "function") clearActiveAdminOrderPii();
   try {
     sessionStorage.removeItem(adminAccessStorageKey);
     setApiToken(null);
@@ -347,6 +348,30 @@ function grantAdminAccess() {
   }
 }
 
+function applyAdminPermissions(admin) {
+  currentAdminPermissions = new Set(Array.isArray(admin?.permissions) ? admin.permissions : []);
+  const rules = {
+    "orders:write": [".admin-order-create-open", "[data-admin-bulk-apply]", ".admin-delete", '[data-detail-action="edit"]', '[data-detail-action="delete"]'],
+    "inventory:write": [".admin-inventory-submit", ".admin-inventory-edit", ".admin-inventory-delete", ".admin-recipe-delete"],
+    "purchase_orders:write": [".admin-supplier-submit", ".admin-supplier-delete", ".admin-purchase-request", ".admin-purchase-edit", ".admin-purchase-delete"],
+    "payments:reconcile": ["[data-admin-payment-reconcile]", '[data-detail-action="reconcile-payment"]'],
+    "payments:cancel": [".admin-payment-cancel", '[data-detail-action="cancel-payment"]'],
+  };
+  for (const [permission, selectors] of Object.entries(rules)) {
+    document.querySelectorAll(selectors.join(",")).forEach((element) => {
+      element.hidden = !currentAdminPermissions.has(permission);
+      element.setAttribute("aria-hidden", String(!currentAdminPermissions.has(permission)));
+    });
+  }
+}
+
+function hasAdminPermission(permission) {
+  return currentAdminPermissions.has(permission);
+}
+
+new MutationObserver(() => applyAdminPermissions({ permissions: [...currentAdminPermissions] }))
+  .observe(document.body, { childList: true, subtree: true });
+
 async function bootstrapMemberAdminAccess() {
   try {
     const response = await fetch("/api/users/admin-session", { method: "POST", credentials: "same-origin" });
@@ -366,6 +391,7 @@ async function bootstrapMemberAdminAccess() {
       return;
     }
     setApiToken(result.token);
+    applyAdminPermissions(result.admin);
     grantAdminAccess();
     unlockAdmin();
     await loadFromApi();
@@ -386,19 +412,13 @@ adminLockForm?.addEventListener("submit", async (event) => {
   const code = String(new FormData(adminLockForm).get("code") || "").trim();
   if (!code) return;
 
-  // 서버가 살아있으면 API로 검증, 오프라인이면 로컬 코드로 폴백
   const result = await apiFetch("/auth/login", { method: "POST", body: { code } });
-  if (result === null) {
-    // 서버 오프라인 — 로컬 코드로 폴백
-    if (code !== adminAccessCode) {
-      if (adminLockMessage) adminLockMessage.textContent = "확인 코드가 맞지 않습니다.";
-      return;
-    }
-  } else if (!result.token) {
+  if (!result?.token) {
     if (adminLockMessage) adminLockMessage.textContent = "확인 코드가 맞지 않습니다.";
     return;
   } else {
     setApiToken(result.token);
+    applyAdminPermissions(result.admin);
     await loadFromApi();
   }
 
@@ -546,7 +566,7 @@ orderRequestForm?.addEventListener("submit", async (event) => {
   */
 });
 
-adminOrderCreateForm?.addEventListener("submit", (event) => {
+adminOrderCreateForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(adminOrderCreateForm);
   const product = String(formData.get("product") || "").trim();
@@ -559,35 +579,45 @@ adminOrderCreateForm?.addEventListener("submit", (event) => {
   const revenue = unitPrice * quantity;
   const previousOrder = editingAdminOrderId ? readOrders().find((order) => order.id === editingAdminOrderId) : null;
   const fulfillmentType = String(formData.get("fulfillmentType") || "pickup");
-  const order = {
-    ...(previousOrder || {}),
-    id: previousOrder?.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
-    createdAt: previousOrder?.createdAt || new Date().toISOString(),
+  const customer = String(formData.get("customer") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const deliveryAddress = String(formData.get("deliveryAddress") || "").trim();
+  if (!customer || !/^01[0-9]{8,9}$/.test(phone.replace(/\D/g, ""))
+    || (fulfillmentType === "delivery" && !deliveryAddress)) {
+    if (adminOrderCreateStatus) adminOrderCreateStatus.textContent = "고객명, 연락처와 배송 정보를 확인해 주세요.";
+    return;
+  }
+  const payload = {
     product,
-    priceText: unitPrice ? formatWon(unitPrice) : "상담 후 안내",
     quantity,
     pickupDate: String(formData.get("pickupDate") || ""),
     pickupTime: String(formData.get("pickupTime") || ""),
     fulfillmentType,
-    deliveryAddress: String(formData.get("deliveryAddress") || "").trim(),
     logisticsStatus: String(formData.get("logisticsStatus") || previousOrder?.logisticsStatus || getDefaultLogisticsStatus(fulfillmentType)),
-    customer: String(formData.get("customer") || "").trim(),
-    phone: String(formData.get("phone") || "").trim(),
     memo: String(formData.get("memo") || "").trim(),
     status: previousOrder?.status || "접수대기",
     unitPrice,
     revenue,
     cost: Number(formData.get("cost") || 0),
+    ...(!previousOrder ? { customer, phone, deliveryAddress } : {}),
   };
-
-  const nextOrders = previousOrder
-    ? readOrders().map((current) => (current.id === previousOrder.id ? order : current))
-    : [order, ...readOrders()];
-  writeOrders(nextOrders);
-  addActivityLog("주문", `${order.product} 주문을 ${previousOrder ? "수정" : "등록"}했습니다.`, "orders");
-  renderAdminDashboard();
-  setAdminTab("orders");
-  if (adminOrderCreateStatus) adminOrderCreateStatus.textContent = previousOrder ? "주문이 수정되었습니다." : "주문이 등록되었습니다.";
-  setAdminFeedback(previousOrder ? "주문 정보가 수정되었습니다." : "새 주문이 등록되었습니다.");
-  setTimeout(closeAdminOrderCreate, 700);
+  const submitButton = adminOrderCreateForm.querySelector('[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
+  try {
+    const saved = await apiFetch(
+      previousOrder ? `/orders/${encodeURIComponent(previousOrder.id)}` : "/orders/admin",
+      { method: previousOrder ? "PUT" : "POST", body: payload },
+    );
+    if (!saved) return;
+    await loadFromApi();
+    addActivityLog("주문", `${product} 주문을 ${previousOrder ? "수정" : "등록"}했습니다.`, "orders");
+    renderAdminDashboard();
+    setAdminTab("orders");
+    adminOrderCreateForm.reset();
+    if (adminOrderCreateStatus) adminOrderCreateStatus.textContent = previousOrder ? "주문이 수정되었습니다." : "주문이 등록되었습니다.";
+    setAdminFeedback(previousOrder ? "주문 정보가 수정되었습니다." : "새 주문이 등록되었습니다.");
+    setTimeout(closeAdminOrderCreate, 700);
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
 });

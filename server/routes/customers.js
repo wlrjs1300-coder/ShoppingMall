@@ -1,14 +1,15 @@
 const express = require("express");
 const db = require("../db");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission } = require("../middleware/auth");
+const { maskName, maskPhone } = require("../lib/pii-crypto");
 
 const router = express.Router();
 
 function rowToCustomer(row) {
   return {
     id: row.id,
-    name: row.name,
-    phone: row.phone,
+    name: maskName(row.name),
+    phone: row.phone ? maskPhone(row.phone) : null,
     type: row.type,
     memo: row.memo,
     createdAt: row.created_at,
@@ -16,14 +17,21 @@ function rowToCustomer(row) {
   };
 }
 
+function maskCustomerNoteKey(value) {
+  const key = String(value || "");
+  if (/^\+?[\d\s()-]{9,20}$/.test(key)) return maskPhone(key.replace(/\D/g, ""));
+  if (/^(?:customer|order|user)-/i.test(key)) return key;
+  return maskName(key);
+}
+
 // GET /api/customers
-router.get("/", requireAuth, (req, res) => {
+router.get("/", requireAuth, requirePermission("orders:read"), (req, res) => {
   const rows = db.prepare("SELECT * FROM customers ORDER BY created_at DESC").all();
   res.json(rows.map(rowToCustomer));
 });
 
 // POST /api/customers
-router.post("/", requireAuth, (req, res) => {
+router.post("/", requireAuth, requirePermission("orders:write"), (req, res) => {
   const now = new Date().toISOString();
   const { id = `customer-${Date.now()}`, name, phone, type = "일반", memo } = req.body;
   if (!name) return res.status(400).json({ error: "고객명은 필수입니다." });
@@ -38,7 +46,7 @@ router.post("/", requireAuth, (req, res) => {
 });
 
 // PUT /api/customers/:id
-router.put("/:id", requireAuth, (req, res) => {
+router.put("/:id", requireAuth, requirePermission("orders:write"), (req, res) => {
   const now = new Date().toISOString();
   const existing = db.prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "고객을 찾을 수 없습니다." });
@@ -55,7 +63,7 @@ router.put("/:id", requireAuth, (req, res) => {
 });
 
 // DELETE /api/customers/:id
-router.delete("/:id", requireAuth, (req, res) => {
+router.delete("/:id", requireAuth, requirePermission("orders:write"), (req, res) => {
   const existing = db.prepare("SELECT id FROM customers WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "고객을 찾을 수 없습니다." });
   db.prepare("DELETE FROM customers WHERE id = ?").run(req.params.id);
@@ -63,15 +71,18 @@ router.delete("/:id", requireAuth, (req, res) => {
 });
 
 // GET /api/customers/notes — 전체 메모 객체 반환
-router.get("/notes", requireAuth, (req, res) => {
+router.get("/notes", requireAuth, requirePermission("orders:read"), (req, res) => {
   const rows = db.prepare("SELECT * FROM customer_notes").all();
   const notes = {};
-  rows.forEach((row) => { notes[row.customer_key] = row.note; });
+  rows.forEach((row) => {
+    const safeKey = maskCustomerNoteKey(row.customer_key);
+    if (safeKey) notes[safeKey] = row.note;
+  });
   res.json(notes);
 });
 
 // PUT /api/customers/notes/:key — 특정 고객 메모 저장
-router.put("/notes/:key", requireAuth, (req, res) => {
+router.put("/notes/:key", requireAuth, requirePermission("orders:write"), (req, res) => {
   const { note = "" } = req.body;
   db.prepare(`
     INSERT INTO customer_notes (customer_key, note) VALUES (?, ?)
@@ -81,7 +92,7 @@ router.put("/notes/:key", requireAuth, (req, res) => {
 });
 
 // DELETE /api/customers/notes/:key — 특정 고객 메모 삭제
-router.delete("/notes/:key", requireAuth, (req, res) => {
+router.delete("/notes/:key", requireAuth, requirePermission("orders:write"), (req, res) => {
   db.prepare("DELETE FROM customer_notes WHERE customer_key = ?").run(req.params.key);
   res.json({ ok: true });
 });

@@ -2,32 +2,94 @@ require("dotenv").config();
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { productionConfigErrors } = require("../config");
+const {
+  nodeVersionError,
+  productionReadinessReport,
+  READINESS_CATEGORIES,
+} = require("../config");
 
-const errors = productionConfigErrors({ ...process.env, NODE_ENV: "production" });
-const warnings = [];
-const placeholder = /000-0000|화성시 소재|smartstore\.naver\.com\/?$|your-domain/i;
-const storeKeys = ["STORE_PHONE", "STORE_ADDRESS", "STORE_URL"];
-
-for (const key of storeKeys) {
-  if (!process.env[key] || placeholder.test(process.env[key])) warnings.push(`${key}: 포트폴리오 예시 값입니다.`);
-}
-if (!process.env.TOSS_CLIENT_KEY || !process.env.TOSS_SECRET_KEY) warnings.push("Toss 키가 없어 결제를 사용할 수 없습니다.");
-else if (/^test_/.test(process.env.TOSS_CLIENT_KEY) || /^test_/.test(process.env.TOSS_SECRET_KEY)) warnings.push("Toss 테스트 키가 설정되어 있어 실제 결제는 처리되지 않습니다.");
-if (!["SOLAPI_API_KEY", "SOLAPI_API_SECRET", "SOLAPI_SENDER_PHONE"].every((key) => process.env[key])) warnings.push("Solapi 설정이 없어 운영 회원가입 휴대폰 인증을 사용할 수 없습니다.");
-if (!process.env.RESEND_API_KEY || !process.env.PASSWORD_RESET_FROM) warnings.push("Resend 설정이 없어 운영 비밀번호 재설정 메일을 발송할 수 없습니다.");
-for (const provider of ["GOOGLE", "KAKAO", "NAVER"]) {
-  if (![`${provider}_CLIENT_ID`, `${provider}_CLIENT_SECRET`].every((key) => process.env[key])) warnings.push(`${provider} 소셜 로그인이 설정되지 않았습니다.`);
-}
-
+const productionEnv = { ...process.env, NODE_ENV: "production" };
+const report = productionReadinessReport(productionEnv);
 const root = path.resolve(__dirname, "../..");
-for (const name of ["privacy.html", "terms.html"]) {
-  const body = fs.readFileSync(path.join(root, name), "utf8");
-  if (/포트폴리오용 초안|실제 서비스 공개 전 확정/.test(body)) warnings.push(`${name}: 운영용 법무 문서가 확정되지 않았습니다.`);
+
+function add(level, code, category, problem, action, envKeys = []) {
+  const item = { level, code, category, problem, action, envKeys };
+  report.items.push(item);
+  (level === "error" ? report.errors : report.confirmations).push(item);
 }
 
-console.log("\n[배포 사전 점검]");
-errors.forEach((message) => console.error(`ERROR  ${message}`));
-warnings.forEach((message) => console.warn(`WARN   ${message}`));
-console.log(`\n결과: 오류 ${errors.length}개, 확인 필요 ${warnings.length}개`);
-if (errors.length) process.exitCode = 1;
+const versionError = nodeVersionError(process.versions.node);
+if (versionError) {
+  add("error", "NODE_VERSION_UNSUPPORTED", READINESS_CATEGORIES.SECURITY, versionError,
+    "배포 런타임을 package.json engines에 맞는 Node.js 버전으로 변경하세요.");
+}
+
+for (const file of [
+  "server/scripts/backup-database.js",
+  "server/scripts/verify-backup.js",
+  "server/lib/backup-utils.js",
+]) {
+  if (!fs.existsSync(path.join(root, file))) {
+    add("error", "BACKUP_COMPONENT_MISSING", READINESS_CATEGORIES.BACKUP,
+      `필수 백업 구성요소가 없습니다: ${file}`, "누락된 파일을 배포 artifact에 포함하세요.");
+  }
+}
+
+for (const [file, code] of [
+  ["privacy.html", "PRIVACY_POLICY_APPROVAL_REQUIRED"],
+  ["terms.html", "TERMS_APPROVAL_REQUIRED"],
+]) {
+  const body = fs.readFileSync(path.join(root, file), "utf8");
+  if (/포트폴리오용 초안|실제 서비스 공개 전 확정/.test(body)) {
+    add("confirm-needed", code, READINESS_CATEGORIES.MANUAL,
+      `${file}이 운영 확정 전 초안 상태입니다.`,
+      "법무·사업 담당자의 최종 승인을 받고 실제 사업자·정책 정보로 확정하세요.");
+  }
+}
+
+for (const file of [
+  "docs/admin-auth-operations.md",
+  "docs/backup-and-recovery.md",
+  "docs/production-readiness.md",
+]) {
+  if (!fs.existsSync(path.join(root, file))) {
+    add("error", "OPERATIONS_DOCUMENT_MISSING", READINESS_CATEGORIES.MANUAL,
+      `필수 운영 문서가 없습니다: ${file}`, "운영 문서를 작성하고 배포 승인자가 검토하게 하세요.");
+  }
+}
+
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, "server/package.json"), "utf8"));
+if (packageJson.scripts?.["backup:create"] !== "node scripts/backup-database.js"
+  || packageJson.scripts?.["backup:verify"] !== "node scripts/verify-backup.js") {
+  add("error", "BACKUP_SCRIPT_UNSAFE", READINESS_CATEGORIES.BACKUP,
+    "package.json의 백업 생성·검증 명령이 안전한 스크립트를 가리키지 않습니다.",
+    "backup:create와 backup:verify 명령을 승인된 스크립트로 복구하세요.");
+}
+if (packageJson.scripts?.["db:restore"] || fs.existsSync(path.join(root, "server/scripts/restore-db.js"))) {
+  add("error", "AUTOMATIC_RESTORE_FORBIDDEN", READINESS_CATEGORIES.BACKUP,
+    "운영 DB를 자동 교체할 수 있는 복원 명령이 존재합니다.",
+    "자동 복원 경로를 제거하고 문서화된 수동 승인 절차를 사용하세요.");
+}
+
+const gitignore = fs.readFileSync(path.join(root, ".gitignore"), "utf8");
+for (const pattern of ["*.sqlite", "*.sha256", "shoppingmall-*.json"]) {
+  if (!gitignore.includes(pattern)) {
+    add("error", "BACKUP_IGNORE_PATTERN_MISSING", READINESS_CATEGORIES.BACKUP,
+      `.gitignore에 백업 보호 패턴이 없습니다: ${pattern}`,
+      "해당 패턴을 .gitignore에 추가하세요.");
+  }
+}
+
+function print(item) {
+  const stream = item.level === "error" ? console.error : console.warn;
+  stream(`\n[${item.level === "error" ? "ERROR" : "CONFIRM-NEEDED"}][${item.code}]`);
+  stream(`분류: ${item.category}`);
+  stream(`문제: ${item.problem}`);
+  stream(`조치: ${item.action}`);
+  if (item.envKeys.length) stream(`환경변수: ${item.envKeys.join(", ")}`);
+}
+
+console.log("\n[production 배포 사전 점검]");
+report.items.forEach(print);
+console.log(`\n결과: errors ${report.errors.length}, confirm-needed ${report.confirmations.length}`);
+if (report.errors.length) process.exitCode = 1;

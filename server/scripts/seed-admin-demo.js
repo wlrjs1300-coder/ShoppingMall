@@ -1,8 +1,6 @@
+const { assertNonProductionScript } = require("./production-guard");
+assertNonProductionScript("데모 데이터 주입");
 const db = require("../db");
-
-if (process.env.NODE_ENV === "production") {
-  throw new Error("운영 환경에서는 데모 데이터 주입을 허용하지 않습니다.");
-}
 
 const admin = db.prepare("SELECT id FROM user_accounts WHERE username = 'portfolio_admin'").get();
 const demoUserId = admin?.id || null;
@@ -155,4 +153,3 @@ console.table([
   { section: "주문", rows: db.prepare("SELECT COUNT(*) count FROM orders WHERE id LIKE 'demo-sales-order-%'").get().count },
   { section: "히스토리", rows: db.prepare("SELECT COUNT(*) count FROM order_status_history WHERE order_id LIKE 'demo-sales-order-%'").get().count },
 ]);
-

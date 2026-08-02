@@ -12,6 +12,41 @@ const { requestContext, securityHeaders } = require("./middleware/security");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const PUBLIC_ROOT = path.join(__dirname, "..");
+const PUBLIC_ROOT_FILES = new Set([
+  "index.html",
+  "menu.html",
+  "product.html",
+  "cart.html",
+  "checkout.html",
+  "login.html",
+  "signup.html",
+  "mypage.html",
+  "admin.html",
+  "pay.html",
+  "privacy.html",
+  "terms.html",
+  "faq.html",
+  "inquiry.html",
+  "inquiry-lookup.html",
+  "guest-order.html",
+  "guest-order-lookup.html",
+  "find-username.html",
+  "forgot-password.html",
+  "reset-password.html",
+  "social-consent.html",
+  "postcode.html",
+  "404.html",
+  "manifest.json",
+  "robots.txt",
+  "sw.js",
+  "styles.css",
+  "script.js",
+  "cart-utils.js",
+  "mypage.js",
+]);
+const PUBLIC_DIRECTORIES = ["css", "js", "assets"];
+
 app.set("trust proxy", 1);
 
 app.use(requestContext);
@@ -26,23 +61,62 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "6mb" }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, ".."), {
+
+function setPublicFileHeaders(res, filePath) {
+  if (/\.html$|sw\.js$/.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".html") {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+  } else if (ext === ".css") {
+    res.setHeader("Content-Type", "text/css; charset=utf-8");
+  } else if (ext === ".js") {
+    res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+  }
+}
+
+const staticOptions = {
   etag: true,
   maxAge: process.env.NODE_ENV === "production" ? "1h" : 0,
-  setHeaders(res, filePath) {
-    if (/\.html$|sw\.js$/.test(filePath)) res.setHeader("Cache-Control", "no-cache");
-    const ext = path.extname(filePath).toLowerCase();
-    if (ext === ".html") {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-    } else if (ext === ".css") {
-      res.setHeader("Content-Type", "text/css; charset=utf-8");
-    } else if (ext === ".js") {
-      res.setHeader("Content-Type", "text/javascript; charset=utf-8");
-    }
-  },
-}));
+  dotfiles: "deny",
+  fallthrough: true,
+  redirect: false,
+  setHeaders: setPublicFileHeaders,
+};
+
+function isInternalFileRequest(requestPath) {
+  const normalized = requestPath.replaceAll("\\", "/").toLowerCase();
+  return /^\/(?:server|docs|\.git|\.agents)(?:\/|$)/.test(normalized)
+    || /(?:^|\/)\.env(?:\.|$)/.test(normalized)
+    || /\.(?:db|sqlite|sqlite3|md)(?:$|[?#])/.test(normalized)
+    || /(?:^|\/)backups?(?:\/|$)/.test(normalized);
+}
+
+app.use((req, res, next) => {
+  if (!isInternalFileRequest(req.path)) return next();
+  return res.status(404).type("text/plain").send("Not Found");
+});
+
+function sendPublicRootFile(req, res, next) {
+  const fileName = req.path === "/" ? "index.html" : req.path.slice(1);
+  if (!PUBLIC_ROOT_FILES.has(fileName)) return next();
+  const filePath = path.join(PUBLIC_ROOT, fileName);
+  setPublicFileHeaders(res, filePath);
+  return res.sendFile(filePath, { etag: true, maxAge: staticOptions.maxAge }, (error) => {
+    if (error) next(error);
+  });
+}
+
+app.get("/", sendPublicRootFile);
+for (const fileName of PUBLIC_ROOT_FILES) app.get(`/${fileName}`, sendPublicRootFile);
+for (const directory of PUBLIC_DIRECTORIES) {
+  app.use(`/${directory}`, express.static(path.join(PUBLIC_ROOT, directory), staticOptions));
+}
 
 app.use("/api/auth", require("./routes/auth"));
+app.use("/api/admin-users", require("./routes/admin-users"));
+app.use("/api/sales-channels", require("./routes/sales-channels"));
+app.use("/api/sales-channels", require("./routes/naver-product-mappings"));
+app.use("/api/sales-channels", require("./routes/naver-order-imports"));
 app.use("/api/auth/social", require("./routes/social-auth"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/customers", require("./routes/customers"));
@@ -86,7 +160,7 @@ app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ error: "존재하지 않는 API 엔드포인트입니다." });
   }
-  res.status(404).sendFile(path.join(__dirname, "..", "404.html"));
+  res.status(404).sendFile(path.join(PUBLIC_ROOT, "404.html"));
 });
 
 app.use((err, req, res, next) => {

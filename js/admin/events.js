@@ -1,3 +1,31 @@
+async function requestAdminOrderPii(actionButton, orderId, reason) {
+  actionButton.disabled = true;
+  try {
+    return await apiFetch(`/orders/${encodeURIComponent(orderId)}/pii-access`, {
+      method: "POST",
+      body: { reason },
+    });
+  } finally {
+    actionButton.disabled = false;
+  }
+}
+
+async function requestAdminOrderPiiUpdate(actionButton, orderId, patch) {
+  actionButton.disabled = true;
+  actionButton.setAttribute("aria-busy", "true");
+  try {
+    return await apiFetch(`/orders/${encodeURIComponent(orderId)}/pii`, {
+      method: "PATCH",
+      body: patch,
+    });
+  } finally {
+    if (actionButton.isConnected) {
+      actionButton.disabled = false;
+      actionButton.removeAttribute("aria-busy");
+    }
+  }
+}
+
 document.querySelector(".admin-order-list")?.addEventListener("change", (event) => {
   const row = event.target.closest("tr[data-order-id]");
   if (!row) return;
@@ -20,6 +48,12 @@ document.querySelector(".admin-order-list")?.addEventListener("change", (event) 
 
 document.querySelector(".admin-order-list")?.addEventListener("click", async (event) => {
   if (event.target.closest("[data-admin-order-select]")) return;
+  const reconcileButton = event.target.closest("[data-admin-payment-reconcile]");
+  if (reconcileButton) {
+    event.stopPropagation();
+    await reconcileAdminPayment(reconcileButton.dataset.adminPaymentReconcile, reconcileButton);
+    return;
+  }
   const detailButton = event.target.closest(".admin-order-detail-open");
   if (detailButton) {
     const row = detailButton.closest("tr[data-order-id]");
@@ -86,18 +120,12 @@ document.querySelector(".admin-order-list")?.addEventListener("click", async (ev
     if (row) openAdminOrderDetail(row.dataset.orderId);
     return;
   }
-  const row = deleteButton.closest("tr[data-order-id]");
-  const orders = readOrders();
-  const target = orders.find((order) => order.id === row.dataset.orderId);
-  if (!await AppUI.confirm(`${target?.customer || "고객"}님의 ${target?.product || "주문"}을 삭제할까요? 삭제 후 복구할 수 없습니다.`)) return;
-  writeOrders(orders.filter((order) => order.id !== row.dataset.orderId));
-  addActivityLog("주문", `${target?.product || "주문"}을 삭제했습니다.`, "orders");
-  renderAdminDashboard();
-  setAdminFeedback("주문 1건을 삭제했습니다.");
+  AppUI.alert("운영 주문은 결제 및 상태 이력 보호를 위해 삭제할 수 없습니다.");
 });
 
 document.querySelector(".admin-order-list")?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" && event.key !== " ") return;
+  if (event.target.closest("button, input, select, textarea, a")) return;
   const row = event.target.closest("tr[data-order-id]");
   if (!row) return;
   event.preventDefault();
@@ -130,6 +158,55 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
   if (!order) return;
 
   const action = actionButton.dataset.detailAction;
+  if (action === "access-pii") {
+    const reason = dialog.querySelector("[data-admin-order-pii-reason]")?.value || "";
+    if (!reason) return AppUI.alert("개인정보 접근 목적을 선택해 주세요.");
+    const pii = await requestAdminOrderPii(actionButton, orderId, reason);
+    if (!pii || pii.orderId !== orderId) return;
+    setActiveAdminOrderPii(pii);
+    openAdminOrderDetail(orderId, { preservePii: true });
+    return;
+  }
+  if (action === "hide-pii") {
+    clearActiveAdminOrderPii();
+    openAdminOrderDetail(orderId);
+    return;
+  }
+  if (action === "cancel-pii-update") {
+    dialog.querySelector("[data-admin-order-pii-update-form]")?.reset();
+    return;
+  }
+  if (action === "update-pii") {
+    const form = dialog.querySelector("[data-admin-order-pii-update-form]");
+    const reason = form?.querySelector("[data-admin-order-pii-update-reason]")?.value || "";
+    const customer = form?.querySelector("[data-admin-order-pii-update-customer]")?.value.trim() || "";
+    const phone = form?.querySelector("[data-admin-order-pii-update-phone]")?.value.trim() || "";
+    const deliveryAddress = form?.querySelector("[data-admin-order-pii-update-address]")?.value.trim() || "";
+    if (!reason) return AppUI.alert("개인정보 수정 사유를 선택해 주세요.");
+    const patch = {
+      reason,
+      ...(customer ? { customer } : {}),
+      ...(phone ? { phone } : {}),
+      ...(deliveryAddress ? { deliveryAddress } : {}),
+      ...(order.updatedAt ? { expectedUpdatedAt: order.updatedAt } : {}),
+    };
+    if (!customer && !phone && !deliveryAddress) {
+      return AppUI.alert("변경할 개인정보를 한 항목 이상 입력해 주세요.");
+    }
+    const result = await requestAdminOrderPiiUpdate(actionButton, orderId, patch);
+    if (!result || result.orderId !== orderId) throw new Error("ORDER_PII_UPDATE_RESPONSE_INVALID");
+    clearActiveAdminOrderPii();
+    form?.reset();
+    await loadFromApi();
+    renderAdminDashboard();
+    openAdminOrderDetail(orderId);
+    AppUI.toast("주문 개인정보를 수정했습니다.", "success");
+    return;
+  }
+  if (action === "reconcile-payment") {
+    await reconcileAdminPayment(orderId, actionButton);
+    return;
+  }
   if (action === "customer-orders") {
     const search = document.querySelector(".admin-search-input");
     if (search) search.value = order.phone || order.customer || "";
@@ -173,7 +250,7 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
     actionButton.hidden = true;
     dialog.querySelector('[data-detail-action="edit-cancel"]')?.removeAttribute("hidden");
     dialog.querySelector('[data-detail-action="edit-save"]')?.removeAttribute("hidden");
-    dialog.querySelector("[data-inline-customer]")?.focus();
+    dialog.querySelector("[data-inline-product]")?.focus();
     return;
   }
   if (action === "edit-cancel") {
@@ -187,16 +264,13 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
   if (action === "edit-save") {
     const value = (selector) => dialog.querySelector(selector)?.value.trim() || "";
     const product = value("[data-inline-product]");
-    const customer = value("[data-inline-customer]");
     const quantity = Math.max(1, Math.min(99, Number(value("[data-inline-quantity]")) || 1));
     const unitPrice = Math.max(0, Number(value("[data-inline-unit-price]")) || 0);
-    if (!product || !customer) return AppUI.alert("고객명과 상품명을 입력해 주세요.");
+    if (!product) return AppUI.alert("상품명을 입력해 주세요.");
     const items = Array.isArray(order.items) && order.items.length
       ? order.items.map((item, index) => index ? item : { ...item, productName: product, unitPrice, quantity, lineTotal: unitPrice * quantity })
       : order.items;
     updateAdminOrder(orderId, {
-      customer,
-      phone: value("[data-inline-phone]"),
       product,
       quantity,
       unitPrice,
@@ -206,7 +280,6 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
       fulfillmentType: dialog.querySelector("[data-inline-fulfillment]")?.value || "pickup",
       pickupDate: value("[data-inline-pickup-date]"),
       pickupTime: value("[data-inline-pickup-time]"),
-      deliveryAddress: value("[data-inline-address]"),
       memo: value("[data-inline-memo]"),
       ...(items ? { items } : {}),
     });
@@ -214,12 +287,7 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
     return;
   }
   if (action === "delete") {
-    if (!await AppUI.confirm(`${order.customer || "고객"}님의 ${order.product || "주문"}을 삭제할까요? 삭제 후 복구할 수 없습니다.`)) return;
-    writeOrders(readOrders().filter((current) => current.id !== orderId));
-    addActivityLog("주문", `${order.product || "주문"}을 삭제했습니다.`, "orders");
-    closeAdminOrderDetail();
-    renderAdminDashboard();
-    setAdminFeedback("주문 1건을 삭제했습니다.");
+    AppUI.alert("운영 주문은 결제 및 상태 이력 보호를 위해 삭제할 수 없습니다.");
   }
 });
 
@@ -850,10 +918,24 @@ document.querySelector(".admin-purchase-order-list")?.addEventListener("click", 
   const button = event.target.closest(".admin-purchase-delete");
   if (!button) return;
   const row = button.closest("tr[data-purchase-order-id]");
-  if (!row || !await AppUI.confirm("이 발주 기록을 삭제할까요?")) return;
-  writePurchaseOrders(readPurchaseOrders().filter((order) => order.id !== row.dataset.purchaseOrderId));
+  const purchase = readPurchaseOrders().find((order) => order.id === row?.dataset.purchaseOrderId);
+  if (!row || !purchase) return;
+  if (purchase.receivedAt || !["발주요청", "초안", "DRAFT"].includes(purchase.status)) {
+    return AppUI.alert("확정 또는 입고 처리된 발주는 삭제할 수 없습니다.");
+  }
+  if (!await AppUI.confirm(
+    "이 초기 발주 요청을 영구 삭제하시겠습니까? 입고 또는 정산된 발주는 삭제할 수 없습니다.",
+    { title: "초기 발주 삭제", confirmText: "발주 삭제", tone: "danger" }
+  )) return;
+  button.disabled = true;
+  const result = await apiFetchResult(`/purchase-orders/${encodeURIComponent(purchase.id)}`, { method: "DELETE" });
+  button.disabled = false;
+  if (!result.ok) return AppUI.alert(result.data?.reason === "PURCHASE_ORDER_LOCKED"
+    ? "확정 또는 입고 처리된 발주는 삭제할 수 없습니다."
+    : "발주 기록을 삭제하지 못했습니다.");
+  await loadFromApi();
   renderAdminDashboard();
-  setAdminFeedback("발주 기록을 삭제했습니다.");
+  setAdminFeedback("이력이 없는 초기 발주 요청을 삭제했습니다.");
 });
 
 document.querySelector(".admin-recipe-list")?.addEventListener("click", async (event) => {
@@ -874,16 +956,20 @@ document.querySelector(".admin-recipe-list")?.addEventListener("click", async (e
 document.querySelector(".admin-sidebar-nav")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-tab]");
   if (!button) return;
+  clearActiveAdminOrderPii();
   setAdminTab(button.dataset.adminTab);
 });
 
 document.querySelector(".admin-sidebar-alerts")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-flow-tab]");
   if (!button) return;
+  clearActiveAdminOrderPii();
   setAdminTab(button.dataset.adminFlowTab);
   if (button.dataset.alertType === "purchases") setAdminSubtab("inventory", "purchases");
   if (button.dataset.alertType === "inventory") setAdminSubtab("inventory", "stock");
 });
+
+window.addEventListener("pagehide", () => clearActiveAdminOrderPii());
 
 document.querySelector(".admin-main")?.addEventListener("click", (event) => {
   const formOpen = event.target.closest("[data-admin-form-open]");

@@ -459,22 +459,22 @@ async function deleteAdminInventory(itemId) {
   if (!itemId) return;
   const items = readInventory();
   const target = items.find((item) => item.id === itemId);
-  const activePurchases = readPurchaseOrders().filter(
-    (order) => order.inventoryId === itemId && order.status !== "입고완료",
-  );
-
-  if (activePurchases.length) {
-    if (!await AppUI.confirm(`${target?.name || "이 품목"}에 진행 중인 발주 ${activePurchases.length}건이 있습니다. 발주까지 함께 삭제할까요?`)) return;
-    writePurchaseOrders(readPurchaseOrders().filter((order) => !(order.inventoryId === itemId && order.status !== "입고완료")));
-  } else {
-    if (!await AppUI.confirm(`${target?.name || "재고 품목"}을 삭제할까요?`)) return;
+  if (!target) return;
+  if (Number(target.stock) !== 0 || readPurchaseOrders().some((order) => order.inventoryId === itemId)) {
+    return AppUI.alert("재고 또는 거래 이력이 있는 품목은 삭제할 수 없습니다.");
   }
-
-  writeInventory(items.filter((item) => item.id !== itemId));
-  addActivityLog("재고", `${target?.name || "재고 품목"}을 삭제했습니다.`, "inventory");
+  if (!await AppUI.confirm(
+    "이 재고 품목을 영구 삭제하시겠습니까? 재고와 거래 이력이 없는 신규 오입력 품목만 삭제할 수 있습니다.",
+    { title: "미사용 재고 품목 삭제", confirmText: "품목 삭제", tone: "danger" }
+  )) return;
+  const result = await apiFetchResult(`/inventory/${encodeURIComponent(itemId)}`, { method: "DELETE" });
+  if (!result.ok) return AppUI.alert(result.data?.reason === "INVENTORY_HISTORY_EXISTS"
+    ? "재고 또는 거래 이력이 있는 품목은 삭제할 수 없습니다."
+    : "재고 품목을 삭제하지 못했습니다.");
+  await loadFromApi();
   resetAdminInventoryForm();
   renderAdminDashboard();
-  setAdminFeedback(`재고 품목을 삭제했습니다.${activePurchases.length ? ` 연관 발주 ${activePurchases.length}건도 함께 삭제했습니다.` : ""}`);
+  setAdminFeedback("이력이 없는 신규 재고 품목을 삭제했습니다.");
 }
 
 async function createSampleInventory() {

@@ -17,6 +17,10 @@ node_modules/
 *.db-wal
 *.sqlite
 *.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.sha256
+shoppingmall-*.json
 
 # 로그·백업·업로드·임시 파일
 *.log
