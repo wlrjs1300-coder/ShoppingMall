@@ -21,7 +21,9 @@ const {
   naverCommerceConfigErrors,
   naverOrderImportConfigErrors,
   orderPiiConfigErrors,
+  getAppEnvironment,
 } = require("../config");
+const { assertStagingScript } = require("../scripts/production-guard");
 const { runMigrations, migrations } = require("../migrations");
 
 const root = path.resolve(__dirname, "../..");
@@ -37,6 +39,7 @@ test("Node.js backup API minimum version contract is enforced", () => {
 function validProductionEnv(overrides = {}) {
   return {
     NODE_ENV: "production",
+    APP_ENV: "production",
     ADMIN_CODE: "strong-admin-code-2026",
     JWT_SECRET: "j".repeat(40),
     AUTH_CODE_PEPPER: "p".repeat(40),
@@ -74,6 +77,56 @@ test("개발·테스트 환경에서는 운영 설정 검증을 실행하지 않
 
 test("완전한 운영 환경변수는 시작 검증을 통과한다", () => {
   assert.deepEqual(productionConfigErrors(validProductionEnv()), []);
+});
+
+test("APP_ENV는 local과 test 기본값을 유지하고 production runtime을 fail closed한다", () => {
+  assert.equal(getAppEnvironment({ NODE_ENV: "development" }), "local");
+  assert.equal(getAppEnvironment({ NODE_ENV: "test" }), "test");
+  assert.equal(getAppEnvironment({ NODE_ENV: "production", APP_ENV: "StAgInG" }), "staging");
+  assert.match(productionConfigErrors(validProductionEnv({ APP_ENV: "" })).join(" "), /APP_ENV/);
+  assert.match(productionConfigErrors(validProductionEnv({ APP_ENV: "unknown" })).join(" "), /APP_ENV/);
+});
+
+test("staging은 provider outbound와 provider credential을 모두 차단한다", () => {
+  const base = validProductionEnv({
+    APP_ENV: "staging",
+    DB_PATH: path.join(path.parse(root).root, "data", "staging.sqlite"),
+  });
+  assert.deepEqual(productionConfigErrors(base), []);
+  for (const overrides of [
+    { PAYMENT_MODE: "toss", TOSS_CLIENT_KEY: "live-client", TOSS_SECRET_KEY: "live-secret", TOSS_MOCK_MODE: "false" },
+    { TOSS_MOCK_MODE: "true" },
+    { NOTIFICATION_MODE: "sms", SOLAPI_API_KEY: "key" },
+    { EMAIL_MODE: "resend", RESEND_API_KEY: "key" },
+    { GOOGLE_CLIENT_ID: "client", GOOGLE_CLIENT_SECRET: "secret" },
+    { NAVER_COMMERCE_SYNC_ENABLED: "true" },
+    { NAVER_ORDER_IMPORT_ENABLED: "true" },
+  ]) {
+    assert.match(productionConfigErrors({ ...base, ...overrides }).join(" "), /staging/);
+  }
+});
+
+test("staging과 production DB 파일 marker를 교차 사용하지 않는다", () => {
+  assert.match(productionConfigErrors(validProductionEnv({
+    APP_ENV: "staging",
+    DB_PATH: path.join(path.parse(root).root, "data", "tteokjip.sqlite"),
+  })).join(" "), /staging 표시/);
+  assert.match(productionConfigErrors(validProductionEnv({
+    DB_PATH: path.join(path.parse(root).root, "data", "staging.sqlite"),
+  })).join(" "), /staging DB_PATH/);
+});
+
+test("staging script guard는 production runtime과 staging marker를 함께 요구한다", () => {
+  assert.doesNotThrow(() => assertStagingScript("staging fixture", {
+    NODE_ENV: "production", APP_ENV: "staging", ALLOW_STAGING_SEED: "true",
+  }));
+  for (const env of [
+    { NODE_ENV: "development", APP_ENV: "staging" },
+    { NODE_ENV: "production", APP_ENV: "production" },
+    { NODE_ENV: "production" },
+  ]) {
+    assert.throws(() => assertStagingScript("staging fixture", env), /승인된 staging 환경/);
+  }
 });
 
 test("운영 환경에서 모의 결제 모드를 차단한다", () => {
@@ -180,6 +233,7 @@ test("운영 환경은 테스트·포트폴리오 환경변수를 거부한다",
   for (const key of ["DEMO_MODE", "ALLOW_PORTFOLIO_SEED", "PHONE_TEST_CODE", "PASSWORD_RESET_TEST_TOKEN", "PORTFOLIO_ADMIN_PASSWORD", "PORTFOLIO_USER_EMAIL"]) {
     assert.match(productionConfigErrors(validProductionEnv({ [key]: "sensitive-test-value" })).join(" "), new RegExp(key));
   }
+  assert.match(productionConfigErrors(validProductionEnv({ ALLOW_STAGING_SEED: "true" })).join(" "), /ALLOW_STAGING_SEED/);
 });
 
 test("설정 오류에는 입력한 비밀값을 출력하지 않는다", () => {
@@ -412,7 +466,78 @@ test("deploy preflight는 DB와 backup 파일을 생성하지 않는 읽기 전�
   assert.equal(fs.existsSync(dbPath), false);
   assert.equal(fs.existsSync(backupDir), false);
   assert.match(`${result.stdout}${result.stderr}`, /\[(?:ERROR|CONFIRM-NEEDED)\]\[[A-Z0-9_]+\]/);
+  assert.match(result.stdout, /appEnvironment: production/);
+  assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(dbPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   fs.rmSync(temp, { recursive: true, force: true });
+});
+
+test("staging deploy preflight는 provider-disabled 계약을 안전하게 보고한다", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "staging-readiness-"));
+  const dbPath = path.join(temp, "database", "staging.sqlite");
+  const backupDir = path.join(temp, "backups");
+  const env = validProductionEnv({
+    APP_ENV: "staging",
+    DB_PATH: dbPath,
+    BACKUP_DIR: backupDir,
+    PUBLIC_BASE_URL: "https://staging.realstore.kr",
+    ALLOWED_ORIGIN: "https://staging.realstore.kr",
+    TOSS_MOCK_MODE: "false",
+    NAVER_COMMERCE_SYNC_ENABLED: "false",
+    NAVER_ORDER_IMPORT_ENABLED: "false",
+  });
+  const result = spawnSync(process.execPath, [path.join(root, "server/scripts/deployment-preflight.js")], {
+    env: {
+      ...process.env,
+      ...env,
+      TOSS_CLIENT_KEY: "",
+      TOSS_SECRET_KEY: "",
+      SOLAPI_API_KEY: "",
+      SOLAPI_API_SECRET: "",
+      SOLAPI_SENDER_PHONE: "",
+      KAKAO_PLUS_FRIEND_ID: "",
+      KAKAO_TEMPLATE_ORDER: "",
+      KAKAO_TEMPLATE_READY: "",
+      KAKAO_TEMPLATE_REMIND: "",
+      RESEND_API_KEY: "",
+      PASSWORD_RESET_FROM: "",
+      GOOGLE_CLIENT_ID: "",
+      GOOGLE_CLIENT_SECRET: "",
+      KAKAO_CLIENT_ID: "",
+      KAKAO_CLIENT_SECRET: "",
+      NAVER_CLIENT_ID: "",
+      NAVER_CLIENT_SECRET: "",
+      NAVER_COMMERCE_CLIENT_ID: "",
+      NAVER_COMMERCE_CLIENT_SECRET: "",
+      NAVER_COMMERCE_ACCOUNT_ID: "",
+      NAVER_ORDER_PII_KEY: "",
+      NAVER_ORDER_PII_KEY_VERSION: "",
+    },
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /appEnvironment: staging/);
+  assert.match(result.stdout, /nodeEnvironment: production/);
+  assert.match(result.stdout, /databasePathStatus: external/);
+  assert.match(result.stdout, /backupPathStatus: external/);
+  assert.match(result.stdout, /providers: disabled/);
+  assert.equal(fs.existsSync(dbPath), false);
+  assert.equal(fs.existsSync(backupDir), false);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(dbPath), false);
+  fs.rmSync(temp, { recursive: true, force: true });
+});
+
+test("Render staging Blueprint는 분리된 service와 provider-disabled 계약만 선언한다", () => {
+  const blueprint = fs.readFileSync(path.join(root, "render.staging.yaml"), "utf8");
+  assert.match(blueprint, /name: tteokjip-staging/);
+  assert.match(blueprint, /branch: develop/);
+  assert.match(blueprint, /name: tteokjip-staging-data/);
+  assert.match(blueprint, /mountPath: \/data/);
+  assert.match(blueprint, /value: \/data\/staging\.sqlite/);
+  assert.match(blueprint, /value: \/data\/backups/);
+  assert.match(blueprint, /healthCheckPath: \/api\/health/);
+  assert.match(blueprint, /buildCommand: cd server && npm ci/);
+  assert.match(blueprint, /startCommand: cd server && npm start/);
+  assert.doesNotMatch(blueprint, /(?:CLIENT_SECRET|SECRET_KEY|API_SECRET):\s+\S/);
 });
 
 test("네이버 커머스 sync 비활성은 credential 없이 허용하고 활성 설정은 안전하게 검증한다", () => {

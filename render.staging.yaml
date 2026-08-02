@@ -1,26 +1,25 @@
 services:
   - type: web
     runtime: node
-    name: tteokjip
+    name: tteokjip-staging
+    branch: develop
     buildCommand: cd server && npm ci
     startCommand: cd server && npm start
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 30
     disk:
-      name: tteokjip-data
+      name: tteokjip-staging-data
       mountPath: /data
       sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: APP_ENV
-        value: production
+        value: staging
       - key: DB_PATH
-        value: /data/tteokjip.db
+        value: /data/staging.sqlite
       - key: BACKUP_DIR
         value: /data/backups
-      - key: ADMIN_CODE
-        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: AUTH_CODE_PEPPER
@@ -30,20 +29,34 @@ services:
       - key: PUBLIC_BASE_URL
         sync: false
       - key: STORE_NAME
-        value: 따뜻한 떡집
+        value: 따뜻한 떡집 staging
       - key: STORE_PHONE
         sync: false
       - key: STORE_HOURS
         value: 09:00 - 19:00
       - key: STORE_ADDRESS
         sync: false
-      - key: STORE_PARKING
-        sync: false
-      - key: STORE_URL
-        sync: false
+      - key: ADMIN_JWT_ISSUER
+        value: shoppingmall-staging-admin
+      - key: ADMIN_JWT_AUDIENCE
+        value: shoppingmall-staging-admin-api
+      - key: ADMIN_TOKEN_TTL
+        value: 1h
+      - key: ADMIN_LOGIN_RATE_MAX
+        value: 5
+      - key: ADMIN_LOGIN_RATE_WINDOW_MS
+        value: 900000
+      - key: ALLOW_LEGACY_ADMIN_LOGIN
+        value: false
       - key: PAYMENT_MODE
         value: disabled
+      - key: TOSS_MOCK_MODE
+        value: false
       - key: NOTIFICATION_MODE
         value: none
       - key: EMAIL_MODE
         value: disabled
+      - key: NAVER_COMMERCE_SYNC_ENABLED
+        value: false
+      - key: NAVER_ORDER_IMPORT_ENABLED
+        value: false
