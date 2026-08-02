@@ -13,13 +13,14 @@
 | staging | production 유사 사전 검증 | `NODE_ENV=production`을 유지하고 별도 도메인·DB·키를 사용 |
 | production | 실제 서비스 | 실제 도메인, 영구 DB, 외부 백업, 운영 키만 사용 |
 
-별도 `APP_ENV`는 현재 코드가 사용하지 않으므로 추가하지 않는다. staging은 배포 플랫폼의 서비스·비밀값·도메인을 production과 분리한다.
+배포 환경은 `NODE_ENV=production`을 공통으로 유지하고 `APP_ENV=staging|production`으로 데이터·provider 정책을 구분한다. local/test는 기존 동작과 호환되는 `local`/`test` 기본값을 사용한다.
 
 ## 3. 필수 환경변수
 
 | 환경변수 | production | 비밀값 | 형식·검증 | 설정 위치 |
 |---|---:|---:|---|---|
 | `NODE_ENV` | 필수 | 아니요 | `production` | 배포 런타임 |
+| `APP_ENV` | 필수 | 아니요 | 배포 시 `staging` 또는 `production` | 배포 런타임 |
 | `PORT` | 플랫폼별 | 아니요 | 양의 포트 | 배포 런타임 |
 | `PUBLIC_BASE_URL` | 필수 | 아니요 | `https://shop.example.com`, origin 기준 | 배포 환경 |
 | `ALLOWED_ORIGIN` | 필수 | 아니요 | HTTPS origin 쉼표 목록, path·`*` 금지 | 배포 환경 |
@@ -66,7 +67,7 @@
 
 ## 7. 결제 준비
 
-- [ ] staging은 Toss 테스트 키와 전용 테스트 주문만 사용한다.
+- [ ] staging은 `PAYMENT_MODE=disabled`, `TOSS_MOCK_MODE=false`이고 Toss credential을 설정하지 않는다.
 - [ ] production의 `PAYMENT_MODE`, 운영 키, mock 비활성화를 이중 확인했다.
 - [ ] success/fail URL과 `/api/payments/webhook`이 같은 HTTPS 운영 도메인에 노출된다.
 - [ ] 브라우저·로그·응답에 Toss secret이 노출되지 않음을 확인했다.
@@ -95,7 +96,7 @@ npm run backup:create
 npm run backup:verify
 ```
 
-- [ ] staging 전용 도메인·TLS·DB·백업·관리자·Toss 테스트 키를 사용한다.
+- [ ] staging 전용 도메인·TLS·DB·백업·관리자를 사용하며 외부 provider credential을 설정하지 않는다.
 - [ ] production 고객 데이터와 운영 결제 키를 사용하지 않는다.
 
 ## 11. staging smoke test
@@ -104,7 +105,7 @@ npm run backup:verify
 - [ ] 테스트 회원 가입/로그인/로그아웃
 - [ ] 관리자 로그인과 `/api/auth/me`
 - [ ] viewer 쓰기 차단, operations 주문·재고 접근, finance 결제 조회
-- [ ] 테스트 주문 생성, Toss 테스트 승인, 결제 상태와 재고 반영
+- [ ] synthetic 주문 생성과 provider-disabled 결제 동작, 결제 상태와 재고 반영
 - [ ] 백업 생성·검증과 감사 로그 확인
 
 ## 12. production 배포 전 검증

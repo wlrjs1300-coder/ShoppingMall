@@ -8,6 +8,7 @@ const DEMO_ADMIN_CODES = new Set(["portfolio-admin", "admin", "admin123", "Admin
 const NOTIFICATION_MODES = new Set(["none", "sms", "kakao"]);
 const PAYMENT_MODES = new Set(["disabled", "toss"]);
 const EMAIL_MODES = new Set(["disabled", "resend"]);
+const APP_ENVIRONMENTS = new Set(["local", "test", "staging", "production"]);
 const SOLAPI_KEYS = ["SOLAPI_API_KEY", "SOLAPI_API_SECRET", "SOLAPI_SENDER_PHONE"];
 const KAKAO_NOTIFICATION_KEYS = [
   "KAKAO_PLUS_FRIEND_ID",
@@ -56,6 +57,22 @@ function nodeVersionError(version, minimum = MINIMUM_NODE_VERSION) {
 
 function valueOf(env, key) {
   return typeof env[key] === "string" ? env[key].trim() : "";
+}
+
+function getAppEnvironment(env = process.env) {
+  const configured = valueOf(env, "APP_ENV").toLowerCase();
+  if (configured) return configured;
+  if (env.NODE_ENV === "test") return "test";
+  if (env.NODE_ENV !== "production") return "local";
+  return "";
+}
+
+function isStagingEnvironment(env = process.env) {
+  return env.NODE_ENV === "production" && getAppEnvironment(env) === "staging";
+}
+
+function isProductionEnvironment(env = process.env) {
+  return env.NODE_ENV === "production" && getAppEnvironment(env) === "production";
 }
 
 function isConfigured(env, key) {
@@ -195,6 +212,12 @@ function productionConfigErrors(env = process.env) {
   if (env.NODE_ENV !== "production") return [];
 
   const errors = [];
+  const appEnvironment = getAppEnvironment(env);
+  if (!appEnvironment) {
+    errors.push("NODE_ENV=production에서는 APP_ENV를 staging 또는 production으로 설정해야 합니다.");
+  } else if (!APP_ENVIRONMENTS.has(appEnvironment) || !["staging", "production"].includes(appEnvironment)) {
+    errors.push("NODE_ENV=production의 APP_ENV는 staging 또는 production이어야 합니다.");
+  }
   const required = [
     "JWT_SECRET",
     "AUTH_CODE_PEPPER",
@@ -253,6 +276,13 @@ function productionConfigErrors(env = process.env) {
   }
   if (isConfigured(env, "DB_PATH") && isRepositoryPath(env.DB_PATH)) {
     errors.push("DB_PATH must be outside the Git repository.");
+  }
+  const databaseBasename = path.basename(valueOf(env, "DB_PATH")).toLowerCase();
+  if (appEnvironment === "staging" && databaseBasename && !databaseBasename.includes("staging")) {
+    errors.push("APP_ENV=staging의 DB_PATH 파일명에는 staging 표시가 필요합니다.");
+  }
+  if (appEnvironment === "production" && databaseBasename.includes("staging")) {
+    errors.push("APP_ENV=production에서는 staging DB_PATH를 사용할 수 없습니다.");
   }
 
   const repositoryRoot = path.resolve(__dirname, "..");
@@ -337,8 +367,40 @@ function productionConfigErrors(env = process.env) {
     }
   }
 
+  if (appEnvironment === "staging") {
+    if (paymentMode !== "disabled") errors.push("APP_ENV=staging에서는 PAYMENT_MODE=disabled여야 합니다.");
+    if (valueOf(env, "TOSS_MOCK_MODE").toLowerCase() === "true") {
+      errors.push("APP_ENV=staging에서는 TOSS_MOCK_MODE=true를 사용할 수 없습니다.");
+    }
+    if (notificationMode !== "none") errors.push("APP_ENV=staging에서는 NOTIFICATION_MODE=none이어야 합니다.");
+    if (emailMode !== "disabled") errors.push("APP_ENV=staging에서는 EMAIL_MODE=disabled여야 합니다.");
+    for (const provider of ["GOOGLE", "KAKAO", "NAVER"]) {
+      if (isConfigured(env, `${provider}_CLIENT_ID`) || isConfigured(env, `${provider}_CLIENT_SECRET`)) {
+        errors.push(`APP_ENV=staging에서는 ${provider} OAuth credential을 설정할 수 없습니다.`);
+      }
+    }
+    const stagingForbiddenCredentials = [
+      "TOSS_CLIENT_KEY", "TOSS_SECRET_KEY", ...SOLAPI_KEYS, ...KAKAO_NOTIFICATION_KEYS,
+      "RESEND_API_KEY", "PASSWORD_RESET_FROM", "NAVER_COMMERCE_CLIENT_ID",
+      "NAVER_COMMERCE_CLIENT_SECRET", "NAVER_COMMERCE_ACCOUNT_ID", "NAVER_ORDER_PII_KEY",
+      "NAVER_ORDER_PII_KEY_VERSION",
+    ];
+    for (const key of stagingForbiddenCredentials) {
+      if (isConfigured(env, key)) errors.push(`APP_ENV=staging에서는 provider credential ${key}를 설정할 수 없습니다.`);
+    }
+    if (valueOf(env, "NAVER_COMMERCE_SYNC_ENABLED").toLowerCase() === "true") {
+      errors.push("APP_ENV=staging에서는 NAVER_COMMERCE_SYNC_ENABLED=true를 사용할 수 없습니다.");
+    }
+    if (valueOf(env, "NAVER_ORDER_IMPORT_ENABLED").toLowerCase() === "true") {
+      errors.push("APP_ENV=staging에서는 NAVER_ORDER_IMPORT_ENABLED=true를 사용할 수 없습니다.");
+    }
+  }
+
   for (const key of PRODUCTION_FORBIDDEN_KEYS) {
     if (isConfigured(env, key)) errors.push(`운영 환경에는 테스트·데모 전용 환경변수 ${key}를 설정할 수 없습니다.`);
+  }
+  if (appEnvironment === "production" && isConfigured(env, "ALLOW_STAGING_SEED")) {
+    errors.push("APP_ENV=production에서는 ALLOW_STAGING_SEED를 설정할 수 없습니다.");
   }
   for (const key of Object.keys(env)) {
     if (/^PORTFOLIO_(?:ADMIN|USER)_/.test(key) && isConfigured(env, key)) {
@@ -464,4 +526,7 @@ module.exports = {
   naverCommerceConfigErrors,
   naverOrderImportConfigErrors,
   orderPiiConfigErrors,
+  getAppEnvironment,
+  isStagingEnvironment,
+  isProductionEnvironment,
 };

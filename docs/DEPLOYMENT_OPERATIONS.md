@@ -9,7 +9,7 @@
 
 ## 필수 운영 환경변수
 
-`NODE_ENV=production`, `ADMIN_CODE`, 32바이트 이상의 `JWT_SECRET`, 별도의 32바이트 이상 `AUTH_CODE_PEPPER`, `DB_PATH`, HTTPS 형식의 `ALLOWED_ORIGIN`과 `PUBLIC_BASE_URL`이 필요합니다. 누락되거나 예시 값이면 서버가 시작되지 않습니다.
+`NODE_ENV=production`, `APP_ENV=staging|production`, 32바이트 이상의 `JWT_SECRET`, 별도의 32바이트 이상 `AUTH_CODE_PEPPER`, `DB_PATH`, HTTPS 형식의 `ALLOWED_ORIGIN`과 `PUBLIC_BASE_URL`이 필요합니다. 누락되거나 예시 값이면 서버가 시작되지 않습니다. Staging은 [별도 검증 계약](staging-validation.md)을 따릅니다.
 
 ```powershell
 # 안전한 48바이트 base64 시크릿 예시(로컬에서 실행)
