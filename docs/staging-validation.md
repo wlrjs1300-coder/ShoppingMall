@@ -116,3 +116,164 @@ startup, health, schema, DB open/migration, keyring/decrypt, backup verify, back
 ## 11. 금지 사항
 
 `NODE_ENV=staging`, production 검증 완화, mock provider 허용, production seed guard 우회, 실제 고객 데이터·provider credential 사용, 다중 SQLite instance, 자동 DB restore를 금지한다.
+
+## 12. `ALLOW_STAGING_SEED` lifecycle
+
+1. 일반 서버 실행에서는 unset 또는 `false`로 둔다.
+2. 수동 seed 실행 직전에만 정확히 `true`로 설정한다.
+3. Smoke도 같은 guard를 요구하므로 seed 성공 후 smoke 완료까지 임시 유지한다.
+4. smoke 완료 직후 unset 또는 `false`로 되돌린다.
+5. restart persistence 확인을 위해 seed 재실행이 필요하면 승인된 짧은 창에서만 다시 `true`로 설정한다.
+6. 확인 완료 즉시 다시 비활성화한다.
+7. production에서는 어떤 경우에도 설정하지 않는다.
+
+Blueprint에 `true`를 하드코딩하지 않으며 start/build/predeploy에 seed나 smoke를 연결하지 않는다.
+
+## 13. Staging rehearsal Phase 0~13
+
+모든 관찰 결과는 [evidence template](staging-rehearsal-evidence-template.md)의 safe summary 형식으로 기록한다. 실제 platform 조작은 `manual platform step`이며 저장소 문서가 특정 UI나 storage provider 명령을 추측하지 않는다.
+
+### Phase 0. Local verification
+
+- Prerequisites: clean rehearsal branch와 승인된 commit.
+- Command: `cd server && npm test`.
+- Expected: 전체 test pass 집계만 출력.
+- Pass/stop: failed/skipped 0이면 통과하고 그 외에는 중단한다.
+- Rollback/cleanup: mutation이 없으므로 없음.
+- Evidence: commit SHA와 test aggregate.
+
+### Phase 1. Render service creation
+
+- Prerequisites: `render.staging.yaml` 검토.
+- Step: 별도 service, 1GB persistent disk, 단일 instance를 만드는 `manual platform step`.
+- Expected: staging 전용 service/disk identity.
+- Pass/stop: disk 미연결 또는 다중 instance이면 중단한다.
+- Rollback/cleanup: 사용 전 잘못 만든 staging resource만 platform 승인 절차로 정리한다.
+- Evidence: redacted service reference와 단일 instance 확인.
+
+### Phase 2. Environment and secret setup
+
+- Prerequisites: public 설정과 secret 담당자 분리.
+- Step: Blueprint 변수와 secret manager 값을 입력하는 `manual platform step`.
+- Expected: provider-disabled 계약, staging DB marker, 실제 값 비기록.
+- Pass/stop: 누락, placeholder, provider credential 또는 production 공유 secret 발견 시 중단한다.
+- Rollback/cleanup: 잘못 입력한 값을 제거하고 secret rotation 필요성을 검토한다.
+- Evidence: 변수명별 configured/absent 상태만 기록.
+
+### Phase 3. Rehearsal guard and deploy preflight
+
+- Prerequisites: Phase 2 완료, DB 파일을 열지 않는 상태.
+- Commands: `cd server && npm run staging:rehearsal:check && npm run deploy:check`.
+- Expected: `ready=true`, staging/external/disabled/matched identity와 preflight errors 0.
+- Pass/stop: safe category 실패 또는 preflight error가 하나라도 있으면 중단한다.
+- Rollback/cleanup: 환경 설정만 교정하고 mutation 명령은 실행하지 않는다.
+- Evidence: safe summary와 preflight aggregate.
+
+### Phase 4. First deploy and health
+
+- Prerequisites: guard와 preflight 통과.
+- Step: 승인된 artifact deploy와 HTTPS `GET /api/health` 확인인 `manual platform step`.
+- Expected: HTTP 200, `database=ready`, `schemaVersion=16`.
+- Pass/stop: startup, DB open, migration 또는 health 실패 시 중단한다.
+- Rollback/cleanup: service를 격리하고 compatible artifact/config를 복구한다. DB 자동 restore는 하지 않는다.
+- Evidence: redacted deploy reference와 health safe fields.
+
+### Phase 5. Synthetic seed
+
+- Prerequisites: `ALLOW_STAGING_SEED=true`인 승인된 짧은 창과 synthetic-only DB.
+- Command: `cd server && npm run staging:seed`.
+- Expected: created/reused/repaired/conflicts와 fixture counts, schema version.
+- Pass/stop: conflict 또는 non-synthetic identity 발견 시 중단한다.
+- Rollback/cleanup: seed 자체 transaction rollback에 의존하고 destructive cleanup은 하지 않는다.
+- Evidence: seed safe summary.
+
+### Phase 6. HTTPS smoke
+
+- Prerequisites: Phase 5 성공, opt-in 임시 유지, HTTPS staging origin.
+- Command: `cd server && npm run staging:smoke`.
+- Expected: failed 0, schema 16, `providerTriggeringRequests=0`.
+- Pass/stop: timeout, RBAC/PII/provider/static-boundary 실패 시 중단한다.
+- Rollback/cleanup: smoke 완료 직후 `ALLOW_STAGING_SEED`를 unset 또는 `false`로 되돌린다.
+- Evidence: smoke safe summary만 보존한다.
+
+### Phase 7. Restart and disk persistence
+
+- Prerequisites: opt-in 비활성, Phase 6 성공.
+- Step: service restart와 health/fixture persistence 확인인 `manual platform step`.
+- Expected: health ready/schema 16과 fixture 유지.
+- Pass/stop: DB 초기화, fixture 소실 또는 instance 수 불일치 시 중단한다.
+- Rollback/cleanup: 필요 시 승인된 짧은 opt-in 창에서 seed를 재실행하고 즉시 비활성화한다.
+- Evidence: restart 전후 aggregate와 redacted restart reference.
+
+### Phase 8. Backup create/verify
+
+- Prerequisites: approved backup directory와 Phase 7 통과.
+- Commands: `cd server && npm run backup:create && npm run backup:verify -- --file <approved-backup-basename>`.
+- Expected: 3-file set, checksum 일치, integrity ok, FK violation 0.
+- Pass/stop: incomplete set 또는 verify 실패 시 중단한다.
+- Rollback/cleanup: 실패 artifact는 복구 입력으로 사용하지 않는다.
+- Evidence: repository에는 pass/fail만, basename/hash는 Private-only로 보존한다.
+
+### Phase 9. Isolated restore rehearsal
+
+- Prerequisites: Phase 8의 검증된 backup과 동일 release artifact/historical keyring.
+- Step: 별도 service/disk 또는 승인된 격리 환경에 SQLite 파일을 전달하는 `manual platform step`.
+- Expected: 원본과 다른 `DB_PATH`, health ready/schema 16, synthetic encrypted read 성공.
+- Commands after isolated startup: repository root에서 `node server/scripts/backfill-order-pii.js --verify`, server에서 `npm run pii:payments:verify`.
+- Pass/stop: 원본 staging DB 접근·덮어쓰기, keyring 누락 또는 verify 실패 시 중단한다.
+- Rollback/cleanup: 결과 기록 후 격리 process와 임시 DB를 승인 절차로 폐기한다.
+- Evidence: safe health/verify summary와 private operational reference.
+
+자동 restore CLI 없음, HTTP restore route 없음이 현재 계약이다. Traffic/process를 원본과 격리하고 검증된 3-file set 중 SQLite 파일만 별도 위치에 수동 복사한다. Platform-specific 전달 방식은 `manual platform step`이다.
+
+### Phase 10. Order PII backfill dry-run/apply/verify
+
+- Prerequisites: write freeze, Phase 8 backup/verify, guard 재통과, valid keyring.
+- Commands from repository root:
+  - `node server/scripts/backfill-order-pii.js --dry-run --report=<new-safe-report-path>`
+  - `node server/scripts/backfill-order-pii.js --apply --batch-size=100 --confirm=BACKFILL_ORDER_PII`
+  - `node server/scripts/backfill-order-pii.js --verify`
+- Expected: partial/unknown/invalid/decrypt failure 0, apply safe processed count.
+- Pass/stop: blocker, report collision, lock, concurrent change, `SQLITE_BUSY` 또는 verify 실패 시 중단한다.
+- Rollback/cleanup: 현재 batch만 자동 rollback된다. 이전 batch는 verified backup과 별도 승인 없이는 되돌리지 않는다.
+- Evidence: aggregate와 safe category; report reference는 Private-only.
+
+### Phase 11. Payment PII purge dry-run/apply/verify
+
+- Prerequisites: write freeze와 Phase 10 통과.
+- Commands from `server`:
+  - `npm run pii:payments:dry-run`
+  - `node scripts/purge-payment-pii.js --apply --batch-size=500 --confirm=PURGE_PAYMENT_PII`
+  - `npm run pii:payments:verify`
+- Expected: connected/orphan legacy PII 0, 상태와 기타 payment metadata 유지.
+- Pass/stop: orphan PII, lock, concurrent change, `SQLITE_BUSY` 또는 verify 실패 시 중단한다.
+- Rollback/cleanup: 현재 batch만 rollback된다. DB file rollback은 별도 승인 사항이다.
+- Evidence: aggregate와 safe category; report reference는 Private-only.
+
+### Phase 12. Application rollback rehearsal
+
+- Prerequisites: schema 16과 encrypted read를 지원하는 rollback artifact.
+- Step: 승인된 compatible artifact로 전환하는 `manual platform step`.
+- Expected: DB 자동 restore 없이 health/schema/encrypted read 유지.
+- Pass/stop: migration down 요구, historical key 제거 또는 encrypted read 비호환이면 중단한다.
+- Rollback/cleanup: 현재 compatible artifact로 다시 전환하고 DB는 변경하지 않는다.
+- Evidence: 두 artifact의 redacted reference와 safe health/smoke 결과.
+
+### Phase 13. Monitoring and evidence closure
+
+- Prerequisites: 앞 Phase의 PASS 또는 승인된 BLOCKED 기록.
+- Step: 5xx, PII failure, `SQLITE_BUSY`, backup failure, provider configuration을 검토하는 `manual platform step`.
+- Expected: unresolved blocker 0과 Prohibited evidence 0.
+- Pass/stop: raw secret/PII 발견 또는 중요 오류 증가 시 promotion을 금지한다.
+- Rollback/cleanup: evidence를 retention boundary에 따라 분리·삭제한다.
+- Evidence: reviewer decision과 sanitized closure summary.
+
+## 14. External failure-domain backup copy
+
+같은 Render disk의 backup은 독립 DR 사본이 아니다. `backup:verify` 통과 후 승인된 운영자가 Render disk와 다른 `different failure domain`으로 수동 export/copy한다. 구체적인 provider/storage 명령은 추측하지 않고 `manual platform step`으로 남긴다. 저장소에는 DB 파일, 실제 hash, 실제 경로를 커밋하지 않으며 copy 성공 여부와 대상 측 verification 결과만 evidence에 기록한다.
+
+## 15. Safe summary schema
+
+공통 기록 필드는 `phase`, `status`, `timestamp`, `commitSha`, `schemaVersion`, `checksTotal`, `passed`, `failed`, `created`, `reused`, `repaired`, `conflicts`, `processed`, `blockers`, `warnings`, `providerTriggeringRequests`, `safeCategory`, `evidenceReference`다. 값이 없는 필드는 생략할 수 있다. PII, secret, key, token, cookie, Authorization, raw path, raw URL, raw response body는 금지한다. 실제 backup basename/hash/report ID는 Private-only evidence로 분리한다.
+
+이 runbook과 template은 실행 계약만 제공하며 실제 Render rehearsal 완료를 주장하지 않는다.
