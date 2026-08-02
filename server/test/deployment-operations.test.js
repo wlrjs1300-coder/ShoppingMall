@@ -377,6 +377,7 @@ test("배포 설정, 운영 문서, 법무 초안과 백업 도구가 존재한�
     assert.equal(fs.existsSync(path.join(root, file)), true, file);
   });
   assert.match(fs.readFileSync(path.join(root, "sw.js"), "utf8"), /networkFirst/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, "render.yaml"), "utf8"), /maxShutdownDelaySeconds/);
 });
 
 test("SQLite 백업을 생성하고 임시 DB에서 복원 가능성을 검증한다", () => {
@@ -537,6 +538,7 @@ test("Render staging Blueprint는 분리된 service와 provider-disabled 계약�
   assert.match(blueprint, /healthCheckPath: \/api\/health/);
   assert.match(blueprint, /buildCommand: cd server && npm ci/);
   assert.match(blueprint, /startCommand: cd server && npm start/);
+  assert.doesNotMatch(blueprint, /maxShutdownDelaySeconds/);
   assert.doesNotMatch(blueprint, /(?:CLIENT_SECRET|SECRET_KEY|API_SECRET):\s+\S/);
 });
 
