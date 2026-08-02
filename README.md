@@ -34,23 +34,73 @@
 
 ## 주요 화면
 
-### 고객 메인과 상품 탐색
+### 고객 구매 흐름
 
 ![고객용 메인](docs/images/customer-main.png)
 
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/images/portfolio/cart.png" alt="상품 장바구니 화면" width="100%" />
+      <br />
+      <strong>장바구니</strong><br />
+      최신 상품 정보와 가격을 다시 조회하고, 복수 상품과 수량을 Checkout으로 전달합니다.
+    </td>
+    <td width="50%">
+      <img src="docs/images/portfolio/checkout.png" alt="Checkout 주문서 화면" width="100%" />
+      <br />
+      <strong>Checkout</strong><br />
+      서버 가격 재검증과 다중 상품 snapshot을 기준으로 주문·항목·이력·payment row를 하나의 local transaction으로 저장합니다.
+    </td>
+  </tr>
+</table>
+
+### 관리자 운영
+
+<img src="docs/images/portfolio/admin-orders.png" alt="관리자 주문 관리 화면" width="100%" />
+
+**관리자 주문 관리** — 역할별 권한 아래 주문 상태, 결제 상태와 운영 action을 관리하고, 민감 정보 열람은 별도 PII 권한 흐름으로 분리합니다.
+
+<details>
+<summary>생산·재고 관리 화면 더 보기</summary>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/images/portfolio/admin-production.png" alt="관리자 생산 관리 화면" width="100%" />
+      <br />
+      <strong>생산 관리</strong><br />
+      생산 완료를 주문 상태, 재고 차감과 사용 이력에 하나의 transaction으로 반영합니다.
+    </td>
+    <td width="50%">
+      <img src="docs/images/portfolio/admin-inventory.png" alt="관리자 재고 관리 화면" width="100%" />
+      <br />
+      <strong>재고 관리</strong><br />
+      현재 수량, 안전재고, 사용 이력과 발주 흐름을 주문 생산 과정과 연결합니다.
+    </td>
+  </tr>
+</table>
+
+</details>
+
+### 개인정보 보호
+
+<img src="docs/images/portfolio/pii-access.png" alt="관리자 주문 PII 제한 열람 화면" width="100%" />
+
+**PII 제한 열람** — 일반 화면의 민감 정보 접근과 분리해, 별도 permission·업무 사유·rate limit·감사를 통과한 요청에만 제한적으로 원문을 제공합니다.
+
+<details>
+<summary>기존 고객·모바일·매출 화면 더 보기</summary>
+
 ![상품 목록과 검색](docs/images/product-catalog.png)
 
-### 관리자 매출 관리
-
 ![관리자 매출 관리](docs/images/sales-management.png)
-
-### 모바일 홈과 상품 탐색
 
 | 모바일 홈 | 모바일 상품 |
 | --- | --- |
 | ![모바일 고객 홈](docs/images/mobile-home.png) | ![모바일 상품 탐색](docs/images/mobile-menu.png) |
 
-> 다음 이미지 PR에서 추가할 캡처: Checkout · Mock 결제 · 관리자 주문 · Payment Reconcile · PII Access/Audit
+</details>
 
 ## 주요 기능
 
