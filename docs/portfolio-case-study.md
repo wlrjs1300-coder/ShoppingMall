@@ -313,6 +313,6 @@ Backfill과 purge를 각각 독립된 one-off CLI로 구현하고 `dry-run`, `ap
 
 ## 검증 범위와 현재 상태
 
-2026-08-02 기준 전체 `node:test` suite를 다시 실행해 **488 passed, 0 failed, 0 skipped**를 확인했습니다. Coverage 백분율은 측정하지 않았습니다.
+2026-08-02 기준 전체 `node:test` suite를 다시 실행해 **498 passed, 0 failed, 0 skipped**를 확인했습니다. Coverage 백분율은 측정하지 않았습니다.
 
 이 사례들의 구현과 자동 테스트는 완료됐고 production 수행을 위한 절차도 준비돼 있습니다. 다만 실제 운영 DB의 backup/restore rehearsal, 실제 데이터 backfill/purge, production keyring 활성화, 실 provider credential 검증과 monitoring은 아직 수행 완료로 주장하지 않습니다.
