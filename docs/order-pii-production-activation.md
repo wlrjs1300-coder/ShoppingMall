@@ -80,7 +80,7 @@ Keyring은 JSON parse, 항목 allowlist, canonical Base64, 32-byte 길이, versi
 담당: Database Owner 실행, Operator 기록, Approver 확인.
 
 ```powershell
-cd C:\Users\User\Desktop\ShoppingMall\ShoppingMall\server
+cd C:\path\to\ShoppingMall\server
 npm run backup:create
 npm run backup:verify
 npm run backup:verify -- --file shoppingmall-YYYYMMDDTHHMMSSZ.sqlite
@@ -142,7 +142,7 @@ Write가 관측되면 즉시 중단하고 freeze를 복구한 뒤 backup부터 �
 저장소 root에서 실행한다.
 
 ```powershell
-cd C:\Users\User\Desktop\ShoppingMall\ShoppingMall
+cd C:\path\to\ShoppingMall
 node server/scripts/backfill-order-pii.js --dry-run --report=<new-safe-report-path>
 ```
 
@@ -444,7 +444,7 @@ Payment purge:
 
 ```powershell
 # Backup
-cd C:\Users\User\Desktop\ShoppingMall\ShoppingMall\server
+cd C:\path\to\ShoppingMall\server
 npm run backup:create
 npm run backup:verify
 npm run backup:verify -- --file <backup-file-name>
@@ -453,7 +453,7 @@ npm run backup:verify -- --file <backup-file-name>
 npm run deploy:check
 
 # Repository root
-cd C:\Users\User\Desktop\ShoppingMall\ShoppingMall
+cd C:\path\to\ShoppingMall
 
 # Order PII
 node server/scripts/backfill-order-pii.js --dry-run --report=<new-safe-report-path>
