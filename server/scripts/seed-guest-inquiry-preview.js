@@ -3,9 +3,9 @@ assertNonProductionScript("비회원 문의 미리보기 데이터 생성");
 const db = require("../db");
 
 const id = "inquiry-demo-guest-20260722";
-const phone = "01048271635";
+const phone = "01000000001";
 const pendingId = "inquiry-demo-pending-20260722";
-const pendingPhone = "01073529418";
+const pendingPhone = "01000000002";
 const product = db.prepare("SELECT id, name FROM products WHERE id = 'gift-box' AND status = 'active'").get()
   || db.prepare("SELECT id, name FROM products WHERE status = 'active' ORDER BY display_order LIMIT 1").get();
 
@@ -24,7 +24,7 @@ db.prepare(`INSERT INTO product_inquiries
     id,
     product.id,
     product.name,
-    "김다정",
+    "시연 고객 01",
     phone,
     80,
     "2026-08-15",
@@ -52,7 +52,7 @@ db.prepare(`INSERT INTO product_inquiries
     pendingId,
     product.id,
     product.name,
-    "이하늘",
+    "시연 고객 02",
     pendingPhone,
     50,
     "2026-08-08",

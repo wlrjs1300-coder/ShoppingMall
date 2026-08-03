@@ -1,7 +1,7 @@
-# 의존성
+# Dependencies
 node_modules/
 
-# 환경변수와 인증서 (예시 파일만 공개)
+# Environment and credentials (only example files may be public)
 .env
 .env.*
 !.env.example
@@ -11,7 +11,7 @@ node_modules/
 *.p12
 *.pfx
 
-# SQLite 데이터베이스 (고객·주문 데이터)
+# SQLite databases (may contain customer and order data)
 *.db
 *.db-shm
 *.db-wal
@@ -22,7 +22,7 @@ node_modules/
 *.sha256
 shoppingmall-*.json
 
-# 로그·백업·업로드·임시 파일
+# Logs, backups, uploads, and temporary files
 *.log
 nohup.out
 *.dump
@@ -34,7 +34,7 @@ uploads/
 tmp/
 temp/
 
-# 빌드·테스트·도구 캐시
+# Build, test, browser, and tool caches
 dist/
 build/
 coverage/
@@ -46,7 +46,7 @@ test-results/
 .claude/
 .codex/
 
-# OS와 편집기
+# OS and editor files
 .DS_Store
 Thumbs.db
 *.swp
