@@ -6,6 +6,7 @@ const {
   nodeVersionError,
   productionReadinessReport,
   READINESS_CATEGORIES,
+  getAppEnvironment,
 } = require("../config");
 
 const productionEnv = { ...process.env, NODE_ENV: "production" };
@@ -89,7 +90,15 @@ function print(item) {
   if (item.envKeys.length) stream(`환경변수: ${item.envKeys.join(", ")}`);
 }
 
-console.log("\n[production 배포 사전 점검]");
+const appEnvironment = getAppEnvironment(productionEnv) || "invalid";
+const databasePathStatus = report.errors.some((item) => item.problem.includes("DB_PATH")) ? "invalid" : "external";
+const backupPathStatus = report.errors.some((item) => item.problem.includes("BACKUP_DIR")) ? "invalid" : "external";
+console.log("\n[배포 사전 점검]");
+console.log(`appEnvironment: ${appEnvironment}`);
+console.log("nodeEnvironment: production");
+console.log(`databasePathStatus: ${databasePathStatus}`);
+console.log(`backupPathStatus: ${backupPathStatus}`);
+if (appEnvironment === "staging" && !report.errors.length) console.log("providers: disabled");
 report.items.forEach(print);
 console.log(`\n결과: errors ${report.errors.length}, confirm-needed ${report.confirmations.length}`);
 if (report.errors.length) process.exitCode = 1;
