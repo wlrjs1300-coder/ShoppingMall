@@ -159,4 +159,5 @@ async function loadFromApi() {
   if (Array.isArray(suppliers)) localStorage.setItem(supplierStorageKey, JSON.stringify(suppliers));
   if (Array.isArray(activityLogs)) localStorage.setItem(activityStorageKey, JSON.stringify(activityLogs));
   if (Array.isArray(inventoryLogs)) localStorage.setItem(inventoryLogStorageKey, JSON.stringify(inventoryLogs));
+  if (typeof loadAdminProducts === "function") await loadAdminProducts();
 }

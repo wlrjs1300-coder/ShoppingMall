@@ -640,6 +640,7 @@ function setAdminTab(tabName) {
     customers: document.querySelector(".admin-customer-panel"),
     production: document.querySelector(".admin-production-panel"),
     inventory: document.querySelector(".admin-inventory-panel"),
+    products: document.querySelector(".admin-product-panel"),
     accounting: document.querySelector(".admin-accounting-panel"),
     logs: document.querySelector(".admin-log-panel"),
   };
@@ -667,6 +668,7 @@ function setAdminTab(tabName) {
 
   updateAdminSummaryCards(tabName);
   if (tabName === "inquiries" && typeof loadAdminInquiries === "function") loadAdminInquiries({ force: true });
+  if (tabName === "products" && typeof loadAdminProducts === "function") loadAdminProducts();
   if (tabName === "accounting") requestAccountingChartResize();
 }
 

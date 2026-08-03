@@ -525,7 +525,7 @@ function addAuditLog({ category, message, action, entityId, previousValue, nextV
 function createOrder({ id, userId, customerData, products, requestedItems, memo, createdAt, guestData = null }) {
   const items = requestedItems.map((requested, index) => {
     const product = products[index];
-    const unitPrice = requested.quantityUnit === "mal" ? Math.round(Number(product.price) * 32) : Number(product.price);
+    const unitPrice = requested.quantityUnit === "mal" ? Number(product.mal_price ?? Math.round(Number(product.price) * 32)) : Number(product.price);
     const quantity = requested.quantity;
     return {
       productId: product.id,
@@ -656,7 +656,7 @@ router.post("/", publicOrderLimiter, optionalCustomerAuth, (req, res) => {
   const customer = validateCustomerFields(req.body);
   const items = normalizeItems([{ productId: req.body?.productId, quantity: req.body?.quantity, quantityUnit: req.body?.quantityUnit }]);
   if (customer.error || items.error) return res.status(400).json({ error: customer.error || items.error });
-  const product = db.prepare("SELECT id, name, price FROM products WHERE id = ? AND status = 'active'").get(items.data[0].productId);
+  const product = db.prepare("SELECT id, name, price, mal_price FROM products WHERE id = ? AND status = 'active'").get(items.data[0].productId);
   if (!product || product.price === null) return res.status(404).json({ error: "주문 가능한 상품을 찾을 수 없습니다." });
   const key = req.get("Idempotency-Key");
   if (key && !IDEMPOTENCY_KEY_RE.test(key)) return res.status(400).json({ error: "중복 방지 키 형식이 올바르지 않습니다." });
@@ -715,7 +715,7 @@ router.post("/checkout", publicOrderLimiter, optionalCustomerAuth, (req, res) =>
     }
     guestData = { passwordHash: bcrypt.hashSync(password, 10), address };
   }
-  const productQuery = db.prepare("SELECT id, name, price FROM products WHERE id = ? AND status = 'active' AND purchase_type = 'direct'");
+  const productQuery = db.prepare("SELECT id, name, price, mal_price FROM products WHERE id = ? AND status = 'active' AND purchase_type = 'direct'");
   const products = items.data.map((item) => productQuery.get(item.productId));
   if (products.some((product) => !product)) return res.status(409).json({ error: "판매가 종료되었거나 장바구니로 주문할 수 없는 상품이 포함되어 있습니다." });
   const id = `checkout-${crypto.randomUUID()}`;

@@ -13,7 +13,7 @@ function securityHeaders(req, res, next) {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://js.tosspayments.com https://*.tosspayments.com https://*.toss.im https://t1.daumcdn.net https://*.daumcdn.net https://postcode.map.daum.net https://postcode.map.kakao.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: https:",
+    "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "connect-src 'self' https://*.tosspayments.com https://*.toss.im https://*.daum.net https://*.daumcdn.net https://postcode.map.daum.net https://postcode.map.kakao.com",
     "frame-src 'self' https://*.tosspayments.com https://*.toss.im https://postcode.map.kakao.com http://postcode.map.kakao.com https://*.daum.net https://*.kakao.com",

@@ -14,6 +14,18 @@ const db = require("../db");
 const seedList = require("../data/products");
 
 const now = new Date().toISOString();
+let adminToken = "";
+
+async function getAdminToken() {
+  if (adminToken) return adminToken;
+  const response = await request(app).post("/api/auth/login").send({ code: process.env.ADMIN_CODE }).expect(200);
+  adminToken = response.body.token;
+  return adminToken;
+}
+
+function auth(token) {
+  return { Authorization: `Bearer ${token}` };
+}
 function insertProduct(overrides = {}) {
   const base = {
     id: `test-product-${Math.random().toString(36).slice(2, 8)}`,
@@ -233,4 +245,115 @@ test("응답에 내부 SQL/스택 정보가 노출되지 않는다", async () =>
   const res = await request(app).get("/api/products/no-such-product-xyz");
   const text = JSON.stringify(res.body);
   assert.ok(!/SQLITE|at Object|node_modules|\.js:\d+/.test(text), `민감 정보 노출 의심: ${text}`);
+});
+
+// ─── 관리자 메뉴 관리 API ───────────────────────────────────
+
+test("관리자 상품 목록은 인증을 요구하고 판매 중지 상품도 반환한다", async () => {
+  await request(app).get("/api/products/admin").expect(401);
+  db.prepare("UPDATE products SET status='inactive' WHERE id='yaksik'").run();
+  const token = await getAdminToken();
+  const response = await request(app).get("/api/products/admin").set(auth(token)).expect(200);
+  assert.equal(response.body.products.find((product) => product.id === "yaksik")?.status, "inactive");
+  db.prepare("UPDATE products SET status='active' WHERE id='yaksik'").run();
+});
+
+test("기존 메뉴 수정 응답은 상세 페이지와 같은 기본 원산지를 제공한다", async () => {
+  const token = await getAdminToken();
+  const response = await request(app).get("/api/products/admin").set(auth(token)).expect(200);
+  const yaksik = response.body.products.find((product) => product.id === "yaksik");
+  assert.deepEqual(yaksik.originItems, [
+    { ingredient: "찹쌀", origin: "국내산" },
+    { ingredient: "흑설탕", origin: "외국산" },
+    { ingredient: "밤", origin: "국내산" },
+    { ingredient: "대추", origin: "국내산" },
+    { ingredient: "잣", origin: "국내산" },
+    { ingredient: "참기름", origin: "국내산" },
+  ]);
+});
+
+test("흰절편 상세 페이지는 네 개의 원산지 항목을 입력 순서대로 제공한다", async () => {
+  const response = await request(app).get("/api/products/white-jeolpyeon").expect(200);
+  assert.deepEqual(response.body.product.originItems, [
+    { ingredient: "멥쌀", origin: "국내산" },
+    { ingredient: "소금", origin: "국내산" },
+    { ingredient: "설탕", origin: "외국산" },
+    { ingredient: "참기름", origin: "국내산" },
+  ]);
+});
+
+test("관리자는 상세 페이지가 요구하는 필드로 새 메뉴를 등록하고 수정한다", async () => {
+  const token = await getAdminToken();
+  const created = await request(app).post("/api/products/admin").set(auth(token)).send({
+    id: "seasonal-strawberry-seolgi",
+    name: "딸기 설기",
+    category: "시즌",
+    purchaseType: "direct",
+    price: 5500,
+    imageUrl: "assets/products/menu-honey-seolgi.png",
+    description: "봄 시즌 한정 메뉴",
+    status: "active",
+    displayOrder: 31,
+  }).expect(201);
+  assert.equal(created.body.product.name, "딸기 설기");
+  assert.equal((await request(app).get("/api/products/seasonal-strawberry-seolgi").expect(200)).body.product.price, 5500);
+
+  const updated = await request(app).put("/api/products/admin/seasonal-strawberry-seolgi").set(auth(token)).send({
+    name: "딸기 설기 예약",
+    category: "시즌",
+    purchaseType: "consultation",
+    price: 9999,
+    imageUrl: "assets/products/menu-honey-seolgi.png",
+    description: "예약 상담 메뉴",
+    status: "inactive",
+    displayOrder: 32,
+  }).expect(200);
+  assert.equal(updated.body.product.purchaseType, "consultation");
+  assert.equal(updated.body.product.price, null);
+  await request(app).get("/api/products/seasonal-strawberry-seolgi").expect(404);
+});
+
+test("신규 메뉴의 상품 ID는 입력하지 않아도 서버에서 자동 생성한다", async () => {
+  const token = await getAdminToken();
+  const created = await request(app).post("/api/products/admin").set(auth(token)).send({
+    name: "자동 ID 메뉴",
+    category: "테스트",
+    purchaseType: "direct",
+    price: 5000,
+    imageUrl: "assets/products/menu-honey-seolgi.png",
+    description: "자동 생성 검증",
+    status: "inactive",
+    displayOrder: 98,
+  }).expect(201);
+  assert.match(created.body.product.id, /^menu-[a-f0-9]{8}$/);
+  await request(app).delete(`/api/products/admin/${created.body.product.id}`).set(auth(token)).expect(200);
+});
+
+test("관리자 상품 입력은 ID, 가격, 이미지와 노출 순서를 검증한다", async () => {
+  const token = await getAdminToken();
+  const base = { name: "검증 상품", category: "테스트", purchaseType: "direct", price: 1000,
+    imageUrl: "assets/products/menu-honey-seolgi.png", status: "active", displayOrder: 40 };
+  await request(app).post("/api/products/admin").set(auth(token)).send({ ...base, id: "잘못된 ID" }).expect(400);
+  await request(app).post("/api/products/admin").set(auth(token)).send({ ...base, id: "bad-price", price: 0 }).expect(400);
+  await request(app).post("/api/products/admin").set(auth(token)).send({ ...base, id: "bad-image", imageUrl: "javascript:alert(1)" }).expect(400);
+  await request(app).post("/api/products/admin").set(auth(token)).send({ ...base, id: "bad-order", displayOrder: 10000 }).expect(400);
+});
+
+test("사용 이력이 없는 관리자 추가 메뉴만 영구 삭제할 수 있다", async () => {
+  const token = await getAdminToken();
+  const id = "unused-admin-product";
+  await request(app).post("/api/products/admin").set(auth(token)).send({
+    id, name: "잘못 등록한 메뉴", category: "테스트", purchaseType: "direct", price: 1000,
+    imageUrl: "assets/products/menu-honey-seolgi.png", description: "삭제 테스트", status: "inactive", displayOrder: 99,
+  }).expect(201);
+  await request(app).delete(`/api/products/admin/${id}`).set(auth(token)).expect(200);
+  assert.equal(db.prepare("SELECT 1 FROM products WHERE id=?").get(id), undefined);
+  assert.ok(db.prepare("SELECT 1 FROM activity_logs WHERE action='product_deleted' AND entity_id=?").get(id));
+});
+
+test("기본 메뉴는 재시딩으로 되살아나지 않도록 영구 삭제를 차단한다", async () => {
+  const token = await getAdminToken();
+  const response = await request(app).delete("/api/products/admin/injeolmi").set(auth(token)).expect(409);
+  assert.equal(response.body.reason, "PRODUCT_HISTORY_EXISTS");
+  assert.ok(db.prepare("SELECT 1 FROM products WHERE id='injeolmi'").get());
 });

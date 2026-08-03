@@ -9,7 +9,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/logo.svg" />
-    <link rel="stylesheet" href="styles.css?v=134" />
+    <link rel="stylesheet" href="styles.css?v=156" />
     <link rel="manifest" href="manifest.json" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
   </head>
@@ -70,6 +70,12 @@
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
             <span>재고관리</span>
             <em data-admin-tab-count="inventory">0</em>
+          </button>
+
+          <button class="admin-sidebar-btn" type="button" data-admin-tab="products">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="3"/></svg>
+            <span>메뉴관리</span>
+            <em data-admin-tab-count="products">0</em>
           </button>
 
           <button class="admin-sidebar-btn" type="button" data-admin-tab="accounting">
@@ -595,6 +601,100 @@
           </dialog>
         </section>
 
+        <!-- ─── 메뉴관리 패널 ─── -->
+        <section class="admin-panel admin-product-panel" hidden>
+          <div class="admin-toolbar admin-product-toolbar">
+            <div>
+              <p class="admin-panel-kicker">메뉴 운영</p>
+              <h2>메뉴관리</h2>
+            </div>
+            <div class="admin-search-row">
+              <label class="admin-filter admin-product-view-filter">
+                <span class="admin-status-filter-heading"><b>판매 상태</b><small data-admin-product-filter-caption>전체 메뉴</small></span>
+                <span class="admin-status-filter-control" data-status-tone="all">
+                  <i aria-hidden="true"></i>
+                  <select class="admin-status-filter" data-admin-product-view-filter>
+                    <option value="all">전체 메뉴</option><option value="active">판매 중</option><option value="inactive">판매 중지</option><option value="consultation">상담 메뉴</option>
+                  </select>
+                  <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg>
+                </span>
+              </label>
+              <label class="admin-search"><span>검색</span><input class="admin-search-input" data-admin-product-search type="search" placeholder="메뉴명 · 카테고리 · 상품 ID 검색" /></label>
+            </div>
+            <div class="admin-toolbar-actions">
+              <span class="admin-total-info">총 <b data-admin-product-total>—</b>개</span>
+              <button class="admin-action-btn is-primary admin-product-create" type="button" data-admin-product-create><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>메뉴 추가</button>
+            </div>
+          </div>
+          <div class="admin-product-load-state" data-admin-product-load-state role="status" aria-live="polite" hidden>
+            <span class="admin-product-loader" aria-hidden="true"></span><strong data-admin-product-load-title>메뉴를 불러오고 있습니다</strong><p data-admin-product-load-message>잠시만 기다려 주세요.</p><button type="button" data-admin-product-retry hidden>다시 불러오기</button>
+          </div>
+          <div class="admin-table-wrap admin-product-table-wrap">
+            <table class="admin-table admin-product-table">
+              <thead><tr><th>순서</th><th>이미지</th><th>메뉴</th><th>카테고리</th><th>판매 방식</th><th>가격</th><th>상태</th><th>관리</th></tr></thead>
+              <tbody data-admin-product-list></tbody>
+            </table>
+            <p class="admin-empty admin-product-empty" data-admin-product-empty hidden><span class="admin-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><strong class="admin-empty-title">조건에 맞는 메뉴가 없습니다.</strong><span class="admin-empty-desc">검색어를 지우거나 다른 판매 상태를 선택해 보세요.</span></p>
+          </div>
+        </section>
+
+        <dialog class="admin-product-dialog" data-admin-product-dialog aria-labelledby="admin-product-dialog-title">
+          <form method="dialog" data-admin-product-form>
+            <header><div><span>메뉴 관리</span><h2 id="admin-product-dialog-title" data-admin-product-dialog-title>메뉴 추가</h2></div><nav class="admin-product-editor-tabs" role="tablist" aria-label="메뉴 편집 화면"><button class="is-active" type="button" role="tab" aria-selected="true" data-admin-product-editor-tab="edit">정보 입력</button><button type="button" role="tab" aria-selected="false" data-admin-product-editor-tab="preview">전체 미리보기</button></nav><button type="button" data-admin-product-close aria-label="메뉴 편집 닫기">×</button></header>
+            <div class="admin-product-form-grid">
+              <section class="admin-product-form-section admin-product-basic-section">
+                <header><span>1</span><div><h3>메뉴 기본 정보</h3><p>판매 방식과 고객에게 표시할 정보를 입력하세요.</p></div></header>
+                <div class="admin-product-basic-grid">
+              <label class="admin-product-id-field"><span>상품 ID <small>신규 등록 시 자동 생성</small></span><input name="id" required maxlength="80" readonly aria-readonly="true" /></label>
+              <label><span>메뉴명</span><input name="name" required maxlength="80" placeholder="고객 화면에 표시할 이름" /></label>
+              <fieldset class="is-wide admin-product-origin-field"><legend>원재료·원산지 <small>입력한 항목은 메뉴 상세 페이지 표에 자동 반영됩니다.</small></legend><div class="admin-product-origin-rows" data-admin-product-origin-rows></div><button type="button" data-admin-product-origin-add>＋ 원재료 추가</button><input name="originItemsText" type="hidden" /></fieldset>
+              <label class="admin-product-choice-field"><span>카테고리 <small>메뉴가 노출될 분류</small></span><span class="admin-product-select-shell" data-select-kind="category"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h6v6H4zM14 7h6v6h-6zM4 17h6M14 17h6"/></svg></i><select name="category" required aria-label="메뉴 카테고리"><option value="">카테고리를 선택하세요</option></select><svg class="admin-product-select-arrow" aria-hidden="true" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></span></label>
+              <label class="admin-product-choice-field"><span>판매 방식 <small>고객의 주문 진행 방법</small></span><span class="admin-product-select-shell" data-select-kind="purchase"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 11H7L6 8Zm3 0V6a3 3 0 0 1 6 0v2"/></svg></i><select name="purchaseType" required><option value="direct">바로 구매 · 가격 공개</option><option value="consultation">상담 주문 · 가격 별도 안내</option></select><svg class="admin-product-select-arrow" aria-hidden="true" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></span><small data-admin-product-purchase-help>고객이 장바구니에 바로 담을 수 있습니다.</small></label>
+              <fieldset class="admin-product-unit-prices is-wide" data-admin-product-price-field><legend>판매 단위별 가격 <small>각 단위의 실제 판매가를 입력하세요.</small></legend><div><label><span>팩 가격</span><input name="price" type="number" min="1" step="1" inputmode="numeric" placeholder="예: 4,000" /></label><label><span>반말 가격</span><input name="halfMalPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="예: 64,000" /></label><label><span>한말 가격</span><input name="malPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="예: 128,000" /></label></div></fieldset>
+              <input name="displayOrder" type="hidden" value="0" />
+                </div>
+              </section>
+              <aside class="admin-product-form-section admin-product-media-section">
+                <header><span>2</span><div><h3>이미지와 미리보기</h3><p>고객 화면에 표시될 대표·상세 이미지를 설정하세요.</p></div></header>
+              <section class="admin-product-image-editor admin-product-image-editor-group is-wide" aria-label="상품 이미지 설정">
+                <div class="admin-product-image-group-section" aria-labelledby="admin-main-image-title">
+                <div class="admin-product-field-heading"><span><b id="admin-main-image-title">대표 이미지</b><small>메뉴 목록과 상세 페이지 상단에 표시됩니다.</small></span><em>필수</em></div>
+                <div class="admin-product-image-inputs">
+                  <label class="admin-product-file-drop"><input name="mainImageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-admin-product-main-file /><span><b>이미지 파일 선택</b><small data-admin-product-main-file-status>PNG, JPG, WEBP, GIF · 최대 12MB · 자동 최적화</small></span></label>
+                  <label class="admin-product-url-field"><span>또는 이미지 주소</span><input name="imageUrl" required maxlength="2100000" placeholder="assets/products/menu-name.png 또는 https://..." /></label>
+                </div>
+                </div>
+                <div class="admin-product-image-group-section" aria-labelledby="admin-detail-images-title">
+                <div class="admin-product-field-heading"><span><b id="admin-detail-images-title">상세페이지 이미지</b><small>상품 설명 하단에 등록 순서대로 길게 표시됩니다.</small></span><em>선택 · 최대 4장</em></div>
+                <label class="admin-product-file-drop is-detail"><input name="detailImageFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple data-admin-product-detail-files /><span><b>상세 이미지 선택</b><small>여러 장을 한 번에 선택할 수 있습니다.</small></span></label>
+                <input name="detailImages" type="hidden" value="[]" />
+                <div class="admin-product-detail-previews" data-admin-product-detail-previews><p>등록된 상세 이미지가 없습니다.</p></div>
+                </div>
+              </section>
+              <div class="admin-product-secondary-fields">
+                <label><span>판매 상태</span><select name="status" required><option value="active">판매 중</option><option value="inactive">판매 중지</option></select></label>
+                <label class="admin-product-description-field"><span>짧은 설명 <small data-admin-product-description-count>0 / 500</small></span><textarea name="description" maxlength="500" rows="3" placeholder="메뉴 목록과 상세 페이지에 표시할 설명"></textarea></label>
+              </div>
+              </aside>
+              <section class="admin-product-full-preview" data-admin-product-full-preview hidden>
+                <div class="admin-product-preview-hero">
+                  <div class="admin-product-preview-visual"><small data-admin-product-preview-category>카테고리</small><img data-admin-product-preview src="assets/tteok-hero.png" alt="상품 이미지 미리보기" /></div>
+                  <div class="admin-product-preview-summary"><span>MENU DETAIL</span><h3 data-admin-product-preview-name>메뉴명 미리보기</h3><p data-admin-product-preview-description>입력한 설명이 고객 화면에 이렇게 표시됩니다.</p><section><header><b>판매가</b><small>주문 단위별 가격</small></header><strong data-admin-product-preview-price>가격 미입력</strong><div class="admin-product-preview-unit-prices" data-admin-product-preview-unit-prices></div></section><div class="admin-product-preview-shipping"><span>배송료</span><b>3,500원</b><small>매장 픽업 무료</small></div><ul><li>주문 일정에 맞춰 신선하게 생산합니다.</li><li>팩과 말 단위 중 필요한 수량을 선택할 수 있습니다.</li><li>정확한 수령 일정은 주문 단계에서 확인합니다.</li></ul><div class="admin-product-preview-order"><span>구매 단위　 <b>팩 단위</b>　 말 단위</span><strong>총 상품 금액　 <em data-admin-product-preview-price>가격 미입력</em></strong><button type="button" tabindex="-1">장바구니 담기</button><button type="button" tabindex="-1">바로 주문하기</button></div></div>
+                </div>
+                <div class="admin-product-preview-content-tabs"><b>상품 설명</b><span>상품 리뷰 0</span><span>Q&amp;A 0</span></div>
+                <section class="admin-product-preview-story"><figure><img data-admin-product-preview src="assets/tteok-hero.png" alt="상품 스토리 이미지 미리보기" /><figcaption>주문 일정에 맞춰 정성스럽게 준비합니다.</figcaption></figure><div><span>PRODUCT STORY</span><h3><b data-admin-product-preview-name>메뉴명</b>, 정성껏 준비합니다</h3><p data-admin-product-preview-description>입력한 상품 설명이 표시됩니다.</p><small>간식부터 가족 모임과 선물까지 필요한 수량에 맞춰 준비해 드립니다.</small><dl><div><dt>제작</dt><dd>주문 일정에 맞춘 당일 생산</dd></div><div><dt>보관</dt><dd>수령 후 당일 섭취 또는 밀봉 냉동 보관</dd></div><div><dt>수령</dt><dd>매장 픽업 또는 배송 가능 여부 안내</dd></div></dl></div></section>
+                <section class="admin-product-preview-origin-section"><header><div><span>INGREDIENT ORIGIN</span><h4>원재료·원산지 정보</h4></div><p>상품에 사용되는 주요 원재료의 원산지를 확인해 주세요.</p></header><div class="admin-product-preview-origins" data-admin-product-preview-origins></div><small>※ 원재료 수급 상황에 따라 원산지가 변경될 수 있으며, 변경 시 상품 표시사항을 통해 안내드립니다.</small></section>
+                <section class="admin-product-preview-detail-section"><header><span>DETAIL VIEW</span><h4>상품 상세 이미지</h4><p>상품의 구성과 실제 모습을 자세히 확인해 주세요.</p></header><div class="admin-product-preview-detail-images" data-admin-product-preview-detail-images></div></section>
+                <section class="admin-product-preview-common"><div><article><b>01</b><strong>신선하게 만듭니다</strong><p>수령 일정에 맞춰 생산합니다.</p></article><article><b>02</b><strong>정성껏 포장합니다</strong><p>상품 특성에 맞게 포장합니다.</p></article><article><b>03</b><strong>수령 방법을 안내합니다</strong><p>픽업·배송 방법을 안내합니다.</p></article></div></section>
+                <section class="admin-product-preview-process"><span>ORDER PROCESS</span><h4>주문은 이렇게 진행됩니다</h4><div><b>01<small>상품 선택</small></b><i></i><b>02<small>주문·결제</small></b><i></i><b>03<small>당일 생산</small></b><i></i><b>04<small>픽업·배송</small></b></div></section>
+                <section class="admin-product-preview-delivery"><span>DELIVERY PROCESS</span><h4>배송 진행 상태를 확인하세요</h4><p>주문 완료　—　접수 완료　—　배송 출발　—　배송 완료</p><aside><b>신선 식품을 안전하고 위생적으로 전달합니다</b><small>식품용 포장재로 밀봉하고 안전하게 고정해 포장합니다.</small></aside></section>
+              </section>
+            </div>
+            <p class="admin-product-form-status" data-admin-product-form-status role="status" aria-live="polite"></p>
+            <footer><button type="button" data-admin-product-close>취소</button><button class="is-primary" type="submit" data-admin-product-submit>메뉴 저장</button></footer>
+          </form>
+        </dialog>
+
         <!-- ─── 매출관리 패널 ─── -->
         <section class="admin-panel admin-accounting-panel" hidden>
           <div class="admin-toolbar">
@@ -779,7 +879,7 @@
     </aside>
 
     <script src="cart-utils.js"></script>
-    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js?v=4"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js"></script><script src="js/admin/dashboard.js?v=10"></script><script src="js/admin/orders.js?v=66"></script><script src="js/admin/customers.js?v=5"></script><script src="js/admin/inventory.js?v=20"></script><script src="js/admin/suppliers.js?v=9"></script><script src="js/admin/accounting.js?v=48"></script><script src="js/admin/inquiries.js?v=10"></script><script src="js/admin/events.js?v=70"></script><script src="js/auth.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js?v=2"></script><script src="js/state.js?v=4"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js"></script><script src="js/admin/dashboard.js?v=10"></script><script src="js/admin/orders.js?v=66"></script><script src="js/admin/customers.js?v=5"></script><script src="js/admin/inventory.js?v=20"></script><script src="js/admin/products.js?v=24"></script><script src="js/admin/suppliers.js?v=9"></script><script src="js/admin/accounting.js?v=48"></script><script src="js/admin/inquiries.js?v=10"></script><script src="js/admin/events.js?v=70"></script><script src="js/auth.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");

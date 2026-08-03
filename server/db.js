@@ -191,7 +191,7 @@ db.exec(`
   -- user_addresses.user_id는 FK라 조회 시 자주 필터링됨 (내 배송지 목록)
   CREATE INDEX IF NOT EXISTS idx_user_addresses_user_id ON user_addresses(user_id);
 
-  -- 상품 카탈로그 (1단계: 읽기 전용 조회만. 장바구니/주문 연동은 다음 단계)
+  -- 상품 카탈로그 (공개 조회와 관리자 메뉴 관리가 같은 원천을 사용)
   CREATE TABLE IF NOT EXISTS products (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

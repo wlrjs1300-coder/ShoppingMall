@@ -50,6 +50,45 @@ test("장바구니 주문서가 선택 상품과 성공 후 제거 흐름을 사
   assert.ok(script.indexOf("if (result.paymentUrl)") < script.indexOf("writeCart(cartUtils.removeItems", script.indexOf("if (result.paymentUrl)")), "결제창 주문은 성공 이동 전에 장바구니를 비우면 안 됩니다.");
 });
 
+test("상품 상세의 대표 이미지·상품명·짧은 설명은 상단과 상품 스토리에 함께 반영된다", () => {
+  const html = fs.readFileSync(path.join(projectRoot, "product.html"), "utf8");
+  const script = fs.readFileSync(path.join(projectRoot, "js", "product-detail.js"), "utf8");
+  assert.equal((html.match(/data-product-main-image/g) || []).length, 1);
+  assert.match(html, /data-product-name/);
+  assert.match(html, /data-product-short-description/);
+  assert.match(script, /data-product-main-image/g);
+  assert.match(script, /querySelectorAll\("\[data-product-name\]"\)/);
+  assert.match(script, /querySelectorAll\("\[data-product-short-description\]"\)/);
+  assert.ok(script.indexOf("root.innerHTML = `") < script.indexOf("renderProductContent(product);", script.indexOf("root.innerHTML = `")));
+});
+
+test("대표 이미지는 원본 비율을 유지해 잘리지 않도록 표시한다", () => {
+  const refinements = fs.readFileSync(path.join(projectRoot, "css", "refinements.css"), "utf8");
+  assert.match(refinements, /\.product-detail-visual img[^}]*object-fit:contain/);
+  assert.match(refinements, /\.product-story figure img[^}]*object-fit:contain/);
+  assert.match(refinements, /\.admin-product-preview-visual > img[^}]*object-fit:contain/);
+  assert.match(refinements, /\.admin-product-preview-story figure img[^}]*object-fit:contain/);
+});
+
+test("상품 상세 이미지 레이아웃은 이미지가 등록된 경우에만 생성된다", () => {
+  const html = fs.readFileSync(path.join(projectRoot, "product.html"), "utf8");
+  const script = fs.readFileSync(path.join(projectRoot, "js", "product-detail.js"), "utf8");
+  assert.match(html, /data-product-detail-image-mount/);
+  assert.doesNotMatch(html, /<section class="product-detail-image-section"/);
+  assert.match(script, /detailImageMount\.innerHTML = detailImages\.length \?/);
+  assert.match(script, /<section class="product-detail-image-section"/);
+  assert.match(script, /detailImages\.map\(\(url, index\) =>/);
+  assert.match(script, /\)\.join\(""\)\}<\/div>/);
+  assert.match(script, /<\/section>` : ""/);
+});
+
+test("상세 이미지 프레임은 미리보기와 실제 페이지에서 3대 2 비율을 사용한다", () => {
+  const refinements = fs.readFileSync(path.join(projectRoot, "css", "refinements.css"), "utf8");
+  assert.match(refinements, /\.admin-product-preview-detail-images img[^}]*aspect-ratio:3\/2/);
+  assert.match(refinements, /\.product-detail-image-list figure[^}]*aspect-ratio:3\/2/);
+  assert.match(refinements, /\.product-detail-image-list img[^}]*object-fit:contain/);
+});
+
 test("구매는 로그인 또는 비회원 선택을 요구하고 상담은 전화 연결을 유지한다", () => {
   const cart = fs.readFileSync(path.join(projectRoot, "js", "cart.js"), "utf8");
   const auth = fs.readFileSync(path.join(projectRoot, "js", "auth.js"), "utf8");

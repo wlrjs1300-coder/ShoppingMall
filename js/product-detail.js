@@ -20,8 +20,8 @@
   const getUnitPrices = (product) => {
     const packPrice = Number(product.price || 0);
     const packWeight = Number(product.unitWeightGrams || 250);
-    const malPrice = Math.round(packPrice * (8000 / packWeight));
-    return { pack: packPrice, halfMal: malPrice / 2, mal: malPrice };
+    const fallbackMalPrice = Math.round(packPrice * (8000 / packWeight));
+    return { pack: packPrice, halfMal: Number(product.halfMalPrice || fallbackMalPrice / 2), mal: Number(product.malPrice || fallbackMalPrice) };
   };
 
   function renderError(message) {
@@ -105,19 +105,23 @@
   }
 
   function renderProductContent(product) {
-    const title = document.querySelector("[data-product-story-title]");
-    const description = document.querySelector("[data-product-story-description]");
     const detail = document.querySelector("[data-product-story-detail]");
-    const image = document.querySelector("[data-product-story-image]");
     const ingredients = document.querySelector("[data-product-ingredients]");
     const origin = document.querySelector("[data-product-origin]");
     const originList = document.querySelector("[data-product-origin-list]");
-    if (title) title.textContent = `${product.name}, 정성껏 준비합니다`;
-    if (description) description.textContent = product.description || "좋은 재료와 정성으로 만든 따뜻한 떡집의 메뉴입니다.";
+    const shortDescription = product.description || "좋은 재료와 정성으로 만든 따뜻한 떡집의 메뉴입니다.";
+    document.querySelectorAll("[data-product-name]").forEach((element) => { element.textContent = product.name; });
+    document.querySelectorAll("[data-product-short-description]").forEach((element) => { element.textContent = shortDescription; });
+    document.querySelectorAll("[data-product-main-image]").forEach((image) => {
+      image.src = product.imageUrl;
+      image.alt = `${product.name} 상품 모습`;
+    });
     if (detail) detail.textContent = "간식부터 가족 모임과 선물까지 필요한 수량에 맞춰 준비해 드립니다.";
     if (ingredients) ingredients.textContent = product.ingredients || "쌀, 소금 및 상품별 부재료";
     if (origin) origin.textContent = product.origin || "쌀 국내산 · 그 외 원재료는 상품별 별도 표기";
-    if (originList) {
+    if (originList && Array.isArray(product.originItems) && product.originItems.length) {
+      originList.innerHTML = product.originItems.map((item) => `<div><dt>${safe(item.ingredient)}</dt><dd>${safe(item.origin)}</dd></div>`).join("");
+    } else if (originList) {
       const name = String(product.name || "");
       let items = [["멥쌀", "국내산"], ["소금", "국내산"], ["설탕", "외국산"]];
       if (/약식|약밥/.test(name)) items = [["찹쌀", "국내산"], ["흑설탕", "외국산"], ["밤", "국내산"], ["대추", "국내산"], ["잣", "국내산"], ["참기름", "국내산"]];
@@ -129,9 +133,16 @@
       else if (/밤|대추/.test(name)) items = [["멥쌀", "국내산"], ["밤", "국내산"], ["대추", "국내산"], ["설탕", "외국산"], ["소금", "국내산"]];
       originList.innerHTML = items.map(([ingredient, country]) => `<div><dt>${safe(ingredient)}</dt><dd>${safe(country)}</dd></div>`).join("");
     }
-    if (image) {
-      image.src = product.imageUrl;
-      image.alt = `${product.name} 상품 모습`;
+    const detailImageMount = document.querySelector("[data-product-detail-image-mount]");
+    const detailImages = Array.isArray(product.detailImages) ? product.detailImages.filter(Boolean) : [];
+    if (detailImageMount) {
+      detailImageMount.innerHTML = detailImages.length ? `
+        <section class="product-detail-image-section" aria-label="상품 상세 이미지">
+          <header class="product-section-heading"><span>DETAIL VIEW</span><h2>상품 상세 이미지</h2><p>상품의 구성과 실제 모습을 자세히 확인해 주세요.</p></header>
+          <div class="product-detail-image-list">${detailImages.map((url, index) =>
+            `<figure><img src="${safe(url)}" alt="${safe(product.name)} 상세 이미지 ${index + 1}" loading="lazy" /></figure>`
+          ).join("")}</div>
+        </section>` : "";
     }
     renderReviews(product);
     renderQna(product);
@@ -143,17 +154,15 @@
     let selectedUnit = "pack";
     document.title = `${product.name} | 따뜻한 떡집`;
     document.querySelector("[data-detail-breadcrumb]").textContent = product.name;
-    renderProductContent(product);
-
     root.innerHTML = `
       <div class="product-detail-visual">
         <span class="product-detail-category-tag">${safe(product.category)}</span>
-        <img src="${safe(product.imageUrl)}" alt="${safe(product.name)}" />
+        <img data-product-main-image src="${safe(product.imageUrl)}" alt="${safe(product.name)} 상품 모습" />
       </div>
       <div class="product-detail-info">
         <p class="section-kicker">MENU DETAIL</p>
-        <h1>${safe(product.name)}</h1>
-        <p class="product-detail-description">${safe(product.description || "정성껏 준비한 따뜻한 떡집 메뉴입니다.")}</p>
+        <h1 data-product-name>${safe(product.name)}</h1>
+        <p class="product-detail-description" data-product-short-description>${safe(product.description || "정성껏 준비한 따뜻한 떡집 메뉴입니다.")}</p>
         <section class="product-detail-price-panel" aria-label="판매가">
           <div class="product-detail-price-heading">
             <span>판매가</span>
@@ -190,6 +199,7 @@
           <a class="primary-button product-detail-inquiry" href="inquiry.html?product=${encodeURIComponent(product.id)}">문의 남기기</a>
         `}
       </div>`;
+    renderProductContent(product);
 
     if (!direct) return;
     const quantity = root.querySelector("[data-detail-quantity]");

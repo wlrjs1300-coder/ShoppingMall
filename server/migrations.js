@@ -518,6 +518,44 @@ const migrations = [
       `);
     },
   },
+  {
+    version: 17,
+    name: "product_detail_images",
+    up(db) {
+      const columns = new Set(
+        db.prepare("PRAGMA table_info(products)").all().map((column) => column.name),
+      );
+      if (!columns.has("detail_images_json")) {
+        db.exec("ALTER TABLE products ADD COLUMN detail_images_json TEXT NOT NULL DEFAULT '[]'");
+      }
+    },
+  },
+  {
+    version: 18,
+    name: "product_unit_prices_and_origins",
+    up(db) {
+      const columns = new Set(db.prepare("PRAGMA table_info(products)").all().map((column) => column.name));
+      if (!columns.has("half_mal_price")) db.exec("ALTER TABLE products ADD COLUMN half_mal_price INTEGER");
+      if (!columns.has("mal_price")) db.exec("ALTER TABLE products ADD COLUMN mal_price INTEGER");
+      if (!columns.has("origin_items_json")) db.exec("ALTER TABLE products ADD COLUMN origin_items_json TEXT NOT NULL DEFAULT '[]'");
+    },
+  },
+  {
+    version: 19,
+    name: "white_jeolpyeon_origin_sample",
+    up(db) {
+      db.prepare(`UPDATE products
+        SET origin_items_json = ?, updated_at = ?
+        WHERE id = 'white-jeolpyeon'
+          AND (origin_items_json IS NULL OR origin_items_json = '' OR origin_items_json = '[]')`)
+        .run(JSON.stringify([
+          { ingredient: "멥쌀", origin: "국내산" },
+          { ingredient: "소금", origin: "국내산" },
+          { ingredient: "설탕", origin: "외국산" },
+          { ingredient: "참기름", origin: "국내산" },
+        ]), new Date().toISOString());
+    },
+  },
 ];
 
 function runMigrations(db) {

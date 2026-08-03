@@ -352,7 +352,7 @@ function applyAdminPermissions(admin) {
   currentAdminPermissions = new Set(Array.isArray(admin?.permissions) ? admin.permissions : []);
   const rules = {
     "orders:write": [".admin-order-create-open", "[data-admin-bulk-apply]", ".admin-delete", '[data-detail-action="edit"]', '[data-detail-action="delete"]'],
-    "inventory:write": [".admin-inventory-submit", ".admin-inventory-edit", ".admin-inventory-delete", ".admin-recipe-delete"],
+    "inventory:write": [".admin-inventory-submit", ".admin-inventory-edit", ".admin-inventory-delete", ".admin-recipe-delete", "[data-admin-product-create]", "[data-admin-product-edit]", "[data-admin-product-toggle]", "[data-admin-product-delete]"],
     "purchase_orders:write": [".admin-supplier-submit", ".admin-supplier-delete", ".admin-purchase-request", ".admin-purchase-edit", ".admin-purchase-delete"],
     "payments:reconcile": ["[data-admin-payment-reconcile]", '[data-detail-action="reconcile-payment"]'],
     "payments:cancel": [".admin-payment-cancel", '[data-detail-action="cancel-payment"]'],
