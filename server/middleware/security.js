@@ -33,8 +33,10 @@ function requestContext(req, res, next) {
   res.setHeader("X-Request-Id", req.id);
   const startedAt = Date.now();
   res.on("finish", () => {
-    if (res.statusCode < 500 && process.env.NODE_ENV !== "production") return;
-    console.error(JSON.stringify({ level: "error", requestId: req.id, method: req.method, path: req.path, status: res.statusCode, durationMs: Date.now() - startedAt }));
+    if (res.statusCode < 400) return;
+    const level = res.statusCode >= 500 ? "error" : "warn";
+    const writeLog = level === "error" ? console.error : console.warn;
+    writeLog(JSON.stringify({ level, requestId: req.id, method: req.method, path: req.path, status: res.statusCode, durationMs: Date.now() - startedAt }));
   });
   next();
 }
