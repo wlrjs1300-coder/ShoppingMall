@@ -1,4 +1,4 @@
-const CACHE_NAME = "tteokjip-v59"; // 외부 주소 검색 스크립트는 서비스 워커 처리 대상에서 제외
+const CACHE_NAME = "tteokjip-v64"; // 외부 주소 검색 스크립트는 서비스 워커 처리 대상에서 제외
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
@@ -22,7 +22,7 @@ async function staleWhileRevalidate(request, event) {
   const refresh = fetch(request).then((response) => {
     if (response.ok && !/no-store/.test(response.headers.get("cache-control") || "")) cache.put(request, response.clone());
     return response;
-  }).catch(() => cached);
+  }).catch(() => cached || Response.error());
   if (cached) {
     event.waitUntil(refresh);
     return cached;

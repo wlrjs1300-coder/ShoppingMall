@@ -58,7 +58,7 @@ test("주문 보안용 스키마가 생성된다", () => {
   assert.ok(orderColumns.some((column) => column.name === "payment_status"));
   assert.ok(orderColumns.some((column) => column.name === "amount_status"));
   const itemColumns = db.prepare("PRAGMA table_info(order_items)").all();
-  for (const column of ["order_id", "product_id", "product_name", "unit_price", "quantity", "line_total"]) {
+  for (const column of ["order_id", "product_id", "product_name", "unit_price", "quantity", "line_total", "pack_weight_grams", "half_mal_weight_grams", "mal_weight_grams", "total_weight_grams"]) {
     assert.ok(itemColumns.some((itemColumn) => itemColumn.name === column), `${column} 컬럼 누락`);
   }
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'order_idempotency'").get());
@@ -114,6 +114,19 @@ test("반말/한말(0.5 단위) 주문도 생성된다", async () => {
   const totalQuantity = response.body.quantity;
   assert.equal(totalQuantity, 0.5);
   assert.equal(response.body.totalAmount, 56000);
+});
+
+test("한말 반은 한말 가격과 반말 가격을 더해 계산한다", async () => {
+  db.prepare("UPDATE products SET half_mal_price=?, mal_price=?, half_mal_weight_grams=?, mal_weight_grams=? WHERE id='injeolmi'").run(70000, 130000, 4000, 8500);
+  const response = await request(app).post("/api/orders").send(validOrder({ quantity: 1.5, quantityUnit: "mal" }));
+  assert.equal(response.status, 201);
+  assert.equal(response.body.totalAmount, 200000);
+  const saved = db.prepare("SELECT half_mal_weight_grams, mal_weight_grams, total_weight_grams FROM order_items WHERE order_id=?").get(response.body.checkoutId);
+  assert.equal(saved.half_mal_weight_grams, 4000);
+  assert.equal(saved.mal_weight_grams, 8500);
+  assert.equal(saved.total_weight_grams, 12500);
+  db.prepare("UPDATE products SET half_mal_weight_grams=?, mal_weight_grams=? WHERE id='injeolmi'").run(4100, 8700);
+  assert.equal(db.prepare("SELECT total_weight_grams FROM order_items WHERE order_id=?").get(response.body.checkoutId).total_weight_grams, 12500);
 });
 
 test("잘못된 연락처와 과도하게 긴 이름·메모를 거부한다", async () => {

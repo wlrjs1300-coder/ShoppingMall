@@ -72,6 +72,12 @@ function getQuantityMin(unit) {
   return unit === "mal" ? ORDER_ITEM_QUANTITY_STEP : 1;
 }
 
+function calculateMalLineTotal(quantity, halfMalPrice, malPrice) {
+  const fullMalCount = Math.floor(quantity);
+  const hasHalfMal = Math.abs(quantity - fullMalCount - 0.5) < 1e-8;
+  return (fullMalCount * Number(malPrice)) + (hasHalfMal ? Number(halfMalPrice) : 0);
+}
+
 function getActorLabel(req) {
   if (!req?.admin) return "admin";
   if (req.admin.id) return req.admin.id;
@@ -244,6 +250,10 @@ function getOrderItems(orderId) {
     quantity: item.quantity,
     quantityUnit: item.quantity_unit || DEFAULT_QUANTITY_UNIT,
     lineTotal: item.line_total,
+    packWeightGrams: item.pack_weight_grams ?? null,
+    halfMalWeightGrams: item.half_mal_weight_grams ?? null,
+    malWeightGrams: item.mal_weight_grams ?? null,
+    totalWeightGrams: item.total_weight_grams ?? null,
   }));
 }
 
@@ -505,9 +515,11 @@ function insertHeader(fields) {
 
 function insertItem(orderId, item, index) {
   db.prepare(`
-    INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, quantity_unit, line_total)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(`item-${orderId}-${index + 1}`, orderId, item.productId || null, item.productName, item.unitPrice, item.quantity, item.quantityUnit || DEFAULT_QUANTITY_UNIT, item.lineTotal);
+    INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, quantity_unit, line_total,
+      pack_weight_grams, half_mal_weight_grams, mal_weight_grams, total_weight_grams)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(`item-${orderId}-${index + 1}`, orderId, item.productId || null, item.productName, item.unitPrice, item.quantity, item.quantityUnit || DEFAULT_QUANTITY_UNIT, item.lineTotal,
+    item.packWeightGrams ?? null, item.halfMalWeightGrams ?? null, item.malWeightGrams ?? null, item.totalWeightGrams ?? null);
 }
 
 function addStatusHistory(orderId, previousStatus, nextStatus, changedBy = "system", createdAt = new Date().toISOString(), reason = null) {
@@ -525,15 +537,35 @@ function addAuditLog({ category, message, action, entityId, previousValue, nextV
 function createOrder({ id, userId, customerData, products, requestedItems, memo, createdAt, guestData = null }) {
   const items = requestedItems.map((requested, index) => {
     const product = products[index];
-    const unitPrice = requested.quantityUnit === "mal" ? Number(product.mal_price ?? Math.round(Number(product.price) * 32)) : Number(product.price);
     const quantity = requested.quantity;
+    const isMal = requested.quantityUnit === "mal";
+    const malPrice = Number(product.mal_price ?? Math.round(Number(product.price) * 32));
+    const halfMalPrice = Number(product.half_mal_price ?? Math.round(malPrice / 2));
+    const unitPrice = isMal ? malPrice : Number(product.price);
+    const lineTotal = isMal
+      ? calculateMalLineTotal(quantity, halfMalPrice, malPrice)
+      : Math.round(unitPrice * quantity);
+    const packWeightGrams = Number.isInteger(product.unit_weight_grams) ? product.unit_weight_grams : null;
+    const halfMalWeightGrams = Number.isInteger(product.half_mal_weight_grams) ? product.half_mal_weight_grams : null;
+    const malWeightGrams = Number.isInteger(product.mal_weight_grams) ? product.mal_weight_grams : null;
+    const fullMalCount = Math.floor(quantity);
+    const includesHalfMal = Math.round((quantity - fullMalCount) * 2) === 1;
+    const totalWeightGrams = isMal
+      ? (malWeightGrams !== null && (!includesHalfMal || halfMalWeightGrams !== null)
+        ? (fullMalCount * malWeightGrams) + (includesHalfMal ? halfMalWeightGrams : 0)
+        : null)
+      : (packWeightGrams !== null ? Math.round(packWeightGrams * quantity) : null);
     return {
       productId: product.id,
       productName: product.name,
       quantityUnit: requested.quantityUnit || DEFAULT_QUANTITY_UNIT,
       unitPrice,
       quantity,
-      lineTotal: Math.round(unitPrice * quantity),
+      lineTotal,
+      packWeightGrams,
+      halfMalWeightGrams,
+      malWeightGrams,
+      totalWeightGrams,
     };
   });
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -656,7 +688,7 @@ router.post("/", publicOrderLimiter, optionalCustomerAuth, (req, res) => {
   const customer = validateCustomerFields(req.body);
   const items = normalizeItems([{ productId: req.body?.productId, quantity: req.body?.quantity, quantityUnit: req.body?.quantityUnit }]);
   if (customer.error || items.error) return res.status(400).json({ error: customer.error || items.error });
-  const product = db.prepare("SELECT id, name, price, mal_price FROM products WHERE id = ? AND status = 'active'").get(items.data[0].productId);
+  const product = db.prepare("SELECT id, name, price, half_mal_price, mal_price, unit_weight_grams, half_mal_weight_grams, mal_weight_grams FROM products WHERE id = ? AND status = 'active'").get(items.data[0].productId);
   if (!product || product.price === null) return res.status(404).json({ error: "주문 가능한 상품을 찾을 수 없습니다." });
   const key = req.get("Idempotency-Key");
   if (key && !IDEMPOTENCY_KEY_RE.test(key)) return res.status(400).json({ error: "중복 방지 키 형식이 올바르지 않습니다." });
@@ -715,7 +747,7 @@ router.post("/checkout", publicOrderLimiter, optionalCustomerAuth, (req, res) =>
     }
     guestData = { passwordHash: bcrypt.hashSync(password, 10), address };
   }
-  const productQuery = db.prepare("SELECT id, name, price, mal_price FROM products WHERE id = ? AND status = 'active' AND purchase_type = 'direct'");
+  const productQuery = db.prepare("SELECT id, name, price, half_mal_price, mal_price, unit_weight_grams, half_mal_weight_grams, mal_weight_grams FROM products WHERE id = ? AND status = 'active' AND purchase_type = 'direct'");
   const products = items.data.map((item) => productQuery.get(item.productId));
   if (products.some((product) => !product)) return res.status(409).json({ error: "판매가 종료되었거나 장바구니로 주문할 수 없는 상품이 포함되어 있습니다." });
   const id = `checkout-${crypto.randomUUID()}`;

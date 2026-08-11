@@ -51,6 +51,20 @@ test("선택 상품의 수량과 합계만 계산한다", () => {
   });
 });
 
+test("말 단위 합계는 한말 가격과 반말 가격을 각각 적용한다", () => {
+  const malItem = {
+    ...product,
+    price: 130000,
+    halfMalPrice: 70000,
+    malPrice: 130000,
+    quantityUnit: "mal",
+  };
+  assert.equal(cart.calculateItemTotal({ ...malItem, quantity: 0.5 }), 70000);
+  assert.equal(cart.calculateItemTotal({ ...malItem, quantity: 1 }), 130000);
+  assert.equal(cart.calculateItemTotal({ ...malItem, quantity: 1.5 }), 200000);
+  assert.equal(cart.calculateItemTotal({ ...malItem, quantity: 2.5 }), 330000);
+});
+
 test("서버 상품 기준으로 가격을 갱신하고 판매중지 상품을 제거한다", () => {
   const result = cart.reconcileProducts(
     [

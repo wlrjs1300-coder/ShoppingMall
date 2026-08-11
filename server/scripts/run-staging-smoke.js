@@ -1,6 +1,6 @@
 const { ACCOUNTS, ORDER_IDS } = require("./seed-staging-synthetic");
 
-const EXPECTED_SCHEMA_VERSION = 19;
+const EXPECTED_SCHEMA_VERSION = 28;
 const DEFAULT_TIMEOUT_MS = 10000;
 const MAX_TIMEOUT_MS = 60000;
 const SAFE_PATHS = Object.freeze([

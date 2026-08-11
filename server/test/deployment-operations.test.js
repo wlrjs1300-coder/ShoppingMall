@@ -59,6 +59,11 @@ function validProductionEnv(overrides = {}) {
     ADMIN_TOKEN_TTL: "1h",
     ADMIN_LOGIN_RATE_MAX: "5",
     ADMIN_LOGIN_RATE_WINDOW_MS: "900000",
+    ORDER_PII_PROTECTION_ENABLED: "true",
+    ORDER_PII_KEYS_JSON: JSON.stringify([
+      { version: "v1", key: Buffer.alloc(32, 17).toString("base64") },
+    ]),
+    ORDER_PII_ACTIVE_KEY_VERSION: "v1",
     ...overrides,
   };
 }
@@ -246,7 +251,12 @@ test("설정 오류에는 입력한 비밀값을 출력하지 않는다", () => 
 
 test("네이버 주문 import가 활성화될 때만 32-byte PII key와 version을 요구한다", () => {
   assert.deepEqual(naverOrderImportConfigErrors(validProductionEnv()), []);
-  const enabled = validProductionEnv({ NAVER_ORDER_IMPORT_ENABLED: "true" });
+  const enabled = validProductionEnv({
+    NAVER_COMMERCE_SYNC_ENABLED: "true",
+    NAVER_COMMERCE_CLIENT_ID: "client-fixture",
+    NAVER_COMMERCE_CLIENT_SECRET: "$2a$10$abcdefghijklmnopqrstuv",
+    NAVER_ORDER_IMPORT_ENABLED: "true",
+  });
   assert.match(naverOrderImportConfigErrors(enabled).map((item) => item.code).join(" "), /PII_KEY_INVALID/);
   const valid = {
     ...enabled,
@@ -255,6 +265,16 @@ test("네이버 주문 import가 활성화될 때만 32-byte PII key와 version�
   };
   assert.deepEqual(naverOrderImportConfigErrors(valid), []);
   assert.deepEqual(productionConfigErrors(valid), []);
+  assert.match(
+    naverOrderImportConfigErrors({ ...valid, NAVER_COMMERCE_SYNC_ENABLED: "false" })
+      .map((item) => item.code).join(" "),
+    /NAVER_COMMERCE_SYNC_REQUIRED/,
+  );
+  assert.match(
+    naverOrderImportConfigErrors({ ...valid, NAVER_ORDER_POLL_INTERVAL_MS: "30000" })
+      .map((item) => item.code).join(" "),
+    /NAVER_ORDER_POLL_INTERVAL_INVALID/,
+  );
 });
 
 test("네이버 주문 PII key 오류와 readiness는 secret 원문을 노출하지 않는다", () => {
@@ -271,9 +291,12 @@ test("네이버 주문 PII key 오류와 readiness는 secret 원문을 노출하
   assert.equal(report.includes(secret), false);
 });
 
-test("order PII protection requires an independent valid keyring only when enabled", () => {
-  assert.deepEqual(orderPiiConfigErrors(validProductionEnv()), []);
-  const enabled = validProductionEnv({ ORDER_PII_PROTECTION_ENABLED: "true" });
+test("staging과 production은 order PII protection과 독립된 유효 keyring을 강제한다", () => {
+  assert.match(productionConfigErrors(validProductionEnv({ ORDER_PII_PROTECTION_ENABLED: "false" })).join(" "), /ORDER_PII_PROTECTION_ENABLED/);
+  const enabled = validProductionEnv({
+    ORDER_PII_KEYS_JSON: "",
+    ORDER_PII_ACTIVE_KEY_VERSION: "",
+  });
   assert.match(orderPiiConfigErrors(enabled).map((item) => item.code).join(" "), /KEYRING_MISSING/);
   const valid = {
     ...enabled,

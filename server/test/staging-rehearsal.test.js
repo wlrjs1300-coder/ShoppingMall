@@ -30,7 +30,11 @@ function validEnv(overrides = {}) {
     ALLOW_LEGACY_ADMIN_LOGIN: "false", PAYMENT_MODE: "disabled", TOSS_MOCK_MODE: "false",
     NOTIFICATION_MODE: "none", EMAIL_MODE: "disabled",
     NAVER_COMMERCE_SYNC_ENABLED: "false", NAVER_ORDER_IMPORT_ENABLED: "false",
-    ORDER_PII_PROTECTION_ENABLED: "false",
+    ORDER_PII_PROTECTION_ENABLED: "true",
+    ORDER_PII_KEYS_JSON: JSON.stringify([
+      { version: "staging-v1", key: Buffer.alloc(32, 29).toString("base64") },
+    ]),
+    ORDER_PII_ACTIVE_KEY_VERSION: "staging-v1",
     ...overrides,
   };
   for (const key of [

@@ -64,7 +64,7 @@ function reseed() {
 
 test("products 테이블과 필수 컬럼이 존재한다", () => {
   const cols = db.prepare("PRAGMA table_info(products)").all().map((c) => c.name);
-  for (const col of ["id", "name", "category", "purchase_type", "price", "image_url", "description", "status", "display_order", "created_at", "updated_at"]) {
+  for (const col of ["id", "name", "category", "purchase_type", "price", "unit_weight_grams", "half_mal_weight_grams", "mal_weight_grams", "image_url", "description", "status", "display_order", "created_at", "updated_at"]) {
     assert.ok(cols.includes(col), `${col} 컬럼 누락`);
   }
 });
@@ -107,20 +107,20 @@ test("id가 중복되면 거부된다", () => {
 
 // ─── 시드 데이터 ─────────────────────────────────────────────
 
-test("시드 상품이 정확히 30개다", () => {
-  assert.equal(db.prepare("SELECT COUNT(*) c FROM products WHERE id LIKE '%' AND id NOT LIKE 'test-product-%' AND id NOT LIKE 'dup-test%'").get().c >= 30, true);
-  // 정확한 30개 검증은 순수 시드 id 목록으로 별도 확인
+test("시드 상품이 정확히 31개다", () => {
+  assert.equal(db.prepare("SELECT COUNT(*) c FROM products WHERE id LIKE '%' AND id NOT LIKE 'test-product-%' AND id NOT LIKE 'dup-test%'").get().c >= 31, true);
+  // 정확한 31개 검증은 순수 시드 id 목록으로 별도 확인
   const seedIds = seedList.map((p) => p.id);
   const rows = db.prepare(`SELECT id FROM products WHERE id IN (${seedIds.map(() => "?").join(",")})`).all(...seedIds);
-  assert.equal(rows.length, 30);
+  assert.equal(rows.length, 31);
 });
 
-test("direct 25개, consultation 5개다", () => {
+test("direct 26개, consultation 5개다", () => {
   const seedIds = seedList.map((p) => p.id);
   const placeholders = seedIds.map(() => "?").join(",");
   const rows = db.prepare(`SELECT purchase_type, COUNT(*) c FROM products WHERE id IN (${placeholders}) GROUP BY purchase_type`).all(...seedIds);
   const map = Object.fromEntries(rows.map((r) => [r.purchase_type, r.c]));
-  assert.equal(map.direct, 25);
+  assert.equal(map.direct, 26);
   assert.equal(map.consultation, 5);
 });
 
@@ -129,9 +129,9 @@ test("시드 id에 중복이 없다", () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-test("display_order가 1~30에 중복·누락 없이 정확히 대응한다", () => {
+test("display_order가 1~31에 중복·누락 없이 정확히 대응한다", () => {
   const orders = seedList.map((p) => p.displayOrder).sort((a, b) => a - b);
-  assert.deepEqual(orders, Array.from({ length: 30 }, (_, i) => i + 1));
+  assert.deepEqual(orders, Array.from({ length: 31 }, (_, i) => i + 1));
 });
 
 test("direct 상품 가격은 정수이며 0보다 크다", () => {
@@ -197,6 +197,15 @@ test("응답의 가격은 숫자 또는 null이다", async () => {
   for (const p of res.body.products) {
     assert.ok(p.price === null || typeof p.price === "number", `${p.id}의 price 타입 이상: ${typeof p.price}`);
   }
+});
+
+test("모듬찰떡은 확정된 상품명·팩 가격·중량·짧은 설명을 반환한다", async () => {
+  const res = await request(app).get("/api/products/assorted-chaltteok");
+  assert.equal(res.status, 200);
+  assert.equal(res.body.product.name, "모듬찰떡");
+  assert.equal(res.body.product.price, 4000);
+  assert.equal(res.body.product.unitWeightGrams, 230);
+  assert.equal(res.body.product.description, "단호박과 밤, 팥, 검은콩을 넉넉히 넣어 만든 수제 모듬찰떡");
 });
 
 test("공개 상품 응답은 화면과 장바구니에 필요한 단일 상품 정보를 모두 포함한다", async () => {
@@ -290,12 +299,18 @@ test("관리자는 상세 페이지가 요구하는 필드로 새 메뉴를 등�
     category: "시즌",
     purchaseType: "direct",
     price: 5500,
+    unitWeightGrams: 240,
+    halfMalWeightGrams: 4100,
+    malWeightGrams: 8500,
     imageUrl: "assets/products/menu-honey-seolgi.png",
     description: "봄 시즌 한정 메뉴",
     status: "active",
     displayOrder: 31,
   }).expect(201);
   assert.equal(created.body.product.name, "딸기 설기");
+  assert.equal(created.body.product.unitWeightGrams, 240);
+  assert.equal(created.body.product.halfMalWeightGrams, 4100);
+  assert.equal(created.body.product.malWeightGrams, 8500);
   assert.equal((await request(app).get("/api/products/seasonal-strawberry-seolgi").expect(200)).body.product.price, 5500);
 
   const updated = await request(app).put("/api/products/admin/seasonal-strawberry-seolgi").set(auth(token)).send({

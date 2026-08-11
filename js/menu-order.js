@@ -235,17 +235,6 @@ featuredGrid?.addEventListener("scroll", () => requestAnimationFrame(updateFeatu
 window.addEventListener("resize", updateFeaturedCarousel);
 updateFeaturedCarousel();
 
-menuSearch?.addEventListener("input", () => {
-  activeMenuPage = 1;
-  updateMenuList();
-});
-
-document.querySelector(".header-search")?.addEventListener("submit", (event) => {
-  if (menuItems.length) {
-    event.preventDefault();
-  }
-});
-
 if (menuSearch && menuItems.length) {
   const queryFromUrl = new URLSearchParams(window.location.search).get("q");
   if (queryFromUrl) {

@@ -3,6 +3,9 @@ const CART_STORAGE_KEY = "tteokShoppingCart";
 const GUEST_CHECKOUT_KEY = "tteokGuestCheckout";
 const GUEST_CUSTOMER_KEY = "tteokGuestCustomer";
 const cartUtils = window.CartUtils;
+const formatCartUnitPrices = (item) => item.quantityUnit === "pack"
+  ? `팩 ${Number(item.price || 0).toLocaleString("ko-KR")}원${item.unitWeightGrams ? ` · ${Number(item.unitWeightGrams).toLocaleString("ko-KR")}g` : ""}`
+  : `반말 ${Number(item.halfMalPrice || 0).toLocaleString("ko-KR")}원${item.halfMalWeightGrams ? ` · ${Number(item.halfMalWeightGrams).toLocaleString("ko-KR")}g` : ""} · 한말 ${Number(item.malPrice || item.price || 0).toLocaleString("ko-KR")}원${item.malWeightGrams ? ` · ${Number(item.malWeightGrams).toLocaleString("ko-KR")}g` : ""}`;
 
 function currentPurchaseReturnUrl() {
   const page = window.location.pathname.split("/").pop() || "index.html";
@@ -146,13 +149,13 @@ if (cartList) {
         <label class="cart-item-check"><input type="checkbox" data-cart-select ${item.selected === false ? "" : "checked"} aria-label="${escapeHtml(item.name)} 선택" /></label>
         <div class="cart-item-main">
           <div class="cart-item-image">${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="" />` : `<span>따뜻한<br />떡집</span>`}</div>
-          <div class="cart-item-copy"><span>${escapeHtml(item.category || "떡")}</span><h2>${escapeHtml(item.name)}</h2><p>단가 ${Number(item.price).toLocaleString("ko-KR")}원 (${formatQuantity(item)})</p></div>
+          <div class="cart-item-copy"><span>${escapeHtml(item.category || "떡")}</span><h2>${escapeHtml(item.name)}</h2><p>${formatCartUnitPrices(item)} (${formatQuantity(item)})</p></div>
         </div>
         <div class="cart-item-actions">
           <div class="cart-quantity" aria-label="${escapeHtml(item.name)} 수량">
             <button type="button" data-cart-decrease aria-label="수량 줄이기">−</button><output>${formatQuantity(item)}</output><button type="button" data-cart-increase aria-label="수량 늘리기">+</button>
           </div>
-          <strong>${(Number(item.price) * Number(item.quantity)).toLocaleString("ko-KR")}원</strong>
+          <strong>${cartUtils.calculateItemTotal(item).toLocaleString("ko-KR")}원</strong>
           <button class="cart-remove" type="button" data-cart-remove>삭제</button>
         </div>
       </article>
@@ -415,8 +418,8 @@ if (checkoutRoot) {
     checkoutItems.innerHTML = checkoutSelection.map((item) => `
       <article class="checkout-item">
         <div class="checkout-item-image">${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="" />` : ""}</div>
-        <div><span>${escapeHtml(item.category || "떡")}</span><h3>${escapeHtml(item.name)}</h3><p>${Number(item.price).toLocaleString("ko-KR")}원 × ${Number(item.quantity).toLocaleString("ko-KR")} ${item.quantityUnit === "pack" ? "팩" : "말"}</p></div>
-        <strong>${(Number(item.price) * item.quantity).toLocaleString("ko-KR")}원</strong>
+        <div><span>${escapeHtml(item.category || "떡")}</span><h3>${escapeHtml(item.name)}</h3><p>${formatCartUnitPrices(item)} · ${Number(item.quantity).toLocaleString("ko-KR")} ${item.quantityUnit === "pack" ? "팩" : "말"}</p></div>
+        <strong>${cartUtils.calculateItemTotal(item).toLocaleString("ko-KR")}원</strong>
       </article>`).join("");
     checkoutItemCount.textContent = `${summary.selectedItemCount}개`;
     checkoutQuantity.textContent = `${summary.selectedQuantity}개`;

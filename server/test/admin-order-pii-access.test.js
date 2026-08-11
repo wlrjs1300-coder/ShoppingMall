@@ -96,7 +96,7 @@ test.beforeEach(() => {
 });
 
 test("migration 16 adds constrained nullable audit columns and the access index", () => {
-  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 19);
+  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 28);
   const columns = new Map(db.prepare("PRAGMA table_info(activity_logs)").all().map((column) => [column.name, column]));
   for (const name of ["reason", "outcome", "failure_code", "actor_role", "request_ip"]) {
     assert.ok(columns.has(name));

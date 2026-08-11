@@ -196,8 +196,20 @@ function resolveProductMapping(db, externalChannelProductNo) {
   if (!externalChannelProductNo) return {
     productMappingId: null, internalProductId: null, mappingStatus: "UNMAPPED",
   };
+  const unitMapping = db.prepare(`SELECT m.id, m.internal_product_id, m.sales_unit
+    FROM sales_channel_product_unit_mappings m JOIN products p ON p.id=m.internal_product_id
+    WHERE m.channel='naver' AND m.external_channel_product_no=? AND m.mapping_status='ACTIVE'
+      AND p.status='active'`).get(externalChannelProductNo);
+  if (unitMapping) return {
+    productMappingId: null,
+    productUnitMappingId: unitMapping.id,
+    internalProductId: unitMapping.internal_product_id,
+    salesUnit: unitMapping.sales_unit,
+    mappingStatus: "MAPPED",
+  };
   const mapping = db.prepare(`SELECT id, internal_product_id FROM sales_channel_product_mappings
-    WHERE channel='naver' AND external_channel_product_no=? AND mapping_status='ACTIVE'`).get(externalChannelProductNo);
+    WHERE channel='naver' AND external_channel_product_no=? AND mapping_status='ACTIVE'
+      AND EXISTS (SELECT 1 FROM products WHERE products.id=internal_product_id AND products.status='active')`).get(externalChannelProductNo);
   return mapping
     ? { productMappingId: mapping.id, internalProductId: mapping.internal_product_id, mappingStatus: "MAPPED" }
     : { productMappingId: null, internalProductId: null, mappingStatus: "UNMAPPED" };
@@ -296,6 +308,15 @@ function createNaverOrderImportRepository({ db, piiKey, piiKeyVersion = "v1" }) 
         const itemHash = canonicalHash(item);
         const existing = db.prepare(`SELECT * FROM sales_channel_order_import_items
           WHERE channel='naver' AND external_product_order_id=?`).get(item.externalProductOrderId);
+        // Once an imported order item is mapped, retain the order-time mapping snapshot.
+        // A later mapping edit may resolve previously UNMAPPED items, but must not rewrite history.
+        const appliedMapping = existing?.mapping_status === "MAPPED" ? {
+          productMappingId: existing.product_mapping_id,
+          productUnitMappingId: existing.product_unit_mapping_id,
+          internalProductId: existing.internal_product_id,
+          salesUnit: existing.sales_unit_snapshot,
+          mappingStatus: "MAPPED",
+        } : mapping;
         if (existing && existing.channel_order_import_id !== headerRow.id) {
           throw new NaverOrderImportError("NAVER_PRODUCT_ORDER_HEADER_CONFLICT");
         }
@@ -308,17 +329,17 @@ function createNaverOrderImportRepository({ db, piiKey, piiKeyVersion = "v1" }) 
             external_channel_product_no, external_origin_product_no, external_claim_id,
             external_group_product_id, external_package_number, external_item_no,
             external_option_manage_code,
-            product_mapping_id, internal_product_id, product_name_snapshot, option_name_snapshot,
+            product_mapping_id, product_unit_mapping_id, internal_product_id, sales_unit_snapshot, product_name_snapshot, option_name_snapshot,
             seller_product_code, initial_quantity, remaining_quantity, unit_price,
             initial_payment_amount, remaining_payment_amount, external_product_order_status,
             external_claim_type, external_claim_status, last_changed_type, source_changed_at,
             recipient_name_masked, recipient_phone_masked, item_pii_ciphertext, item_pii_iv,
             item_pii_auth_tag, item_pii_key_version, mapping_status, payload_hash, created_at, updated_at
-          ) VALUES (?, 'naver', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+          ) VALUES (?, 'naver', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
             id, headerRow.id, item.externalProductOrderId, item.externalChannelProductNo,
             item.externalOriginProductNo, item.externalClaimId, item.groupProductId,
-            item.packageNumber, item.itemNo, item.optionManageCode, mapping.productMappingId,
-            mapping.internalProductId, item.productNameSnapshot, item.optionNameSnapshot,
+            item.packageNumber, item.itemNo, item.optionManageCode, mapping.productMappingId, mapping.productUnitMappingId ?? null,
+            mapping.internalProductId, mapping.salesUnit ?? null, item.productNameSnapshot, item.optionNameSnapshot,
             item.sellerProductCode, item.initialQuantity, item.remainingQuantity, item.unitPrice,
             item.initialPaymentAmount, item.remainingPaymentAmount, item.externalProductOrderStatus,
             item.externalClaimType, item.externalClaimStatus, item.lastChangedType, item.sourceChangedAt,
@@ -331,7 +352,7 @@ function createNaverOrderImportRepository({ db, piiKey, piiKeyVersion = "v1" }) 
             external_channel_product_no=?, external_origin_product_no=?, external_claim_id=?,
             external_group_product_id=?, external_package_number=?, external_item_no=?,
             external_option_manage_code=?,
-            product_mapping_id=?, internal_product_id=?, product_name_snapshot=?, option_name_snapshot=?,
+            product_mapping_id=?, product_unit_mapping_id=?, internal_product_id=?, sales_unit_snapshot=?, product_name_snapshot=?, option_name_snapshot=?,
             seller_product_code=?, initial_quantity=?, remaining_quantity=?, unit_price=?,
             initial_payment_amount=?, remaining_payment_amount=?, external_product_order_status=?,
             external_claim_type=?, external_claim_status=?, last_changed_type=?, source_changed_at=?,
@@ -340,22 +361,24 @@ function createNaverOrderImportRepository({ db, piiKey, piiKeyVersion = "v1" }) 
             last_error_code=NULL, updated_at=? WHERE id=?`).run(
             item.externalChannelProductNo, item.externalOriginProductNo, item.externalClaimId,
             item.groupProductId, item.packageNumber, item.itemNo, item.optionManageCode,
-            mapping.productMappingId, mapping.internalProductId, item.productNameSnapshot,
+            appliedMapping.productMappingId, appliedMapping.productUnitMappingId ?? null, appliedMapping.internalProductId, appliedMapping.salesUnit ?? null, item.productNameSnapshot,
             item.optionNameSnapshot, item.sellerProductCode, item.initialQuantity,
             item.remainingQuantity, item.unitPrice, item.initialPaymentAmount,
             item.remainingPaymentAmount, item.externalProductOrderStatus, item.externalClaimType,
             item.externalClaimStatus, item.lastChangedType, item.sourceChangedAt,
             item.recipientNameMasked, item.recipientPhoneMasked, encrypted.ciphertext, encrypted.iv,
-            encrypted.authTag, encrypted.keyVersion, mapping.mappingStatus, itemHash, now, existing.id,
+            encrypted.authTag, encrypted.keyVersion, appliedMapping.mappingStatus, itemHash, now, existing.id,
           );
         } else if (decision === "noop"
-          && (existing.product_mapping_id !== mapping.productMappingId
-            || existing.internal_product_id !== mapping.internalProductId
-            || existing.mapping_status !== mapping.mappingStatus)) {
+          && (existing.product_mapping_id !== appliedMapping.productMappingId
+            || existing.product_unit_mapping_id !== appliedMapping.productUnitMappingId
+            || existing.internal_product_id !== appliedMapping.internalProductId
+            || existing.sales_unit_snapshot !== appliedMapping.salesUnit
+            || existing.mapping_status !== appliedMapping.mappingStatus)) {
           db.prepare(`UPDATE sales_channel_order_import_items SET
-            product_mapping_id=?, internal_product_id=?, mapping_status=?, updated_at=?
+            product_mapping_id=?, product_unit_mapping_id=?, internal_product_id=?, sales_unit_snapshot=?, mapping_status=?, updated_at=?
             WHERE id=?`).run(
-            mapping.productMappingId, mapping.internalProductId, mapping.mappingStatus, now, existing.id,
+            appliedMapping.productMappingId, appliedMapping.productUnitMappingId ?? null, appliedMapping.internalProductId, appliedMapping.salesUnit ?? null, appliedMapping.mappingStatus, now, existing.id,
           );
           itemResults.push({
             externalProductOrderId: item.externalProductOrderId,

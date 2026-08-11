@@ -4,7 +4,7 @@
   });
   document.querySelectorAll(".site-footer").forEach((footer) => {
     footer.dataset.sharedComponent = "footer";
-    footer.innerHTML = `<div><strong class="js-store-name">${siteInfo.name || "따뜻한 떡집"}</strong><span class="js-address-text">${siteInfo.address}</span><span class="footer-policy-links"><a href="terms.html">이용약관</a><a href="privacy.html">개인정보 처리방침</a></span></div><div><span class="js-phone-text">${siteInfo.phone}</span><span class="js-hours-text">${siteInfo.hours}</span><span class="footer-actions"><a class="js-phone-link" href="${phoneHref}">전화 상담</a><a class="js-map-link" href="${mapUrl}" target="_blank" rel="noreferrer">지도 보기</a></span></div>`;
+    footer.innerHTML = `<div><strong class="js-store-name">${siteInfo.name || "따뜻한 떡집"}</strong><span class="js-address-text">${siteInfo.address}</span><span class="footer-policy-links"><a href="terms.html">이용약관</a><a href="privacy.html">개인정보 처리방침</a></span></div><div><span class="js-phone-text">${siteInfo.phone}</span><span class="js-hours-text">${siteInfo.hours}</span><span class="footer-actions"><a class="js-map-link" href="${mapUrl}" target="_blank" rel="noreferrer">지도 보기</a></span></div>`;
   });
   document.querySelectorAll(".site-header").forEach((header) => {
     header.dataset.sharedComponent = "header";

@@ -87,9 +87,53 @@
     }).join("");
   }
 
+  const PRODUCT_FAQS = {
+    "assorted-chaltteok": [
+      {
+        question: "떡이 얼어있는데 해동하면 다시 말랑해지나요?",
+        answer: "네, 당사의 급속 동결 기술은 떡의 전분 조직 수분 수축을 그대로 멈춘 상태입니다. 실온에서 약 1~2시간 자연 해동하시면 수분이 빠져나가지 않고 방금 찐 듯 말랑하고 찰진 식감으로 다시 부드럽게 복원됩니다."
+      },
+      {
+        question: "냉장실에 보관하면 안 되나요?",
+        answer: "냉장실 온도(0°C ~ 5°C)는 전분이 가장 빠르게 딱딱하게 굳어 노화되는 최적의 조건입니다. 보관 시에는 상온이나 냉장실이 아닌, 수분이 완벽히 묶이는 영하 18도 이하 냉동 보관을 무조건 해주셔야 합니다."
+      },
+      {
+        question: "단체 예약도 가능한가요?",
+        answer: "네, 따뜻한 떡집은 답례품이나 단체 주문용 패키지도 정성껏 준비해 드립니다. 고객센터로 편하게 연락 주시면 일정에 맞춰 신선하게 준비해 드립니다."
+      }
+    ]
+  };
+
+  const getProductFaqItems = (product) => {
+    if (!product) return [];
+    return PRODUCT_FAQS[product.id] || [];
+  };
+
   async function renderQna(product) {
     const list = document.querySelector("[data-product-qna-list]");
     const write = document.querySelector("[data-product-qna-write]");
+    const faqMount = document.querySelector("[data-product-faq]");
+    const faqItems = getProductFaqItems(product);
+    if (faqMount) {
+      if (faqItems.length === 0) {
+        faqMount.style.display = "none";
+      } else {
+        faqMount.style.display = "";
+        faqMount.innerHTML = `
+          <section class="product-faq-section" aria-label="자주 묻는 질문">
+            <h3 class="product-faq-title">자주 묻는 질문</h3>
+            <div class="product-faq-list">
+              ${faqItems.map((item) => `
+                <details class="product-faq-item">
+                  <summary>${safe(item.question)}</summary>
+                  <div class="product-faq-answer">${safe(item.answer)}</div>
+                </details>
+              `).join("")}
+            </div>
+          </section>
+        `;
+      }
+    }
     if (write) write.href = `inquiry.html?product=${encodeURIComponent(product.id)}`;
     try {
       const response = await fetch(`${API_BASE}/inquiries/product/${encodeURIComponent(product.id)}`, { cache:"no-store" });
@@ -98,7 +142,7 @@
       const inquiries = Array.isArray(data.inquiries) ? data.inquiries : [];
       document.querySelectorAll("[data-qna-count]").forEach((node) => { node.textContent = String(inquiries.length); });
       if (!list) return;
-      list.innerHTML = inquiries.length ? inquiries.map((inquiry) => `<details class="product-qna-item"><summary><span class="product-qna-status">${inquiry.adminReply ? "답변 완료" : "답변 대기"}</span><strong>${safe(inquiry.message)}</strong><span>${safe(inquiry.customerName)}</span><time>${formatDate(inquiry.createdAt)}</time></summary><div class="product-qna-body"><p>${safe(inquiry.message)}</p>${inquiry.adminReply ? `<p class="product-qna-answer">${safe(inquiry.adminReply)}</p>` : ""}</div></details>`).join("") : `<p class="product-content-empty">아직 등록된 상품 문의가 없습니다.<br />첫 번째 문의를 남겨보세요.</p>`;
+      list.innerHTML = inquiries.length ? inquiries.map((inquiry) => `<details class="product-qna-item"><summary><span class="product-qna-status">${inquiry.adminReply ? "답변 완료" : "답변 대기"}</span><strong>${safe(inquiry.message)}</strong><span class="product-qna-customer">${safe(inquiry.customerName)}</span><time>${formatDate(inquiry.createdAt)}</time></summary><div class="product-qna-body"><p>${safe(inquiry.message)}</p>${inquiry.adminReply ? `<p class="product-qna-answer">${safe(inquiry.adminReply)}</p>` : ""}</div></details>`).join("") : `<p class="product-content-empty">아직 등록된 상품 문의가 없습니다.<br />첫 번째 문의를 남겨보세요.</p>`;
     } catch (error) {
       if (list) list.innerHTML = `<p class="product-content-empty">${safe(error.message)}</p>`;
     }
@@ -170,8 +214,8 @@
           </div>
           ${direct ? `<div class="product-detail-unit-prices">
             <div class="product-detail-unit-price is-pack"><span>1팩 · ${Number(product.unitWeightGrams || 250).toLocaleString("ko-KR")}g</span><strong>${money(prices.pack)}</strong></div>
-            <div class="product-detail-unit-price"><span>반말</span><strong>${money(prices.halfMal)}</strong></div>
-            <div class="product-detail-unit-price"><span>한말</span><strong>${money(prices.mal)}</strong></div>
+            <div class="product-detail-unit-price"><span>반말${product.halfMalWeightGrams ? ` · ${Number(product.halfMalWeightGrams).toLocaleString("ko-KR")}g` : ""}</span><strong>${money(prices.halfMal)}</strong></div>
+            <div class="product-detail-unit-price"><span>한말${product.malWeightGrams ? ` · ${Number(product.malWeightGrams).toLocaleString("ko-KR")}g` : ""}</span><strong>${money(prices.mal)}</strong></div>
           </div>` : `<strong class="product-detail-consult-price">상담 후 안내</strong>`}
         </section>
         <div class="product-detail-delivery-fee" aria-label="배송료 안내"><span>배송료</span><strong>3,500원</strong><small>매장 픽업 무료</small></div>
@@ -215,7 +259,9 @@
     };
     const update = (next = quantity.value) => {
       quantity.value = String(normalize(next));
-      total.textContent = money(unitPrice() * normalize());
+      total.textContent = money(selectedUnit === "pack"
+        ? prices.pack * normalize()
+        : cartUtils.calculateMalTotal(normalize(), prices.halfMal, prices.mal));
     };
 
     unitButtons.forEach((button) => button.addEventListener("click", () => {
@@ -236,7 +282,19 @@
     quantity.addEventListener("input", () => update());
 
     const addSelectedQuantity = async () => {
-      const cartItem = { id: product.id, name: product.name, price: unitPrice(), category: product.category, imageUrl: product.imageUrl, quantityUnit: selectedUnit };
+      const cartItem = {
+        id: product.id,
+        name: product.name,
+        price: unitPrice(),
+        halfMalPrice: selectedUnit === "mal" ? prices.halfMal : undefined,
+        malPrice: selectedUnit === "mal" ? prices.mal : undefined,
+        unitWeightGrams: Number(product.unitWeightGrams || 250),
+        halfMalWeightGrams: product.halfMalWeightGrams ?? undefined,
+        malWeightGrams: product.malWeightGrams ?? undefined,
+        category: product.category,
+        imageUrl: product.imageUrl,
+        quantityUnit: selectedUnit,
+      };
       const allowed = await addToCart(cartItem);
       writeCart(cartUtils.setQuantity(readCart(), product.id, normalize(), selectedUnit));
       return allowed;

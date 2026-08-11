@@ -627,8 +627,27 @@ body.admin-page .admin-order-cancellation-reason p {
 .mypage-hero .mypage-member-since { margin:14px 0 0; color:#967d83; font-size:.76rem; }
 .mypage-member-since strong { margin-left:7px; color:#684f55; font-weight:800; }
 .mypage-nav { display:grid; grid-template-columns:repeat(5,1fr); margin:24px 0 48px; border:1px solid #edd8dc; border-radius:14px; background:#fff; overflow:hidden; }
-.mypage-nav button { padding:17px; color:#533d42; border:0; background:#fff; text-align:center; font:700 14px/1.3 var(--font-body); cursor:pointer; }
+.mypage-nav button {
+  position: relative;
+  padding:17px;
+  color:#533d42;
+  border:0;
+  background:#fff;
+  text-align:center;
+  font:700 14px/1.3 var(--font-body);
+  cursor:pointer;
+}
 .mypage-nav button+button { border-left:1px solid #f1e3e6; }
+.mypage-nav button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: #f1e3e6;
+}
+.mypage-nav button:last-child::after { background: #f1e3e6; }
 .mypage-nav button:hover { background:#fff7f8; color:#df4f6d; }
 .mypage-nav button[aria-selected="true"] { color:#fff; background:#df4f6d; }
 .mypage-grid.mypage-tab-panels { grid-template-columns:1fr; }
@@ -668,7 +687,7 @@ body.admin-page .admin-order-cancellation-reason p {
 .order-date-group-more:hover,
 .order-date-group-more:focus-visible { border-color:#df8d9f; color:#d94d67; }
 .order-date-pagination { display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0 4px; }
-.order-date-page-button { min-width:74px; height:34px; border:1px solid #df4f6d; border-radius:999px; background:#fff; color:#df4f6d; font-weight:700; font-size:0.74rem; cursor:pointer; }
+.order-date-page-button { min-width:74px; height:34px; border:1px solid #df4f6d; border-radius:999px; background:#fff; color:#df4f6d; font-weight:700; font-size:0.74rem; cursor:pointer; white-space: nowrap; }
 .order-date-page-button:hover { border-color:#d73f60; color:#c83c58; }
 .order-date-page-button:disabled { border-color:#ebd9dc; color:#b09ea3; background:#fbf5f7; cursor:not-allowed; }
 .order-date-page-status { color:#6e5a60; font-size:0.78rem; font-weight:700; min-width:82px; text-align:center; }
@@ -727,6 +746,87 @@ body.admin-page .admin-order-cancellation-reason p {
 .order-action-tab.is-disabled { color:#a08f93; border-color:#ebdee1; background:#fcf7f8; cursor:not-allowed; }
 .order-action-tab.is-danger { color:#b34d67; border-color:#e7d7da; }
 .member-order-actions .is-danger { border-color:#e7d7da; color:#795e64; }
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-card {
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 14px 14px 16px;
+  align-items: stretch;
+  position: relative;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-meta-block {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-product-group {
+  margin-left: 0;
+  gap: 10px;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-product-image {
+  width: 74px;
+  height: 74px;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-summary {
+  margin-left: 0;
+  gap: 5px;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-right-bottom {
+  margin-left: 0;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  padding-right: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+  row-gap: 10px;
+  align-items: start;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-right-bottom > b {
+  grid-column: 1;
+  grid-row: 1;
+  position: absolute;
+  top: -36px;
+  right: 0;
+  justify-self: end;
+  align-self: start;
+  font-size: 1rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .member-order-actions {
+  grid-column: 1 / -1;
+  padding-right: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: stretch;
+  gap: 10px;
+  width: 100%;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .order-action-tab {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 0;
+  padding-inline: 18px;
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .order-action-tab:last-child {
+  flex-grow: 1;
+}
 
 @keyframes fade-in {
   from { opacity:0; transform:translateY(-3px); }
@@ -893,7 +993,7 @@ body.admin-page .admin-order-cancellation-reason p {
 .withdraw-box button:hover { color:#7f2637; }
 .mypage-loading { min-height:55vh; display:grid; place-items:center; color:#8d777c; }
 .mypage-loading[hidden] { display:none; }
-.order-detail-dialog { width:min(1060px,calc(100% - 22px)); max-width:96vw; max-height:min(92vh, 980px); padding:48px 44px; border:0; border-radius:20px; box-shadow:0 24px 80px rgba(46,23,29,.25); font-size:1.05rem; overflow:auto; }
+.order-detail-dialog { width:min(1060px,calc(100% - 22px)); max-width:96vw; max-height:none; padding:38px 30px 34px; border:0; border-radius:20px; box-shadow:0 24px 80px rgba(46,23,29,.25); font-size:1.05rem; overflow:visible; }
 .order-detail-dialog::backdrop { background:rgba(36,22,25,.45); }
 .dialog-close { position:absolute; top:16px; right:18px; border:0; background:none; font-size:1.6rem; cursor:pointer; }
 .mypage-address-dialog { width:min(540px,calc(100% - 24px)); padding:0; border:0; border-radius:18px; background:#fff; box-shadow:0 24px 80px rgba(46,23,29,.25); overflow:hidden; }
@@ -975,6 +1075,8 @@ body.admin-page .admin-order-cancellation-reason p {
   .mypage-nav { grid-template-columns:1fr 1fr; }
   .mypage-nav button:nth-child(3) { border-left:0; border-top:1px solid #f1e3e6; }
   .mypage-nav button:nth-child(4) { border-top:1px solid #f1e3e6; }
+  .mypage-nav button:nth-child(-n+4) { border-bottom:1px solid #f1e3e6; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .mypage-nav button:nth-child(n+3) { border-top:1px solid #f1e3e6; }
   .mypage-grid { grid-template-columns:1fr; gap:0; }
   .mypage-section { padding:22px; }
   .member-order-card { grid-template-columns:1fr; gap:14px; padding:16px; }
@@ -985,6 +1087,26 @@ body.admin-page .admin-order-cancellation-reason p {
   .member-order-actions { justify-content:flex-start; }
   .order-action-tab { width:100%; }
   .member-order-product-image { width:82px; height:82px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .member-order-card {
+    gap: 10px;
+    padding: 12px 12px 14px;
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .member-order-product-image { width: 68px; height: 68px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .member-order-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .member-order-right-bottom > b {
+    top: -32px;
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-action-tab {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+    padding-inline: 16px;
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .member-order-actions {
+    justify-content: stretch;
+  }
   .mypage-section-head { display:block; }
   .mypage-section-head p { margin-top:8px; }
   .member-order-journey { grid-template-columns:repeat(2, minmax(0, 1fr)); }
@@ -995,6 +1117,44 @@ body.admin-page .admin-order-cancellation-reason p {
   .order-tracking-head > .order-tracking-title-wrap { margin-bottom:12px; }
   .order-tracking-title-kicker { font-size:.66rem; }
   .order-tracking-summary-card dl > div { grid-template-columns:1fr; gap:4px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-dialog {
+    width: min(100% - 14px, 620px);
+    max-width: calc(100vw - 14px);
+    padding: 14px 11px 12px;
+    border-radius: 14px;
+    font-size: .91rem;
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-dialog::backdrop {
+    background: rgba(36,22,25,.33);
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-dialog h2 {
+    margin: 4px 0 10px;
+    font-size: 1.12rem;
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-list {
+    grid-template-columns:1fr;
+    gap: 10px;
+    padding: 10px;
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-list dt { font-size:.7rem; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-list dd { margin: 4px 0 0; font-size:.93rem; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-items,
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-summary-card {
+    margin-top: 10px;
+    padding: 11px;
+  }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-items { margin: 14px 0; gap: 0; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-items li { padding: 8px 0; gap: 10px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-detail-total { font-size: 1.06rem; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-process-item { gap: 8px; padding: 0 0 7px 12px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-process-dot { width: 23px; height: 23px; font-size: .66rem; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-process-label { font-size: .68rem; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-process-time { font-size: .86rem; margin-top: 2px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-process-desc { font-size: 10px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-summary-card h3 { font-size: 0.9rem; margin-bottom: 8px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-head h2 { font-size: 1.16rem; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-status-text { font-size: .76rem; margin-top: 2px; }
+  :is(.is-pwa, .hide-scrollbars-mobile) .order-tracking-footer { margin-top: 8px; padding-top: 10px; }
 }
 .auth-field-error.is-success { color:#277653; }
 .password-visibility-field { position:relative; width:100%; }
