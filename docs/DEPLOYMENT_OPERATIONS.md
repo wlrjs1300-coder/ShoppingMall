@@ -50,7 +50,8 @@ npm run backup:verify
 ```
 
 - `backup:create`는 SQLite backup API를 사용해 검증 가능한 외부 백업 세트를 생성합니다.
-- 플랫폼 스케줄러 또는 외부 cron으로 `npm run backup:create`를 실행합니다.
+- Render Cron Job은 웹 서비스의 영구 디스크에 접근할 수 없으므로 SQLite 백업 실행에 사용할 수 없습니다. 웹 서비스 런타임에서 승인된 방식으로 `npm run backup:create`를 실행하고, 생성물을 별도 저장소·계정으로 반출합니다.
+- `/data/backups`처럼 DB와 같은 Render 영구 디스크에만 남은 사본은 실수 복구에는 도움이 되지만 디스크 장애를 대비한 외부 백업으로 간주하지 않습니다.
 - 자동 `db:restore` 명령은 제공하지 않습니다. 복원 전 `backup:verify`를 통과시킨 뒤 [백업 및 복구 절차](backup-and-recovery.md)에 따라 서비스를 중지하고 수동으로 복원합니다.
 - 플랫폼 자체 볼륨 백업도 함께 켜서 앱 백업과 이중화합니다.
 - 복원 전 서버를 중지하고 현재 DB와 `-wal`, `-shm` 파일을 함께 다룹니다. 복원 도구는 기존 DB 사본을 남기고 백업 무결성을 검사합니다.
@@ -71,3 +72,20 @@ npm run backup:verify
 ## 공개 전 법무 문서
 
 `privacy.html`과 `terms.html`은 포트폴리오용 초안입니다. 실제 영업 공개 전 사업자 정보, 개인정보 책임자, 보유 기간, 위탁 업체, 교환·환불 조건을 전문가 또는 관련 가이드에 맞춰 확정해야 합니다.
+# Naver Smart Store order connection
+
+The production web service polls Naver's changed-product-order feed automatically when both
+`NAVER_COMMERCE_SYNC_ENABLED=true` and `NAVER_ORDER_IMPORT_ENABLED=true`. The default interval is
+120 seconds, inside Naver's official 1–3 minute recommendation. Keep both flags disabled until the
+application has the required order API-group permission and every secret below is configured.
+
+- `NAVER_COMMERCE_CLIENT_ID`, `NAVER_COMMERCE_CLIENT_SECRET`: enter directly in the deployment secret store.
+- `NAVER_COMMERCE_AUTH_TYPE`: use `SELF` for the application's own resources; use `SELLER` only with its `NAVER_COMMERCE_ACCOUNT_ID`.
+- `NAVER_ORDER_PII_KEY`: Base64 encoding of 32 cryptographically random bytes; do not reuse another encryption key.
+- `NAVER_ORDER_PII_KEY_VERSION`: begin with `v1` and retain old key material during rotation.
+- `NAVER_ORDER_POLL_INTERVAL_MS`: 60000–180000; default 120000.
+- `NAVER_ORDER_INITIAL_LOOKBACK_MINUTES`: first-run overlap, default 10 and maximum 1440.
+
+After deployment, confirm the admin connection check succeeds, run one manual pull, verify mappings
+and imported counts, and only then leave automatic polling enabled. Poller logs contain safe event
+codes and counts only; they must not contain credentials or customer PII.

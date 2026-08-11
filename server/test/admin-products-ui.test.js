@@ -15,7 +15,8 @@ test("관리자 메뉴 탭은 목록, 검색, 상태 필터와 추가·수정 �
     'data-admin-tab="products"', "admin-product-panel", "data-admin-product-search",
     "data-admin-product-view-filter", "data-admin-product-create", "data-admin-product-list",
     "data-admin-product-load-state", "data-admin-product-retry", "admin-product-toolbar",
-    "data-admin-product-form", 'name="purchaseType"', 'name="price"', 'name="imageUrl"',
+    "data-admin-product-form", 'name="purchaseType"', 'name="price"', 'name="unitWeightGrams"',
+    'name="halfMalWeightGrams"', 'name="malWeightGrams"', 'name="imageUrl"',
     "data-admin-product-main-file", "data-admin-product-detail-files", 'name="detailImages"',
     'name="description"', 'name="displayOrder"', 'name="status"',
   ]) assert.match(adminHtml, new RegExp(contract));

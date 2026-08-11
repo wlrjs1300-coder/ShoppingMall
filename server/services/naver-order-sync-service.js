@@ -3,6 +3,8 @@ const {
   dateTime,
 } = require("./naver-order-import-service");
 const { createNaverOrderService } = require("./naver-order-service");
+const { convertNaverOrderImport } = require("./naver-order-conversion-service");
+const { synchronizeNaverOrderStatus } = require("./naver-order-status-sync-service");
 const {
   NaverOrderSyncError,
   createNaverOrderSyncRepository,
@@ -76,7 +78,9 @@ function publicItem(row) {
     externalItemNo: row.external_item_no,
     externalOptionManageCode: row.external_option_manage_code,
     productMappingId: row.product_mapping_id,
+    productUnitMappingId: row.product_unit_mapping_id,
     internalProductId: row.internal_product_id,
+    salesUnit: row.sales_unit_snapshot,
     productNameSnapshot: row.product_name_snapshot,
     optionNameSnapshot: row.option_name_snapshot,
     sellerProductCode: row.seller_product_code,
@@ -103,6 +107,8 @@ function createNaverOrderSyncService({
   db,
   orderService = createNaverOrderService(),
   importRepository,
+  convertOrderImport = convertNaverOrderImport,
+  synchronizeOrderStatus = synchronizeNaverOrderStatus,
   now = () => new Date(),
   syncRepository = createNaverOrderSyncRepository({ db, now }),
   piiKey = process.env.NAVER_ORDER_PII_KEY,
@@ -177,6 +183,10 @@ function createNaverOrderSyncService({
       try {
         const result = imports.upsertOrderImport({ ...group, actor });
         imported += result.items.length;
+        try {
+          const conversion = convertOrderImport(result.id, { actor });
+          if (conversion.status === "CONVERTED") synchronizeOrderStatus(result.id, { actor });
+        } catch { /* import success is independent from conversion and status synchronization */ }
       } catch (error) {
         failed += group.items.length;
         if (onFailure) {

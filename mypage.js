@@ -330,6 +330,38 @@
     if (["상품준비완료", "상품준비중", "배송중", "픽업준비완료", "접수완료"].includes(status)) return { label: status, icon: "•", className: "is-success is-status-progress" };
     return { label: status || "접수완료", icon: "•", className: "is-success is-status-start" };
   };
+  const isPwaMode = () => {
+    const query = new URLSearchParams(window.location.search || "");
+    const hasExplicitPwaParam = query.get("pwa") === "1" || query.get("pwa") === "true" || query.get("mobile") === "1" || query.get("hide-scrollbar") === "1" || query.get("hide_scrollbar") === "1";
+    const isMobileViewport = (() => {
+      try { return window.matchMedia("(max-width: 820px)").matches; } catch { return false; }
+    })();
+    const isDisplayModePwa = (() => {
+      try {
+        return window.matchMedia("(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui), (display-mode: window-controls-overlay)").matches;
+      } catch {
+        return false;
+      }
+    })();
+
+    return Boolean(
+      hasExplicitPwaParam ||
+      isDisplayModePwa ||
+      Boolean(window.navigator?.standalone) ||
+      isMobileViewport ||
+      document.documentElement?.classList.contains("is-pwa") ||
+      document.body?.classList.contains("is-pwa") ||
+      document.documentElement?.classList.contains("hide-scrollbars-mobile") ||
+      document.body?.classList.contains("hide-scrollbars-mobile")
+    );
+  };
+  const getPwaOrderActionLabel = (label) => {
+    if (!isPwaMode()) return label;
+    if (label === "교환/반품 신청") return "교환/반품";
+    if (label === "리뷰 작성하기") return "리뷰";
+    if (label === "주문 취소") return `주문${"\u00A0"}취소`;
+    return label;
+  };
   const getOrderStatusLabel = (order) => getUnifiedOrderStatus(order);
   const getEstimatedArrivalLabel = (order) => {
     const createdAt = new Date(order?.createdAt || Date.now());
@@ -418,9 +450,9 @@
     if (orderDatePage < 1) orderDatePage = 1;
     orderDatePagination.hidden = false;
     orderDatePagination.innerHTML = `
-      <button type="button" class="order-date-page-button is-prev" data-order-page="prev" ${orderDatePage <= 1 ? "disabled" : ""}>?댁쟾</button>
+      <button type="button" class="order-date-page-button is-prev" data-order-page="prev" ${orderDatePage <= 1 ? "disabled" : ""}>이전</button>
       <span class="order-date-page-status">${orderDatePage} / ${totalPages} 페이지</span>
-      <button type="button" class="order-date-page-button is-next" data-order-page="next" ${orderDatePage >= totalPages ? "disabled" : ""}>?ㅼ쓬</button>
+      <button type="button" class="order-date-page-button is-next" data-order-page="next" ${orderDatePage >= totalPages ? "disabled" : ""}>다음</button>
     `;
   };
 
@@ -911,9 +943,9 @@
               <b>${won(order.totalAmount)}</b>
               <div class="member-order-actions">
                 <button type="button" class="order-action-tab" data-order-detail-button>배송조회</button>
-                <button type="button" class="order-action-tab" data-order-tracking-button>교환/반품 신청</button>
-                <button type="button" class="order-action-tab ${canReviewOrder(order) ? "" : "is-disabled"}" ${canReviewOrder(order) ? "" : "disabled"} data-order-review-button>리뷰 작성하기</button>
-                ${order.cancelable ? `<button class="order-action-tab is-danger" type="button" data-order-cancel-button>주문 취소</button>` : ""}
+                <button type="button" class="order-action-tab" data-order-tracking-button>${getPwaOrderActionLabel("교환/반품 신청")}</button>
+                <button type="button" class="order-action-tab ${canReviewOrder(order) ? "" : "is-disabled"}" ${canReviewOrder(order) ? "" : "disabled"} data-order-review-button>${getPwaOrderActionLabel("리뷰 작성하기")}</button>
+                ${order.cancelable ? `<button class="order-action-tab is-danger" type="button" data-order-cancel-button>${getPwaOrderActionLabel("주문 취소")}</button>` : ""}
               </div>
               </div>
             </div>
@@ -949,9 +981,9 @@
               <b>${won(order.totalAmount)}</b>
               <div class="member-order-actions">
                 <button type="button" class="order-action-tab" data-order-detail-button>배송조회</button>
-                <button type="button" class="order-action-tab" data-order-tracking-button>교환/반품 신청</button>
-                <button type="button" class="order-action-tab ${canReviewOrder(order) ? "" : "is-disabled"}" ${canReviewOrder(order) ? "" : "disabled"} data-order-review-button>리뷰 작성하기</button>
-                ${order.cancelable ? `<button class="order-action-tab is-danger" type="button" data-order-cancel-button>주문 취소</button>` : ""}
+                <button type="button" class="order-action-tab" data-order-tracking-button>${getPwaOrderActionLabel("교환/반품 신청")}</button>
+                <button type="button" class="order-action-tab ${canReviewOrder(order) ? "" : "is-disabled"}" ${canReviewOrder(order) ? "" : "disabled"} data-order-review-button>${getPwaOrderActionLabel("리뷰 작성하기")}</button>
+                ${order.cancelable ? `<button class="order-action-tab is-danger" type="button" data-order-cancel-button>${getPwaOrderActionLabel("주문 취소")}</button>` : ""}
               </div>
             </div>
           </div>
@@ -998,6 +1030,24 @@
   const reviewPhotoPreview = document.querySelector("[data-review-photo-preview]");
   let activeReviewOrder = null;
   let pendingReviewPhotos = [];
+  const orderDialog = document.querySelector("[data-order-dialog]");
+  const orderCancelDialog = document.querySelector("[data-order-cancel-dialog]");
+  let activeCancelOrder = null;
+  const syncMypageDialogScrollLock = (nextOpen) => {
+    const hasOpen = Boolean(nextOpen || returnRequestDialog?.open || reviewWriteDialog?.open || orderDialog?.open);
+    document.body.classList.toggle("has-open-dialog", hasOpen);
+  };
+
+  const closeMypageDialogs = () => {
+    if (orderCancelDialog?.open) orderCancelDialog.close();
+    if (returnRequestDialog?.open) returnRequestDialog.close();
+    if (reviewWriteDialog?.open) reviewWriteDialog.close();
+    if (orderDialog?.open) orderDialog.close();
+  };
+  [returnRequestDialog, reviewWriteDialog, orderDialog, orderCancelDialog].forEach((dialog) => {
+    if (!dialog) return;
+    dialog.addEventListener("close", () => syncMypageDialogScrollLock(false));
+  });
 
   const renderReviewPhotoPreview = () => {
     if (!reviewPhotoPreview) return;
@@ -1039,6 +1089,7 @@
       return `<label class="return-item-option"><input type="checkbox" name="returnItem" value="${index}" ${index === 0 ? "checked" : ""} /><strong>${escape(name)}</strong><span>${quantity}개</span></label>`;
     }).join("") || '<p class="return-request-message">신청 가능한 상품 정보를 찾지 못했습니다.</p>';
     returnRequestDialog.showModal();
+    syncMypageDialogScrollLock(true);
   };
 
   const openReviewWriteDialog = (order) => {
@@ -1074,6 +1125,7 @@
       reviewWriteForm.querySelector('[type="submit"]').textContent = "리뷰 등록하기";
     }
     reviewWriteDialog.showModal();
+    syncMypageDialogScrollLock(true);
   };
 
   document.querySelector("[data-member-orders]").addEventListener("click", async (event) => {
@@ -1082,7 +1134,10 @@
       try {
         const { order } = await api(`/me/orders/${encodeURIComponent(card.dataset.orderId)}`);
         document.querySelector("[data-order-detail]").innerHTML = buildShippingTrackingDetail(order);
-        document.querySelector("[data-order-dialog]").showModal();
+        if (orderDialog) {
+          orderDialog.showModal();
+          syncMypageDialogScrollLock(true);
+        }
       } catch (error) { AppUI.alert(error.message); }
     }
     if (event.target.closest("[data-order-tracking-button]")) {
@@ -1094,9 +1149,13 @@
       const order = allOrders.find((item) => item.id === card.dataset.orderId);
       openReviewWriteDialog(order);
     }
-    if (event.target.closest("[data-order-cancel-button]") && await AppUI.confirm("이 주문을 취소할까요? 취소 후에는 되돌릴 수 없습니다.")) {
-      try { await api(`/me/orders/${encodeURIComponent(card.dataset.orderId)}/cancel`, { method: "POST" }); await loadOrders(); }
-      catch (error) { AppUI.alert(error.message); }
+    if (event.target.closest("[data-order-cancel-button]")) {
+      activeCancelOrder = allOrders.find((item) => item.id === card.dataset.orderId) || null;
+      if (!activeCancelOrder || !orderCancelDialog) return;
+      orderCancelDialog.querySelector("[data-order-cancel-id]").textContent = activeCancelOrder.orderNumber || activeCancelOrder.id || "-";
+      orderCancelDialog.querySelector("[data-order-cancel-amount]").textContent = won(activeCancelOrder.totalAmount);
+      orderCancelDialog.showModal();
+      syncMypageDialogScrollLock(true);
     }
   });
   document.querySelector("[data-member-orders]").addEventListener("click", (event) => {
@@ -1152,7 +1211,59 @@
       scrollToOrderTop();
     }
   });
-  document.querySelector("[data-dialog-close]").addEventListener("click", () => document.querySelector("[data-order-dialog]").close());
+  document.querySelector("[data-dialog-close]")?.addEventListener("click", () => {
+    orderDialog?.close();
+    syncMypageDialogScrollLock(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!returnRequestDialog?.open && !reviewWriteDialog?.open && !orderDialog?.open && !orderCancelDialog?.open) return;
+    closeMypageDialogs();
+    syncMypageDialogScrollLock(false);
+  });
+
+  document.querySelectorAll("[data-mypage-close]").forEach((node) => {
+    node.addEventListener("click", () => {
+      closeMypageDialogs();
+      syncMypageDialogScrollLock(false);
+    });
+  });
+
+  [orderDialog, returnRequestDialog, reviewWriteDialog, orderCancelDialog].forEach((dialog) => {
+    if (!dialog) return;
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) {
+        dialog.close();
+        syncMypageDialogScrollLock(false);
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-order-cancel-close]").forEach((button) => {
+    button.addEventListener("click", () => orderCancelDialog?.close());
+  });
+  orderCancelDialog?.addEventListener("close", () => {
+    activeCancelOrder = null;
+    syncMypageDialogScrollLock(false);
+  });
+  document.querySelector("[data-order-cancel-confirm]")?.addEventListener("click", async (event) => {
+    if (!activeCancelOrder) return;
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "취소 처리 중…";
+    try {
+      await api(`/me/orders/${encodeURIComponent(activeCancelOrder.id)}/cancel`, { method: "POST" });
+      orderCancelDialog?.close();
+      await loadOrders();
+      AppUI.toast("주문이 취소되었습니다.", "success");
+    } catch (error) {
+      AppUI.alert(error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = "주문 취소하기";
+    }
+  });
 
   document.querySelector("[data-profile-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault(); const form = event.currentTarget;
@@ -1244,6 +1355,7 @@
   const closeReturnRequestDialog = () => {
     if (returnRequestDialog?.open) returnRequestDialog.close();
     activeReturnOrder = null;
+    syncMypageDialogScrollLock(false);
   };
   returnRequestDialog?.addEventListener("close", () => { activeReturnOrder = null; });
   document.querySelector("[data-return-request-close]")?.addEventListener("click", closeReturnRequestDialog);
@@ -1283,6 +1395,7 @@
   const closeReviewWriteDialog = () => {
     if (reviewWriteDialog?.open) reviewWriteDialog.close();
     activeReviewOrder = null;
+    syncMypageDialogScrollLock(false);
   };
   document.querySelector("[data-review-write-close]")?.addEventListener("click", closeReviewWriteDialog);
   document.querySelector("[data-review-write-cancel]")?.addEventListener("click", closeReviewWriteDialog);

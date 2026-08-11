@@ -294,6 +294,10 @@ ensureColumn("user_accounts", "role", "role TEXT NOT NULL DEFAULT 'customer' CHE
 ensureColumn("orders", "guest_password_hash", "guest_password_hash TEXT");
 ensureColumn("orders", "guest_address", "guest_address TEXT");
 ensureColumn("order_items", "quantity_unit", "quantity_unit TEXT NOT NULL DEFAULT 'pack'");
+ensureColumn("order_items", "pack_weight_grams", "pack_weight_grams INTEGER");
+ensureColumn("order_items", "half_mal_weight_grams", "half_mal_weight_grams INTEGER");
+ensureColumn("order_items", "mal_weight_grams", "mal_weight_grams INTEGER");
+ensureColumn("order_items", "total_weight_grams", "total_weight_grams INTEGER");
 
 // 과거 버전에서 평문으로 저장한 인증번호도 서버 시작 즉시 해시로 전환한다.
 // 이후 code 컬럼에는 원문 대신 고정 표식만 남긴다.

@@ -3,6 +3,41 @@
   if (typeof module === "object" && module.exports) module.exports = utils;
   if (root) root.CartUtils = utils;
 })(typeof globalThis !== "undefined" ? globalThis : this, function createCartUtils() {
+  const initPwaScrollClass = () => {
+    if (typeof document === "undefined" || typeof window === "undefined") return;
+
+    const pwaQuery = window.matchMedia("(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui)");
+    const hasExplicitPwaParam = () => {
+      const params = new URLSearchParams(window.location.search);
+      const explicit = params.get("pwa");
+      const mobile = params.get("mobile") === "1";
+      const hideScrollbar = params.get("hide-scrollbar") === "1" || params.get("hide_scrollbar") === "1";
+      return explicit === "1" || explicit === "true" || mobile || hideScrollbar;
+    };
+    const mobileViewport = () => window.matchMedia("(max-width: 820px)").matches;
+
+    const applyPwaClass = () => {
+      const isPwa = pwaQuery.matches
+        || window.matchMedia("(display-mode: window-controls-overlay)").matches
+        || Boolean(window.navigator?.standalone)
+        || hasExplicitPwaParam()
+        || mobileViewport();
+      document.documentElement.classList.toggle("is-pwa", isPwa);
+      document.body?.classList.toggle("is-pwa", isPwa);
+      document.documentElement.classList.toggle("hide-scrollbars-mobile", isPwa);
+      document.body?.classList.toggle("hide-scrollbars-mobile", isPwa);
+    };
+
+    applyPwaClass();
+    if (pwaQuery.addEventListener) {
+      pwaQuery.addEventListener("change", applyPwaClass);
+    } else if (pwaQuery.addListener) {
+      pwaQuery.addListener(applyPwaClass);
+    }
+  };
+
+  initPwaScrollClass();
+
   const MAX_QUANTITY = 99;
   const MAL_STEP = 0.5;
   const PACK_STEP = 1;
@@ -30,6 +65,25 @@
     if (!Number.isFinite(quantity)) return minQuantity;
     const snapped = Math.round(quantity / step) * step;
     return Math.min(MAX_QUANTITY, Math.max(minQuantity, snapped));
+  }
+
+  function calculateMalTotal(quantity, halfMalPrice, malPrice) {
+    const normalizedQuantity = normalizeQuantity(quantity, "mal");
+    const fullMalCount = Math.floor(normalizedQuantity);
+    const hasHalfMal = Math.abs(normalizedQuantity - fullMalCount - 0.5) < 1e-8;
+    const fullPrice = Number(malPrice || 0);
+    const halfPrice = Number(halfMalPrice || 0);
+    if (fullPrice <= 0 || halfPrice <= 0) return 0;
+    return (fullMalCount * fullPrice) + (hasHalfMal ? halfPrice : 0);
+  }
+
+  function calculateItemTotal(item) {
+    const unit = parseQuantityUnit(item?.quantityUnit, item?.quantity);
+    const quantity = normalizeQuantity(item?.quantity, unit);
+    if (unit === "pack") return Math.round(Number(item?.price || 0) * quantity);
+    const malPrice = Number(item?.malPrice ?? item?.price ?? 0);
+    const halfMalPrice = Number(item?.halfMalPrice ?? (malPrice > 0 ? malPrice / 2 : 0));
+    return Math.round(calculateMalTotal(quantity, halfMalPrice, malPrice));
   }
 
   function parseCart(value) {
@@ -114,7 +168,7 @@
       selectedQuantity: selectedItems.reduce((sum, item) => sum + item.quantity, 0),
       selectedMalQuantity: selectedTotalsByUnit.mal || 0,
       selectedPackQuantity: selectedTotalsByUnit.pack || 0,
-      selectedPrice: selectedItems.reduce((sum, item) => sum + Number(item.price || 0) * item.quantity, 0),
+      selectedPrice: selectedItems.reduce((sum, item) => sum + calculateItemTotal(item), 0),
     };
   }
 
@@ -138,12 +192,23 @@
         ...item,
         name: product.name,
         price: item.quantityUnit === "mal"
-          ? Math.round(Number(product.price) * (8000 / Number(product.unitWeightGrams || 250)))
+          ? Number(product.malPrice ?? Math.round(Number(product.price) * (8000 / Number(product.unitWeightGrams || 250))))
           : Number(product.price),
         category: product.category,
         imageUrl: product.imageUrl,
       };
-      if (updated.name !== item.name || updated.price !== Number(item.price) || updated.category !== item.category || updated.imageUrl !== item.imageUrl) {
+      if (product.unitWeightGrams != null) updated.unitWeightGrams = product.unitWeightGrams;
+      if (product.halfMalWeightGrams != null) updated.halfMalWeightGrams = product.halfMalWeightGrams;
+      if (product.malWeightGrams != null) updated.malWeightGrams = product.malWeightGrams;
+      if (item.quantityUnit === "mal") {
+        updated.halfMalPrice = Number(product.halfMalPrice ?? 0);
+        updated.malPrice = Number(product.malPrice ?? 0);
+      }
+      if (updated.name !== item.name || updated.price !== Number(item.price)
+        || updated.halfMalPrice !== item.halfMalPrice || updated.malPrice !== item.malPrice
+        || updated.unitWeightGrams !== item.unitWeightGrams || updated.halfMalWeightGrams !== item.halfMalWeightGrams
+        || updated.malWeightGrams !== item.malWeightGrams
+        || updated.category !== item.category || updated.imageUrl !== item.imageUrl) {
         updatedCount += 1;
       }
       nextCart.push(updated);
@@ -151,5 +216,5 @@
     return { cart: nextCart, removedCount, updatedCount };
   }
 
-  return { addItem, parseCart, reconcileProducts, removeItem, removeItems, removeSelected, selectAll, serializeCart, setQuantity, setSelected, summarize };
+  return { addItem, calculateItemTotal, calculateMalTotal, parseCart, reconcileProducts, removeItem, removeItems, removeSelected, selectAll, serializeCart, setQuantity, setSelected, summarize };
 });

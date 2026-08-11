@@ -556,6 +556,203 @@ const migrations = [
         ]), new Date().toISOString());
     },
   },
+  {
+    version: 20,
+    name: "product_unit_weight_and_assorted_chaltteok_copy",
+    up(db) {
+      const columns = new Set(db.prepare("PRAGMA table_info(products)").all().map((column) => column.name));
+      if (!columns.has("unit_weight_grams")) {
+        db.exec("ALTER TABLE products ADD COLUMN unit_weight_grams INTEGER NOT NULL DEFAULT 250");
+      }
+      db.prepare(`UPDATE products
+        SET unit_weight_grams = 230,
+            description = ?,
+            updated_at = ?
+        WHERE id = 'assorted-chaltteok'`)
+        .run("단호박과 밤, 팥, 검은콩을 넉넉히 넣어 만든 수제 모듬찰떡", new Date().toISOString());
+    },
+  },
+  {
+    version: 21,
+    name: "product_detail_images_assorted_chaltteok_seed",
+    up(db) {
+      const columns = new Set(db.prepare("PRAGMA table_info(products)").all().map((column) => column.name));
+      if (!columns.has("detail_images_json")) {
+        db.exec("ALTER TABLE products ADD COLUMN detail_images_json TEXT NOT NULL DEFAULT '[]'");
+      }
+      db.prepare(`UPDATE products
+        SET detail_images_json = ?,
+            updated_at = ?
+        WHERE id = 'assorted-chaltteok'
+          AND (detail_images_json IS NULL OR detail_images_json = '' OR detail_images_json = '[]')`)
+        .run(JSON.stringify([
+          "assets/products/04_warm_ricecake_storage_1200x800.webp",
+          "assets/products/16cd5755-9a6f-411d-8cf8-1d93d9dff89a.png",
+          "assets/products/2a1ee0a9-5fac-43aa-a889-6d59a77a0680.png",
+          "assets/products/c843c321-397a-4ece-a628-3706fa4f7a3f.png",
+        ]), new Date().toISOString());
+    },
+  },
+  {
+    version: 22,
+    name: "product_detail_images_assorted_chaltteok_reorder",
+    up(db) {
+      db.prepare(`UPDATE products
+        SET detail_images_json = ?,
+            updated_at = ?
+        WHERE id = 'assorted-chaltteok'`)
+        .run(JSON.stringify([
+          "assets/products/c843c321-397a-4ece-a628-3706fa4f7a3f.png",
+          "assets/products/2a1ee0a9-5fac-43aa-a889-6d59a77a0680.png",
+          "assets/products/16cd5755-9a6f-411d-8cf8-1d93d9dff89a.png",
+          "assets/products/04_warm_ricecake_storage_1200x800.webp",
+        ]), new Date().toISOString());
+    },
+  },
+  {
+    version: 23,
+    name: "product_and_order_unit_weights",
+    up(db) {
+      const productColumns = new Set(db.prepare("PRAGMA table_info(products)").all().map((column) => column.name));
+      if (!productColumns.has("half_mal_weight_grams")) db.exec("ALTER TABLE products ADD COLUMN half_mal_weight_grams INTEGER");
+      if (!productColumns.has("mal_weight_grams")) db.exec("ALTER TABLE products ADD COLUMN mal_weight_grams INTEGER");
+
+      const itemColumns = new Set(db.prepare("PRAGMA table_info(order_items)").all().map((column) => column.name));
+      if (!itemColumns.has("pack_weight_grams")) db.exec("ALTER TABLE order_items ADD COLUMN pack_weight_grams INTEGER");
+      if (!itemColumns.has("half_mal_weight_grams")) db.exec("ALTER TABLE order_items ADD COLUMN half_mal_weight_grams INTEGER");
+      if (!itemColumns.has("mal_weight_grams")) db.exec("ALTER TABLE order_items ADD COLUMN mal_weight_grams INTEGER");
+      if (!itemColumns.has("total_weight_grams")) db.exec("ALTER TABLE order_items ADD COLUMN total_weight_grams INTEGER");
+    },
+  },
+  {
+    version: 24,
+    name: "naver_product_unit_mappings",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sales_channel_product_unit_mappings (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL DEFAULT 'naver' CHECK (channel = 'naver'),
+          internal_product_id TEXT NOT NULL,
+          sales_unit TEXT NOT NULL CHECK (sales_unit IN ('pack','half_mal','mal')),
+          external_origin_product_no TEXT NOT NULL CHECK (external_origin_product_no GLOB '[0-9]*' AND external_origin_product_no NOT GLOB '*[^0-9]*'),
+          external_channel_product_no TEXT NOT NULL CHECK (external_channel_product_no GLOB '[0-9]*' AND external_channel_product_no NOT GLOB '*[^0-9]*'),
+          external_product_name TEXT NOT NULL,
+          external_status TEXT NOT NULL,
+          mapping_status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (mapping_status IN ('ACTIVE','DISABLED')),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (internal_product_id) REFERENCES products(id) ON DELETE RESTRICT,
+          UNIQUE (channel, internal_product_id, sales_unit),
+          UNIQUE (channel, external_channel_product_no)
+        );
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_product_unit_mappings_status
+          ON sales_channel_product_unit_mappings(channel, mapping_status, updated_at);
+      `);
+      const itemColumns = new Set(db.prepare("PRAGMA table_info(sales_channel_order_import_items)").all().map((column) => column.name));
+      if (!itemColumns.has("product_unit_mapping_id")) db.exec("ALTER TABLE sales_channel_order_import_items ADD COLUMN product_unit_mapping_id TEXT REFERENCES sales_channel_product_unit_mappings(id) ON DELETE SET NULL");
+      if (!itemColumns.has("sales_unit_snapshot")) db.exec("ALTER TABLE sales_channel_order_import_items ADD COLUMN sales_unit_snapshot TEXT CHECK (sales_unit_snapshot IS NULL OR sales_unit_snapshot IN ('pack','half_mal','mal'))");
+    },
+  },
+  {
+    version: 25,
+    name: "naver_order_internal_conversion",
+    up(db) {
+      const orderColumns = new Set(db.prepare("PRAGMA table_info(orders)").all().map((column) => column.name));
+      if (!orderColumns.has("source_channel")) db.exec("ALTER TABLE orders ADD COLUMN source_channel TEXT");
+      if (!orderColumns.has("external_order_id")) db.exec("ALTER TABLE orders ADD COLUMN external_order_id TEXT");
+      db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_source_external
+          ON orders(source_channel, external_order_id)
+          WHERE source_channel IS NOT NULL AND external_order_id IS NOT NULL;
+        CREATE TABLE IF NOT EXISTS sales_channel_order_conversions (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          channel_order_import_id TEXT NOT NULL,
+          external_order_id TEXT NOT NULL,
+          internal_order_id TEXT,
+          conversion_status TEXT NOT NULL CHECK (conversion_status IN ('CONVERTED','MANUAL_REVIEW','FAILED')),
+          safe_error_code TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (channel, channel_order_import_id),
+          UNIQUE (channel, external_order_id),
+          FOREIGN KEY (channel_order_import_id) REFERENCES sales_channel_order_imports(id) ON DELETE RESTRICT,
+          FOREIGN KEY (internal_order_id) REFERENCES orders(id) ON DELETE RESTRICT
+        );
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_conversions_status
+          ON sales_channel_order_conversions(channel, conversion_status, updated_at);
+      `);
+    },
+  },
+  {
+    version: 26,
+    name: "naver_order_status_synchronization",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sales_channel_order_status_syncs (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel = 'naver'),
+          conversion_id TEXT NOT NULL,
+          channel_order_import_id TEXT NOT NULL,
+          internal_order_id TEXT NOT NULL,
+          external_status TEXT,
+          source_changed_at TEXT,
+          internal_status TEXT NOT NULL,
+          sync_status TEXT NOT NULL CHECK (sync_status IN ('SYNCHRONIZED','MANUAL_REVIEW')),
+          safe_error_code TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (channel, conversion_id),
+          FOREIGN KEY (conversion_id) REFERENCES sales_channel_order_conversions(id) ON DELETE RESTRICT,
+          FOREIGN KEY (channel_order_import_id) REFERENCES sales_channel_order_imports(id) ON DELETE RESTRICT,
+          FOREIGN KEY (internal_order_id) REFERENCES orders(id) ON DELETE RESTRICT
+        );
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_order_status_syncs_review
+          ON sales_channel_order_status_syncs(channel, sync_status, updated_at);
+      `);
+    },
+  },
+  {
+    version: 27,
+    name: "naver_shipment_dispatches",
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS sales_channel_shipment_dispatches (
+          id TEXT PRIMARY KEY,
+          channel TEXT NOT NULL CHECK (channel='naver'),
+          internal_order_id TEXT NOT NULL,
+          conversion_id TEXT NOT NULL,
+          carrier_code TEXT NOT NULL,
+          tracking_number TEXT NOT NULL,
+          dispatch_status TEXT NOT NULL CHECK (dispatch_status IN ('PROCESSING','SUCCEEDED','FAILED','RECONCILE_REQUIRED')),
+          attempt_count INTEGER NOT NULL DEFAULT 1 CHECK (attempt_count > 0),
+          safe_error_code TEXT,
+          lock_token TEXT,
+          requested_at TEXT NOT NULL,
+          completed_at TEXT,
+          updated_at TEXT NOT NULL,
+          UNIQUE (channel, internal_order_id),
+          FOREIGN KEY (internal_order_id) REFERENCES orders(id) ON DELETE RESTRICT,
+          FOREIGN KEY (conversion_id) REFERENCES sales_channel_order_conversions(id) ON DELETE RESTRICT
+        );
+        CREATE INDEX IF NOT EXISTS idx_sales_channel_shipment_dispatches_status
+          ON sales_channel_shipment_dispatches(channel,dispatch_status,updated_at);
+      `);
+    },
+  },
+  {
+    version: 28,
+    name: "naver_shipment_reconciliation",
+    up(db) {
+      const columns = new Set(db.prepare("PRAGMA table_info(sales_channel_shipment_dispatches)").all().map((column) => column.name));
+      if (!columns.has("reconciliation_attempt_count")) {
+        db.exec("ALTER TABLE sales_channel_shipment_dispatches ADD COLUMN reconciliation_attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (reconciliation_attempt_count >= 0)");
+      }
+      if (!columns.has("last_reconciled_at")) {
+        db.exec("ALTER TABLE sales_channel_shipment_dispatches ADD COLUMN last_reconciled_at TEXT");
+      }
+    },
+  },
 ];
 
 function runMigrations(db) {

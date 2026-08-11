@@ -3,6 +3,7 @@
 @import url("css/auth.css");
 @import url("css/commerce.css");
 @import url("css/admin.css");
-@import url("css/refinements.css");
+@import url("css/refinements.css?v=3");
 @import url("css/interactions.css?v=1");
 @import url("css/pages.css");
+@import url("css/pwa-global.css?v=1");

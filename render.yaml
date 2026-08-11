@@ -18,12 +18,22 @@ services:
         value: /data/tteokjip.db
       - key: BACKUP_DIR
         value: /data/backups
-      - key: ADMIN_CODE
-        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: AUTH_CODE_PEPPER
         generateValue: true
+      - key: ADMIN_JWT_ISSUER
+        value: shoppingmall-production-admin
+      - key: ADMIN_JWT_AUDIENCE
+        value: shoppingmall-production-admin-api
+      - key: ADMIN_TOKEN_TTL
+        value: 1h
+      - key: ADMIN_LOGIN_RATE_MAX
+        value: 5
+      - key: ADMIN_LOGIN_RATE_WINDOW_MS
+        value: 900000
+      - key: ALLOW_LEGACY_ADMIN_LOGIN
+        value: false
       - key: ALLOWED_ORIGIN
         sync: false
       - key: PUBLIC_BASE_URL
@@ -42,7 +52,39 @@ services:
         sync: false
       - key: PAYMENT_MODE
         value: disabled
+      - key: TOSS_MOCK_MODE
+        value: false
       - key: NOTIFICATION_MODE
         value: none
       - key: EMAIL_MODE
         value: disabled
+      - key: NAVER_COMMERCE_SYNC_ENABLED
+        value: false
+      - key: NAVER_COMMERCE_CLIENT_ID
+        sync: false
+      - key: NAVER_COMMERCE_CLIENT_SECRET
+        sync: false
+      - key: NAVER_COMMERCE_AUTH_TYPE
+        value: SELF
+      - key: NAVER_COMMERCE_ACCOUNT_ID
+        sync: false
+      - key: NAVER_COMMERCE_API_BASE_URL
+        value: https://api.commerce.naver.com/external
+      - key: NAVER_COMMERCE_REQUEST_TIMEOUT_MS
+        value: 10000
+      - key: NAVER_ORDER_IMPORT_ENABLED
+        value: false
+      - key: NAVER_ORDER_POLL_INTERVAL_MS
+        value: 120000
+      - key: NAVER_ORDER_INITIAL_LOOKBACK_MINUTES
+        value: 10
+      - key: NAVER_ORDER_PII_KEY
+        sync: false
+      - key: NAVER_ORDER_PII_KEY_VERSION
+        value: v1
+      - key: ORDER_PII_PROTECTION_ENABLED
+        value: true
+      - key: ORDER_PII_KEYS_JSON
+        sync: false
+      - key: ORDER_PII_ACTIVE_KEY_VERSION
+        sync: false

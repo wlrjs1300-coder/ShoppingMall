@@ -1,0 +1,105 @@
+.is-pwa,
+.is-pwa body,
+.is-pwa * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  scrollbar-gutter: auto !important;
+}
+
+.hide-scrollbars-mobile,
+.hide-scrollbars-mobile body,
+.hide-scrollbars-mobile * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.is-pwa,
+.is-pwa body,
+.hide-scrollbars-mobile {
+  overflow-x: clip;
+}
+
+.is-pwa::-webkit-scrollbar,
+.is-pwa body::-webkit-scrollbar,
+.is-pwa *::-webkit-scrollbar,
+html.is-pwa::-webkit-scrollbar,
+body.is-pwa::-webkit-scrollbar,
+html.is-pwa *::-webkit-scrollbar,
+body.is-pwa *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+html.is-pwa,
+html.is-pwa body {
+  overflow-x: hidden !important;
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui), (display-mode: window-controls-overlay) {
+  :is(html, body, html *) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  :is(html, body, html *)::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+  }
+}
+
+@media (max-width: 820px) {
+  :is(html, body, html *) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  :is(html, body, html *)::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+  }
+}
+
+/* PWA text rendering: prevent awkward sentence truncation on mobile-installed mode */
+:is(.is-pwa, .hide-scrollbars-mobile) p {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  text-wrap: pretty;
+}
+
+/* Ensure paragraph-like text blocks wrap naturally in PWA */
+:is(.is-pwa, .hide-scrollbars-mobile) :is(
+  p, h1, h2, h3, h4, h5, h6,
+  li, span, strong, small, em, b, i,
+  label, dt, dd, summary, time, a, button
+) {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  text-wrap: pretty;
+}
+
+/* Keep intentionally formatted block text as-is */
+:is(.is-pwa, .hide-scrollbars-mobile) .mypage-inquiry-answer p,
+:is(.is-pwa, .hide-scrollbars-mobile) .guest-inquiry-result section p,
+:is(.is-pwa, .hide-scrollbars-mobile) .admin-order-request-section .admin-order-detail-memo {
+  white-space: pre-wrap !important;
+}
+
+/* PWA/mainscreen: match banner height to the text box */
+:is(.is-pwa, .hide-scrollbars-mobile) .home-page .home-hero,
+:is(.is-pwa, .hide-scrollbars-mobile) .home-page .hero-slides {
+  min-height: clamp(460px, 58vh, 560px);
+  height: clamp(460px, 58vh, 560px);
+}
+
+:is(.is-pwa, .hide-scrollbars-mobile) .home-page .hero-slide-content {
+  min-height: clamp(360px, 50vh, 460px);
+  height: clamp(360px, 50vh, 460px);
+  align-content: center;
+  padding-top: clamp(14px, 2vw, 26px);
+  padding-bottom: clamp(14px, 2vw, 26px);
+}

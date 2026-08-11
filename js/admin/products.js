@@ -166,14 +166,14 @@ function renderAdminProducts() {
 
   list.innerHTML = products.map((product) => `
     <tr data-admin-product-id="${escapeHtml(product.id)}" draggable="true">
-      <td><div class="admin-product-order-controls"><button type="button" data-admin-product-move="up" aria-label="${escapeHtml(product.name)} 위로 이동">↑</button><span title="끌어서 순서 변경" aria-hidden="true">⠿</span><button type="button" data-admin-product-move="down" aria-label="${escapeHtml(product.name)} 아래로 이동">↓</button></div></td>
-      <td><img class="admin-product-thumb" src="${escapeHtml(product.imageUrl)}" alt="" /></td>
-      <td><strong>${escapeHtml(product.name)}</strong><p>${escapeHtml(product.description || "설명 없음")}</p></td>
-      <td>${escapeHtml(product.category)}</td>
-      <td>${product.purchaseType === "direct" ? "바로 구매" : "상담 주문"}</td>
-      <td>${escapeHtml(formatAdminProductPrice(product))}</td>
-      <td><button class="admin-product-status ${product.status === "active" ? "is-active" : "is-inactive"}" type="button" data-admin-product-toggle aria-label="${escapeHtml(product.name)} 판매 상태 변경">${product.status === "active" ? "판매 중" : "판매 중지"}</button></td>
-      <td><div class="admin-row-actions"><button type="button" data-admin-product-edit>수정</button><button class="is-danger" type="button" data-admin-product-delete>삭제</button></div></td>
+      <td class="admin-product-order-cell"><div class="admin-product-order-controls"><button type="button" data-admin-product-move="up" aria-label="${escapeHtml(product.name)} 위로 이동">↑</button><span title="끌어서 순서 변경" aria-hidden="true">⠿</span><button type="button" data-admin-product-move="down" aria-label="${escapeHtml(product.name)} 아래로 이동">↓</button></div></td>
+      <td class="admin-product-image-cell"><img class="admin-product-thumb" src="${escapeHtml(product.imageUrl)}" alt="" /></td>
+      <td class="admin-product-name-cell"><strong>${escapeHtml(product.name)}</strong><p>${escapeHtml(product.description || "설명 없음")}</p></td>
+      <td class="admin-product-category-cell" data-label="카테고리">${escapeHtml(product.category)}</td>
+      <td class="admin-product-purchase-cell" data-label="판매 방식">${product.purchaseType === "direct" ? "바로 구매" : "상담 주문"}</td>
+      <td class="admin-product-price-cell" data-label="판매가">${escapeHtml(formatAdminProductPrice(product))}</td>
+      <td class="admin-product-status-cell" data-label="판매 상태"><button class="admin-product-status ${product.status === "active" ? "is-active" : "is-inactive"}" type="button" data-admin-product-toggle aria-label="${escapeHtml(product.name)} 판매 상태 변경">${product.status === "active" ? "판매 중" : "판매 중지"}</button></td>
+      <td class="admin-product-actions-cell"><div class="admin-row-actions"><button type="button" data-admin-product-edit>수정</button><button class="is-danger" type="button" data-admin-product-delete>삭제</button></div></td>
     </tr>`).join("");
 
   const empty = document.querySelector("[data-admin-product-empty]");
@@ -208,11 +208,18 @@ function syncAdminProductPriceField() {
   const isDirect = form.elements.purchaseType.value === "direct";
   const field = form.querySelector("[data-admin-product-price-field]");
   const inputs = [form.elements.price, form.elements.halfMalPrice, form.elements.malPrice];
+  const weightInputs = [form.elements.unitWeightGrams, form.elements.halfMalWeightGrams, form.elements.malWeightGrams];
   const help = form.querySelector("[data-admin-product-purchase-help]");
   field?.classList.toggle("is-disabled", !isDirect);
+  form.querySelector("[data-admin-product-weight-field]")?.classList.toggle("is-disabled", !isDirect);
   inputs.forEach((input) => {
     input.disabled = !isDirect;
     input.required = isDirect;
+    if (!isDirect) input.value = "";
+  });
+  weightInputs.forEach((input, index) => {
+    input.disabled = !isDirect;
+    input.required = isDirect && index === 0;
     if (!isDirect) input.value = "";
   });
   if (help) help.textContent = isDirect
@@ -324,6 +331,9 @@ function openAdminProductForm(product = null) {
   form.elements.price.value = product?.price ?? "";
   form.elements.halfMalPrice.value = product?.halfMalPrice ?? "";
   form.elements.malPrice.value = product?.malPrice ?? "";
+  form.elements.unitWeightGrams.value = product?.unitWeightGrams ?? 250;
+  form.elements.halfMalWeightGrams.value = product?.halfMalWeightGrams ?? "";
+  form.elements.malWeightGrams.value = product?.malWeightGrams ?? "";
   form.elements.displayOrder.value = product?.displayOrder ?? Math.max(0, ...adminProducts.map((item) => Number(item.displayOrder || 0))) + 1;
   form.elements.status.value = product?.status || "active";
   form.elements.imageUrl.value = product?.imageUrl || "";
@@ -417,6 +427,9 @@ document.querySelector("[data-admin-product-form]")?.elements.category.addEventL
 document.querySelector("[data-admin-product-form]")?.elements.price.addEventListener("input", syncAdminProductPreview);
 document.querySelector("[data-admin-product-form]")?.elements.halfMalPrice.addEventListener("input", syncAdminProductPreview);
 document.querySelector("[data-admin-product-form]")?.elements.malPrice.addEventListener("input", syncAdminProductPreview);
+document.querySelector("[data-admin-product-form]")?.elements.unitWeightGrams.addEventListener("input", syncAdminProductPreview);
+document.querySelector("[data-admin-product-form]")?.elements.halfMalWeightGrams.addEventListener("input", syncAdminProductPreview);
+document.querySelector("[data-admin-product-form]")?.elements.malWeightGrams.addEventListener("input", syncAdminProductPreview);
 document.querySelector("[data-admin-product-form]")?.elements.description.addEventListener("input", syncAdminProductPreview);
 document.querySelector("[data-admin-product-origin-rows]")?.addEventListener("input", syncAdminProductOriginRows);
 document.querySelector("[data-admin-product-origin-rows]")?.addEventListener("click", (event) => {
@@ -470,6 +483,9 @@ document.querySelector("[data-admin-product-form]")?.addEventListener("submit", 
     price: form.elements.purchaseType.value === "direct" ? Number(form.elements.price.value) : null,
     halfMalPrice: form.elements.purchaseType.value === "direct" ? Number(form.elements.halfMalPrice.value) : null,
     malPrice: form.elements.purchaseType.value === "direct" ? Number(form.elements.malPrice.value) : null,
+    unitWeightGrams: form.elements.purchaseType.value === "direct" ? Number(form.elements.unitWeightGrams.value) : null,
+    halfMalWeightGrams: form.elements.purchaseType.value === "direct" && form.elements.halfMalWeightGrams.value ? Number(form.elements.halfMalWeightGrams.value) : null,
+    malWeightGrams: form.elements.purchaseType.value === "direct" && form.elements.malWeightGrams.value ? Number(form.elements.malWeightGrams.value) : null,
     displayOrder: Number(form.elements.displayOrder.value),
     status: form.elements.status.value,
     imageUrl: form.elements.imageUrl.value.trim(),
