@@ -8,6 +8,7 @@ const { assertProductionConfig } = require("./config");
 if (require.main === module) assertProductionConfig();
 const db = require("./db");
 const { notifyPickupReminders } = require("./services/notify");
+const { createNaverOrderPollScheduler } = require("./services/naver-order-poll-scheduler");
 const { requestContext, securityHeaders } = require("./middleware/security");
 
 const app = express();
@@ -116,7 +117,9 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/admin-users", require("./routes/admin-users"));
 app.use("/api/sales-channels", require("./routes/sales-channels"));
 app.use("/api/sales-channels", require("./routes/naver-product-mappings"));
+app.use("/api/sales-channels", require("./routes/naver-product-unit-mappings"));
 app.use("/api/sales-channels", require("./routes/naver-order-imports"));
+app.use("/api/sales-channels", require("./routes/naver-shipments"));
 app.use("/api/auth/social", require("./routes/social-auth"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/customers", require("./routes/customers"));
@@ -186,14 +189,19 @@ function schedulePickupReminders() {
 }
 
 if (require.main === module) {
+  const naverOrderPoller = createNaverOrderPollScheduler({ db });
   const server = app.listen(PORT, () => {
     console.log(`따뜻한 떡집 서버 실행 중 → http://localhost:${PORT}`);
     if ((process.env.NOTIFICATION_MODE || "none") !== "none") {
       schedulePickupReminders();
     }
+    if (naverOrderPoller.start()) {
+      console.log("[네이버 주문] 자동 수집을 시작합니다.");
+    }
   });
 
   process.on("SIGTERM", () => {
+    naverOrderPoller.stop();
     console.log("[서버] 종료 신호 수신. 정상 종료 중…");
     server.close(() => {
       db.close();

@@ -35,6 +35,9 @@
 | `ADMIN_TOKEN_TTL` | 필수 | 아니요 | `1h` 같은 양의 `m/h/d` 값 | 배포 환경 |
 | `ADMIN_LOGIN_RATE_MAX` | 필수 | 아니요 | 양의 정수 | 배포 환경 |
 | `ADMIN_LOGIN_RATE_WINDOW_MS` | 필수 | 아니요 | 양의 정수(ms) | 배포 환경 |
+| `ORDER_PII_PROTECTION_ENABLED` | 필수 | 아니요 | staging·production 모두 `true` | 배포 환경 |
+| `ORDER_PII_KEYS_JSON` | 필수 | 예 | Base64 32바이트 키를 포함한 version keyring | 비밀 저장소 |
+| `ORDER_PII_ACTIVE_KEY_VERSION` | 필수 | 예 | keyring에 존재하는 활성 version | 비밀 저장소 |
 | `PAYMENT_MODE` | 필수 | 아니요 | `disabled` 또는 `toss` | 배포 환경 |
 | `TOSS_CLIENT_KEY` | toss일 때 | 아니요 | 운영 client key, `test_` 금지 | 배포 환경 |
 | `TOSS_SECRET_KEY` | toss일 때 | 예 | 운영 secret key, `test_` 금지 | 비밀 저장소 |
@@ -48,6 +51,7 @@
 - [ ] 실제 JWT, Toss secret, 인증 pepper, legacy 관리자 코드를 Git·문서·로그에 남기지 않았다.
 - [ ] production에서 `ALLOW_LEGACY_ADMIN_LOGIN=true`와 demo/test 변수가 없다.
 - [ ] staging과 production의 DB, JWT, Toss 키가 분리됐다.
+- [ ] staging과 production의 주문 PII keyring이 서로 다르고 암호화가 강제된다.
 - [ ] 배포 담당자만 비밀 저장소 읽기·변경 권한을 갖는다.
 
 ## 5. DB 준비
@@ -60,8 +64,10 @@
 
 ## 6. 백업 준비
 
-- [ ] `BACKUP_DIR`이 DB 디렉터리와 다른 외부 영구 저장소다.
-- [ ] `npm run backup:create` 스케줄과 보존 정책을 등록했다.
+- [ ] `BACKUP_DIR`이 DB 디렉터리와 분리되어 있다.
+- [ ] Render의 동일 영구 디스크 안에 있는 `BACKUP_DIR` 사본은 재해복구 백업으로 계산하지 않는다.
+- [ ] 검증된 백업을 다른 저장소·계정으로 반출하는 절차와 담당자가 있다.
+- [ ] `npm run backup:create` 실행과 보존 정책을 등록했다. Render Cron Job은 웹 서비스 영구 디스크에 접근할 수 없으므로 해당 방식에 의존하지 않는다.
 - [ ] `npm run backup:verify` 정기 실행과 알림 담당자를 정했다.
 - [ ] 복원 훈련 일정과 최근 성공 기록이 있다.
 

@@ -160,6 +160,29 @@ function naverCommerceConfigErrors(env = process.env) {
 function naverOrderImportConfigErrors(env = process.env) {
   if (valueOf(env, "NAVER_ORDER_IMPORT_ENABLED").toLowerCase() !== "true") return [];
   const errors = [];
+  if (valueOf(env, "NAVER_COMMERCE_SYNC_ENABLED").toLowerCase() !== "true") {
+    errors.push({
+      code: "NAVER_COMMERCE_SYNC_REQUIRED",
+      key: "NAVER_COMMERCE_SYNC_ENABLED",
+      message: "네이버 주문 수집을 사용하려면 네이버 커머스 API 연동도 활성화해야 합니다.",
+    });
+  }
+  const pollIntervalMs = Number(valueOf(env, "NAVER_ORDER_POLL_INTERVAL_MS") || 120000);
+  if (!Number.isSafeInteger(pollIntervalMs) || pollIntervalMs < 60000 || pollIntervalMs > 180000) {
+    errors.push({
+      code: "NAVER_ORDER_POLL_INTERVAL_INVALID",
+      key: "NAVER_ORDER_POLL_INTERVAL_MS",
+      message: "네이버 주문 수집 주기는 공식 권장 범위인 60000~180000ms여야 합니다.",
+    });
+  }
+  const lookbackMinutes = Number(valueOf(env, "NAVER_ORDER_INITIAL_LOOKBACK_MINUTES") || 10);
+  if (!Number.isSafeInteger(lookbackMinutes) || lookbackMinutes < 1 || lookbackMinutes > 1440) {
+    errors.push({
+      code: "NAVER_ORDER_INITIAL_LOOKBACK_INVALID",
+      key: "NAVER_ORDER_INITIAL_LOOKBACK_MINUTES",
+      message: "네이버 주문 최초 조회 범위는 1~1440분이어야 합니다.",
+    });
+  }
   const encodedKey = valueOf(env, "NAVER_ORDER_PII_KEY");
   const keyVersion = valueOf(env, "NAVER_ORDER_PII_KEY_VERSION");
   let validKey = false;
@@ -251,6 +274,10 @@ function productionConfigErrors(env = process.env) {
   }
   for (const key of ["ADMIN_LOGIN_RATE_MAX", "ADMIN_LOGIN_RATE_WINDOW_MS"]) {
     if (isConfigured(env, key) && !/^[1-9]\d*$/.test(valueOf(env, key))) errors.push(`${key}는 양의 정수여야 합니다.`);
+  }
+
+  if (valueOf(env, "ORDER_PII_PROTECTION_ENABLED").toLowerCase() !== "true") {
+    errors.push("staging과 production에서는 ORDER_PII_PROTECTION_ENABLED=true가 필수입니다.");
   }
 
   const publicBaseUrl = parseProductionUrl(valueOf(env, "PUBLIC_BASE_URL"));

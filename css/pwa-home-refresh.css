@@ -1,0 +1,307 @@
+/*
+ * PWA home refresh
+ * Scope is intentionally limited to installed/PWA mode on the home page.
+ * Rollback: remove this stylesheet link from index.html.
+ */
+
+@media (max-width: 760px) {
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .site-header {
+    gap: 9px 12px;
+    min-height: 0;
+    padding: 10px 16px 12px;
+    border-bottom-color: rgba(223, 79, 109, 0.1);
+    background: rgba(255, 252, 248, 0.96);
+    box-shadow: 0 8px 24px rgba(91, 48, 60, 0.055);
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .brand-logo {
+    width: 106px;
+    max-height: 50px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .mobile-nav-toggle {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    padding: 12px 11px;
+    gap: 5px;
+    border-color: rgba(223, 79, 109, 0.2);
+    border-radius: 14px;
+    color: #4d373c;
+    background: linear-gradient(145deg, #fff, #fff7f8);
+    box-shadow: 0 6px 18px rgba(126, 71, 84, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .mobile-nav-toggle::after {
+    position: absolute;
+    inset: -5px;
+    border: 1px solid rgba(223, 79, 109, 0.07);
+    border-radius: 18px;
+    content: "";
+    pointer-events: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .mobile-nav-toggle > span:not(.sr-only) {
+    width: 20px;
+    height: 2px;
+    margin-inline: auto;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .mobile-nav-toggle:active {
+    transform: scale(0.96);
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .mobile-nav-toggle:focus-visible {
+    outline: 3px solid rgba(245, 107, 133, 0.2);
+    outline-offset: 2px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .header-search {
+    min-height: 43px;
+    padding: 5px 9px 5px 17px;
+    border-color: rgba(223, 79, 109, 0.18);
+    box-shadow: 0 5px 18px rgba(91, 48, 60, 0.045);
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .home-hero {
+    display: block;
+    height: auto;
+    min-height: 0;
+    padding: 0 12px 6px;
+    background: linear-gradient(180deg, #fffaf8 0%, #fff 100%);
+    border-bottom: 0;
+    overflow: visible;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    margin: 0 -12px;
+    padding: 8px 12px 9px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    border: 0;
+    border-top: 1px solid rgba(223, 79, 109, 0.07);
+    border-bottom: 1px solid rgba(223, 79, 109, 0.1);
+    background: rgba(255, 253, 251, 0.98);
+    box-shadow: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav a {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 0;
+    min-width: 66px;
+    min-height: 43px;
+    justify-content: center;
+    padding: 8px 12px 10px;
+    color: #766168;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    box-shadow: none;
+    scroll-snap-align: start;
+    transform: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav a::before {
+    position: absolute;
+    right: 13px;
+    bottom: 5px;
+    left: 13px;
+    width: auto;
+    height: 2px;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+    content: "";
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav a.is-all {
+    min-width: 78px;
+    color: #cf4261;
+    background: rgba(245, 107, 133, 0.075);
+    box-shadow: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav a.is-all::before {
+    right: 15px;
+    left: 15px;
+    width: auto;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #df4f6d, #f47e95);
+    box-shadow: none;
+    opacity: 1;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav a:active {
+    color: #cf4261;
+    background: rgba(245, 107, 133, 0.07);
+    transform: scale(0.975);
+    box-shadow: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav a:hover {
+    color: #cf4261;
+    border-color: transparent;
+    background: rgba(245, 107, 133, 0.055);
+    box-shadow: none;
+    transform: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-category-nav a:focus-visible {
+    outline: 3px solid rgba(245, 107, 133, 0.2);
+    outline-offset: 2px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .category-nav-number {
+    display: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .category-nav-copy {
+    display: block;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .category-nav-copy strong {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.035em;
+    white-space: nowrap !important;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .category-nav-copy small,
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .category-nav-arrow {
+    display: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-carousel {
+    height: clamp(350px, 47vh, 410px);
+    min-height: 350px;
+    margin-top: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(223, 79, 109, 0.13);
+    border-radius: 22px;
+    background: #f8efea;
+    box-shadow: 0 16px 38px rgba(93, 53, 63, 0.11);
+    touch-action: pan-y;
+    user-select: none;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .home-best-section {
+    margin-top: 18px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slides {
+    height: 100%;
+    min-height: 0;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slide {
+    background-position: center 54%;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slide::before {
+    background: linear-gradient(90deg, rgba(255, 252, 250, 0.94) 0%, rgba(255, 252, 250, 0.76) 48%, rgba(255, 252, 250, 0.08) 100%);
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-event-slide .hero-slide-content {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 44px 18px 62px;
+    align-content: center;
+    background: transparent;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-event-slide .hero-slide-content::before {
+    top: 24px;
+    right: auto;
+    bottom: 24px;
+    left: 0;
+    width: 3px;
+    height: auto;
+    background: linear-gradient(180deg, transparent, var(--pink-deep) 28%, var(--pink-deep) 72%, transparent);
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slide-content h1 {
+    max-width: 420px;
+    font-size: clamp(27px, 7.5vw, 35px);
+    line-height: 1.18;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slide-content > p:not(.eyebrow) {
+    max-width: 370px;
+    margin-top: 13px;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slide-content .hero-actions {
+    width: 100%;
+    margin-top: 17px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slide-content .hero-actions a {
+    width: 100%;
+    min-height: 42px;
+    box-shadow: 0 9px 20px rgba(223, 79, 109, 0.2);
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-carousel-controls {
+    bottom: 11px;
+    left: 15px;
+    gap: 4px;
+    min-height: 38px;
+    padding: 4px 6px;
+    border: 1px solid rgba(223, 79, 109, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.84);
+    box-shadow: 0 7px 18px rgba(91, 48, 60, 0.09);
+    backdrop-filter: blur(9px);
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-carousel-controls button {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: transparent;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-carousel-controls span {
+    min-width: 38px;
+    font-size: 11px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-carousel-dots {
+    right: 16px;
+    bottom: 24px;
+  }
+}
+
+@media (max-width: 390px) {
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-carousel {
+    height: 350px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-event-slide .hero-slide-content {
+    padding-inline: 15px;
+  }
+
+  :is(html.is-pwa, html.hide-scrollbars-mobile) body.home-page .hero-slide-content h1 {
+    font-size: 26px;
+  }
+}

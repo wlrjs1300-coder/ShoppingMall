@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -9,15 +9,21 @@
   <link rel="stylesheet" href="styles.css?v=135" />
   <style>
     html:has(body.mypage-page .order-detail-dialog[open]),
+    html:has(body.mypage-page .order-cancel-dialog[open]),
     html:has(body.mypage-page .return-request-dialog[open]),
-    html:has(body.mypage-page .review-write-dialog[open]) {
+    html:has(body.mypage-page .review-write-dialog[open]),
+    html.has-open-dialog,
+    body.has-open-dialog {
       overflow: hidden;
       scrollbar-gutter: stable;
+      overscroll-behavior: none;
     }
 
     body.mypage-page:has(.order-detail-dialog[open]),
+    body.mypage-page:has(.order-cancel-dialog[open]),
     body.mypage-page:has(.return-request-dialog[open]),
-    body.mypage-page:has(.review-write-dialog[open]) {
+    body.mypage-page:has(.review-write-dialog[open]),
+    body.has-open-dialog {
       overflow: hidden;
       overscroll-behavior: none;
     }
@@ -27,6 +33,15 @@
     .mypage-page .review-write-dialog[open],
     .mypage-page .return-request-body {
       overscroll-behavior: contain;
+    }
+
+    .mypage-page .mypage-section {
+      margin-top: 30px;
+      padding: 32px;
+      border: 1.8px solid #e6c4d0;
+      border-radius: 20px;
+      background: linear-gradient(180deg, #fff, #fffdf9);
+      box-shadow: 0 16px 30px rgba(92, 45, 57, 0.055), 0 0 0 1px rgba(255, 255, 255, 0.55) inset;
     }
 
     .mypage-page .mypage-profile-layout {
@@ -86,6 +101,7 @@
       flex-direction: column;
       min-height: 0;
       padding: 20px 22px;
+      border: 1.5px solid #efd0d8;
       border-radius: 16px;
       background: #fffdfa;
       box-shadow: 0 9px 24px rgba(82, 48, 57, 0.05);
@@ -263,10 +279,20 @@
     }
 
     .mypage-page .mypage-review-card {
-      padding: 20px 22px;
-      border: 1px solid #ebd9dd;
-      border-radius: 15px;
       background: #fffdfa;
+      padding: 20px 22px;
+      border: 1.6px solid #e6c6cf;
+      border-radius: 15px;
+      box-shadow: 0 7px 18px rgba(80, 50, 58, 0.055);
+    }
+
+    .mypage-page .member-order-card {
+      border: 1.4px solid #ead3da;
+      border-radius: 15px;
+    }
+
+    .mypage-page .mypage-inquiry-card {
+      border: 1.6px solid #efd1d8;
     }
 
     .mypage-page .mypage-review-card header {
@@ -277,6 +303,16 @@
     }
 
     .mypage-page .mypage-review-card h3 { margin: 0 0 5px; font-size: 16px; }
+
+    .mypage-page .order-action-tab,
+    .mypage-page .member-order-actions button,
+    .mypage-page .member-order-actions .order-action-tab {
+      white-space: nowrap !important;
+      overflow: hidden;
+      overflow-wrap: normal !important;
+      text-overflow: ellipsis;
+      word-break: keep-all !important;
+    }
     .mypage-page .mypage-review-stars { color: #e5a52f; letter-spacing: 0.08em; }
     .mypage-page .mypage-review-card time { color: #9a858a; font-size: 11px; white-space: nowrap; }
     .mypage-page .mypage-review-card p { margin: 0; color: #665159; font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
@@ -288,9 +324,9 @@
     .mypage-page .mypage-inquiry-photos img { width: 112px; height: 92px; border-radius: 10px; object-fit: cover; background: #f5e9ec; }
     .mypage-page .mypage-inquiry-id { display: block; margin-top: 8px; color: #a08a90; font-size: 10px; line-height: 1.45; word-break: break-all; }
     .mypage-page .mypage-content-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 15px; padding-top: 13px; border-top: 1px solid #f0e2e5; }
-    .mypage-page .mypage-content-actions button { min-height: 34px; padding: 0 13px; border: 1px solid #e2d1d5; border-radius: 9px; color: #705960; background: #fff; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; }
+    .mypage-page .mypage-content-actions button { min-height: 34px; padding: 0 13px; border: 1.6px solid #d9a3b0; border-radius: 9px; color: #705960; background: #fff; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; box-shadow: 0 1px 0 rgba(199, 123, 146, 0.12) inset; }
     .mypage-page .mypage-content-actions button:hover { border-color: #d78fa0; color: #bd3e5b; background: #fff7f9; }
-    .mypage-page .mypage-content-actions button.is-danger { color: #ae6676; background: #fffafa; }
+    .mypage-page .mypage-content-actions button.is-danger { border-color: #ce8a9e; color: #ae6676; background: #fffafa; }
     .mypage-page .mypage-content-actions button[disabled] { cursor: not-allowed; opacity: .45; }
     .mypage-page .mypage-edit-dialog { width: min(520px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 20px; color: #3e2b30; background: #fffdfa; box-shadow: 0 26px 80px rgba(55, 29, 37, .25); }
     .mypage-page .mypage-edit-dialog::backdrop { background: rgba(49, 31, 36, .42); backdrop-filter: blur(3px); }
@@ -326,7 +362,7 @@
     .mypage-page .return-request-head span { color: #c34a65; font-size: 10px; font-weight: 900; letter-spacing: .13em; }
     .mypage-page .return-request-head h2 { margin: 2px 0 0; font-size: 19px; letter-spacing: -.03em; }
     .mypage-page .return-request-close { position: absolute; top: 13px; right: 17px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid #ead6db; border-radius: 50%; color: #7c646a; background: #fff; font-size: 19px; cursor: pointer; }
-    .mypage-page .return-request-body { display: grid; gap: 14px; max-height: calc(92vh - 70px); padding: 17px 24px 20px; overflow-y: auto; }
+    .mypage-page .return-request-body { display: grid; gap: 14px; max-height: calc(88dvh - 70px); padding: 17px 24px 20px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     .mypage-page .return-order-summary { display: flex; justify-content: space-between; gap: 18px; padding: 15px 17px; border: 1px solid #efdee2; border-radius: 13px; background: #fff9fa; }
     .mypage-page .return-order-summary span { display: block; margin-bottom: 4px; color: #9a7d84; font-size: 10px; font-weight: 850; }
     .mypage-page .return-order-summary strong { display: block; color: #49343a; font-size: 13px; }
@@ -365,6 +401,39 @@
     .mypage-page .return-request-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 9px; }
     .mypage-page .return-request-actions button { min-height: 47px; border: 1px solid #e4d1d6; border-radius: 11px; color: #715a61; background: #fff; font: inherit; font-weight: 900; cursor: pointer; }
     .mypage-page .return-request-actions button[type="submit"] { border-color: var(--pink-deep); color: #fff; background: linear-gradient(135deg,#e65f7f,#df4f6d); box-shadow: 0 10px 24px rgba(223,79,109,.2); }
+
+    .mypage-page .order-cancel-dialog { width: min(460px, calc(100% - 28px)); padding: 0; overflow: hidden; border: 0; border-radius: 22px; color: #3e2b30; background: #fffdfa; box-shadow: 0 30px 90px rgba(52,27,35,.28); }
+    .mypage-page .order-cancel-dialog::backdrop { background: rgba(45,28,33,.48); backdrop-filter: blur(4px); }
+    .mypage-page .order-cancel-dialog form { margin: 0; }
+    .mypage-page .order-cancel-head { position: relative; display: grid; justify-items: center; padding: 28px 28px 17px; text-align: center; }
+    .mypage-page .order-cancel-icon { display: grid; place-items: center; width: 50px; height: 50px; margin-bottom: 13px; border-radius: 50%; color: #c33d5c; background: #ffe9ef; }
+    .mypage-page .order-cancel-icon svg { width: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .mypage-page .order-cancel-head small { color: #c34a65; font-size: 10px; font-weight: 900; letter-spacing: .13em; }
+    .mypage-page .order-cancel-head h2 { margin: 5px 0 7px; font-size: 21px; letter-spacing: -.035em; }
+    .mypage-page .order-cancel-head p { margin: 0; color: #806970; font-size: 12px; line-height: 1.65; word-break: keep-all; }
+    .mypage-page .order-cancel-close { position: absolute; top: 15px; right: 16px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid #ead6db; border-radius: 50%; color: #7c646a; background: #fff; font-size: 19px; cursor: pointer; }
+    .mypage-page .order-cancel-body { display: grid; gap: 13px; padding: 0 24px 23px; }
+    .mypage-page .order-cancel-summary { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; padding: 15px 16px; border: 1px solid #efdee2; border-radius: 13px; background: #fff8fa; }
+    .mypage-page .order-cancel-summary span { color: #947b82; font-size: 11px; }
+    .mypage-page .order-cancel-summary strong { color: #4d373d; font-size: 12px; text-align: right; overflow-wrap: anywhere; }
+    .mypage-page .order-cancel-notice { margin: 0; padding: 12px 14px; border-radius: 11px; color: #765d64; background: #f8f3f1; font-size: 11px; line-height: 1.65; word-break: keep-all; }
+    .mypage-page .order-cancel-actions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 9px; }
+    .mypage-page .order-cancel-actions button { min-height: 47px; border: 1px solid #e4d1d6; border-radius: 11px; color: #715a61; background: #fff; font: inherit; font-weight: 900; cursor: pointer; }
+    .mypage-page .order-cancel-actions .is-danger { border-color: #d84c6b; color: #fff; background: linear-gradient(135deg,#e65f7f,#d84463); box-shadow: 0 10px 24px rgba(216,68,99,.2); }
+    .mypage-page .order-cancel-actions button:disabled { cursor: wait; opacity: .62; }
+
+    .mypage-page .order-detail-dialog[open] {
+      max-height: 92dvh;
+      overflow: hidden;
+    }
+
+    .mypage-page .order-detail-dialog[open] > div {
+      max-height: calc(92dvh - 72px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
     .mypage-page .review-write-dialog { width: min(640px, calc(100% - 28px)); height: min(92vh, 860px); max-height: min(92vh, 860px); padding: 0; overflow: hidden; border: 0; border-radius: 22px; color: #3e2b30; background: #fffdfa; box-shadow: 0 30px 90px rgba(52,27,35,.28); }
     .mypage-page .review-write-dialog::backdrop { background: rgba(45,28,33,.48); backdrop-filter: blur(4px); }
     .mypage-page .review-write-form { display: flex; flex-direction: column; height: 100%; margin: 0; }
@@ -524,7 +593,23 @@
   </main>
 
   <div class="mypage-loading" data-mypage-loading>회원 정보 불러오는 중입니다.</div>
-  <dialog class="order-detail-dialog" data-order-dialog><button class="dialog-close" type="button" data-dialog-close aria-label="닫기">×</button><div data-order-detail></div></dialog>
+  <dialog class="order-detail-dialog" data-order-dialog><button class="dialog-close" type="button" data-dialog-close data-mypage-close aria-label="닫기">×</button><div data-order-detail></div></dialog>
+  <dialog class="order-cancel-dialog" data-order-cancel-dialog>
+    <form>
+      <header class="order-cancel-head">
+        <button class="order-cancel-close" type="button" data-order-cancel-close aria-label="닫기">×</button>
+        <span class="order-cancel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg></span>
+        <small>ORDER CANCELLATION</small>
+        <h2>주문을 취소할까요?</h2>
+        <p>취소가 완료되면 이전 상태로 되돌릴 수 없습니다.</p>
+      </header>
+      <div class="order-cancel-body">
+        <div class="order-cancel-summary"><span>주문번호</span><strong data-order-cancel-id>-</strong><span>결제금액</span><strong data-order-cancel-amount>-</strong></div>
+        <p class="order-cancel-notice">결제가 이미 진행됐거나 상품 준비가 시작된 주문은 고객센터를 통해 취소해 주세요.</p>
+        <div class="order-cancel-actions"><button type="button" data-order-cancel-close>계속 주문하기</button><button class="is-danger" type="button" data-order-cancel-confirm>주문 취소하기</button></div>
+      </div>
+    </form>
+  </dialog>
   <dialog class="mypage-edit-dialog" data-inquiry-edit-dialog>
     <form data-inquiry-edit-form>
       <header><h2>문의 내용 수정</h2><p>답변 전인 문의만 수정할 수 있습니다.</p></header>
@@ -552,7 +637,7 @@
       <header class="return-request-head">
         <span class="return-request-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7H4v4M4 11c1-4 5-7 9-7 5 0 9 4 9 9s-4 9-9 9c-3 0-6-2-8-4"/><path d="M10 9h6v6h-6z"/></svg></span>
         <div><span>EXCHANGE & RETURN</span><h2>교환·반품 신청</h2></div>
-        <button class="return-request-close" type="button" data-return-request-close aria-label="닫기">×</button>
+        <button class="return-request-close" type="button" data-return-request-close data-mypage-close aria-label="닫기">×</button>
       </header>
       <div class="return-request-body">
         <section class="return-order-products">
@@ -563,13 +648,13 @@
         <div class="return-request-fields"><label>신청 사유<select name="reason" required><option value="">사유를 선택해 주세요.</option><option>상품이 파손되었어요</option><option>주문한 상품과 달라요</option><option>상품 상태가 좋지 않아요</option><option>수량이 부족해요</option><option>단순 변심</option><option>기타</option></select></label><label>상세 내용<textarea name="details" maxlength="500" placeholder="상품 상태와 요청사항을 자세히 적어 주세요." required></textarea></label></div>
         <div class="return-request-notice"><b aria-hidden="true">i</b><p><strong>신청 전 확인해 주세요</strong>신선식품 특성상 단순 변심에 의한 교환·반품은 제한될 수 있습니다. 상품 이상은 수령 후 가능한 한 빠르게 접수해 주세요. 접수 후 담당자가 회수 또는 재배송 일정을 안내드립니다.</p></div>
         <p class="return-request-message" data-return-request-message role="status" aria-live="polite"></p>
-        <div class="return-request-actions"><button type="button" data-return-request-cancel>취소</button><button type="submit">신청 접수하기</button></div>
+        <div class="return-request-actions"><button type="button" data-return-request-cancel data-mypage-close>취소</button><button type="submit">신청 접수하기</button></div>
       </div>
     </form>
   </dialog>
   <dialog class="review-write-dialog" data-review-write-dialog>
     <form class="review-write-form" data-review-write-form>
-      <header class="review-write-head"><span class="review-write-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg></span><div><span>PRODUCT REVIEW</span><h2>리뷰 작성</h2></div><button class="review-write-close" type="button" data-review-write-close aria-label="닫기">×</button></header>
+      <header class="review-write-head"><span class="review-write-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg></span><div><span>PRODUCT REVIEW</span><h2>리뷰 작성</h2></div><button class="review-write-close" type="button" data-review-write-close data-mypage-close aria-label="닫기">×</button></header>
       <div class="review-write-body">
         <div class="review-product-summary"><img data-review-product-image src="assets/logo.svg" alt="" /><div><small>리뷰 상품</small><strong data-review-product-name>-</strong></div><span data-review-order-date>-</span></div>
         <section class="review-rating-section"><strong>상품은 어떠셨나요?</strong><div class="review-star-picker" aria-label="별점 선택"><input id="review-star-5" type="radio" name="rating" value="5" required /><label for="review-star-5" aria-label="5점">★</label><input id="review-star-4" type="radio" name="rating" value="4" /><label for="review-star-4" aria-label="4점">★</label><input id="review-star-3" type="radio" name="rating" value="3" /><label for="review-star-3" aria-label="3점">★</label><input id="review-star-2" type="radio" name="rating" value="2" /><label for="review-star-2" aria-label="2점">★</label><input id="review-star-1" type="radio" name="rating" value="1" /><label for="review-star-1" aria-label="1점">★</label></div><p data-review-rating-label>별점을 선택해 주세요.</p></section>
@@ -577,14 +662,14 @@
         <section class="review-photo-section"><div class="review-photo-head"><strong>사진 첨부 <small>(선택)</small></strong><span>최대 3장 · 장당 5MB 이하</span></div><div class="review-photo-tools"><label class="review-photo-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple data-review-photo-input /><b aria-hidden="true">＋</b><span>사진 추가</span></label><div class="review-photo-preview" data-review-photo-preview></div></div></section>
         <section class="review-content-section"><div class="review-content-head"><strong>상세 후기</strong><span><b data-review-character-count>0</b>/500자</span></div><textarea name="content" maxlength="500" placeholder="상품의 맛, 포장, 수령 경험을 솔직하게 알려주세요." required></textarea></section>
         <p class="review-write-message" data-review-write-message role="status" aria-live="polite"></p>
-        <div class="review-write-actions"><button type="button" data-review-write-cancel>취소</button><button type="submit">리뷰 등록하기</button></div>
+        <div class="review-write-actions"><button type="button" data-review-write-cancel data-mypage-close>취소</button><button type="submit">리뷰 등록하기</button></div>
       </div>
     </form>
   </dialog>
   <footer class="site-footer" data-shared-footer></footer>
   <script src="js/postcode-modal.js?v=24"></script>
   <script src="js/mypage-address.js?v=22"></script>
-  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="mypage.js?v=43"></script>
+  <script src="cart-utils.js"></script><script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js?v=18"></script><script src="js/home.js"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/auth.js?v=18"></script><script src="mypage.js?v=46"></script>
   <script>
     fetch("/api/users/me", { credentials: "same-origin" })
       .then((response) => response.ok ? response.json() : null)

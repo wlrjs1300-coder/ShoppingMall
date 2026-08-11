@@ -9,7 +9,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-node%3Asqlite-003B57?logo=sqlite&logoColor=white)
 ![Vanilla JavaScript](https://img.shields.io/badge/Frontend-Vanilla_JavaScript-F7DF1E?logo=javascript&logoColor=111)
 ![node:test](https://img.shields.io/badge/Test-node%3Atest-5FA04E?logo=nodedotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-516_passing-2EA44F)
+![Tests](https://img.shields.io/badge/Tests-548_passing-2EA44F)
 
 **현재 상태:** 기능과 자동 검증은 **Implemented**, production 전환 절차는 **Operationally Prepared**, 실제 운영 데이터와 provider를 사용하는 활성화는 **Not Yet Activated in Production**입니다.
 
@@ -24,7 +24,7 @@
 - DB 관리자 계정과 `super_admin`, `operations`, `finance`, `viewer` 역할로 최소 권한을 적용합니다.
 - 주문 PII를 AES-256-GCM으로 암호화하고 열람·수정 사유와 결과를 감사 로그에 남깁니다.
 - 백업 검증, legacy PII backfill, payment PII purge와 production activation 절차를 코드와 runbook으로 분리합니다.
-- **516개 자동 테스트**로 API, DB 제약, 보안 정책, 운영 도구와 UI contract를 회귀 검증합니다.
+- **548개 자동 테스트**로 API, DB 제약, 보안 정책, 운영 도구와 UI contract를 회귀 검증합니다.
 
 ### 기여 범위와 개발 방식
 
@@ -109,7 +109,7 @@
 | 기능 | 구현 내용과 포트폴리오 가치 |
 | --- | --- |
 | 상품 목록·검색·카테고리 | 서버 카탈로그 30개를 기준으로 활성 상품만 노출하고 검색·분류·페이지네이션을 제공합니다. |
-| 상품 상세 | 직접 구매 상품과 상담 전용 상품을 구분하여 구매 또는 문의 흐름으로 연결합니다. |
+| 상품 상세 | 직접 구매 상품과 상담 전용 상품을 구분하고, 대표·상세 이미지, 원산지, 판매 단위별 가격을 구매 또는 문의 흐름으로 연결합니다. |
 | 장바구니 | 수량·선택 상태를 관리하고 주문 전 서버의 최신 가격과 판매 상태로 다시 조정합니다. |
 | 일반 주문 | 상품 ID만 신뢰 경계 안으로 받고 이름·가격·판매 상태는 서버 DB에서 결정합니다. |
 | Checkout | 다중 상품, 서버 가격 재검증, 필수 `Idempotency-Key`, 주문·결제 row의 동일 transaction을 적용합니다. |
@@ -134,7 +134,8 @@
 | 매출 | 주문·결제 조회 권한 | 일자·상품별 매출, 원가, 이익과 CSV |
 | 운영 로그 | `activity_logs:read` | 인증, 권한 거부, 주문·결제·PII·외부 연동 활동 조회 |
 | 관리자 계정 | `admin_users:manage` | 역할·활성 상태 변경, token version 기반 세션 회수 |
-| Naver Commerce | `sales_channels:read`, `sales_channels:manage` | 연결 확인, 상품 매핑, 주문 pull/list/detail/refresh의 API·서버 기반 구현 |
+| 상품 관리 | `products:read`, `products:write` | 상품 등록·수정·판매 중지, 노출 순서, 대표·상세 이미지, 원산지와 팩·반말·한말 단위 관리 |
+| Naver Commerce | `sales_channels:read`, `sales_channels:manage` | 판매 단위별 상품 매핑, 주문 수집·내부 주문 변환·상태 동기화·발송 처리의 서버 기반 구현 |
 
 RBAC 역할은 `super_admin`, `operations`, `finance`, `viewer`입니다. Naver Commerce는 API와 서버 기반을 구현한 상태이며 전용 관리자 UI 전체가 완성됐다는 의미는 아닙니다. 백업을 실행하는 HTTP UI나 자동 restore API도 의도적으로 제공하지 않습니다.
 
@@ -342,11 +343,11 @@ npm run users:portfolio
 
 ## 테스트
 
-2026-08-02 기준 `npm test`를 다시 실행한 결과입니다.
+2026-08-11 기준 `npm test`를 다시 실행한 결과입니다.
 
 ```text
-tests   516
-passed  516
+tests   548
+passed  548
 failed  0
 skipped 0
 ```
@@ -358,7 +359,7 @@ skipped 0
 - PII write/read/access/update/backfill/purge와 fail-closed 정책
 - 관리자 DB 계정, RBAC, token version과 session revoke
 - backup 생성·검증·복구 계약
-- Naver 인증·상품 매핑·주문 read sync와 orchestration
+- Naver 인증·판매 단위별 상품 매핑·주문 수집·내부 주문 변환·상태 동기화·발송 처리
 - production config, readiness, seed 차단과 정적 공개 경계
 - 파괴적 작업 제한, 관리자 UI contract와 접근성
 

@@ -71,6 +71,10 @@ function validateProduct(body, existing = null) {
   const derivedMalPrice = Number.isInteger(price) && price > 0 ? Math.round(price * 32) : null;
   const halfMalPrice = purchaseType === "consultation" ? null : Number(body.halfMalPrice ?? existing?.half_mal_price ?? (derivedMalPrice ? derivedMalPrice / 2 : null));
   const malPrice = purchaseType === "consultation" ? null : Number(body.malPrice ?? existing?.mal_price ?? derivedMalPrice);
+  const unitWeightGrams = Number(body.unitWeightGrams ?? existing?.unit_weight_grams ?? 250);
+  const optionalWeight = (value) => value === null || value === undefined || value === "" ? null : Number(value);
+  const halfMalWeightGrams = purchaseType === "consultation" ? null : optionalWeight(body.halfMalWeightGrams ?? existing?.half_mal_weight_grams);
+  const malWeightGrams = purchaseType === "consultation" ? null : optionalWeight(body.malWeightGrams ?? existing?.mal_weight_grams);
   const originItems = parseOriginItems(body.originItems ?? existing?.origin_items_json ?? []);
 
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) return { error: "상품 ID는 영문 소문자, 숫자와 하이픈만 사용할 수 있습니다." };
@@ -78,13 +82,15 @@ function validateProduct(body, existing = null) {
   if (!new Set(["direct", "consultation"]).has(purchaseType)) return { error: "판매 방식을 확인해 주세요." };
   if (purchaseType === "direct" && (!Number.isInteger(price) || price <= 0)) return { error: "바로 구매 상품은 1원 이상의 정수 가격이 필요합니다." };
   if (purchaseType === "direct" && (!Number.isInteger(halfMalPrice) || halfMalPrice <= 0 || !Number.isInteger(malPrice) || malPrice <= 0)) return { error: "반말과 한말 가격을 각각 입력해 주세요." };
+  if (purchaseType === "direct" && (!Number.isInteger(unitWeightGrams) || unitWeightGrams <= 0)) return { error: "팩 중량은 1g 이상의 정수로 입력해 주세요." };
+  if ([halfMalWeightGrams, malWeightGrams].some((weight) => weight !== null && (!Number.isInteger(weight) || weight <= 0))) return { error: "반말·한말 중량은 비워두거나 1g 이상의 정수로 입력해 주세요." };
   if (!originItems) return { error: "원재료와 원산지를 올바르게 입력해 주세요." };
   if (!imageUrl) return { error: "대표 이미지는 첨부 파일, assets/ 경로 또는 HTTPS URL로 설정해 주세요." };
   if (!detailImages) return { error: "상세 이미지는 최대 4개이며 PNG, JPG, WEBP, GIF 형식만 사용할 수 있습니다." };
   if (!new Set(["active", "inactive"]).has(status)) return { error: "판매 상태를 확인해 주세요." };
   if (!Number.isInteger(displayOrder) || displayOrder < 0 || displayOrder > 9999) return { error: "노출 순서는 0~9999의 정수여야 합니다." };
 
-  return { product: { id, name, category, purchaseType, price, halfMalPrice, malPrice, originItems, imageUrl, detailImages, description, status, displayOrder } };
+  return { product: { id, name, category, purchaseType, price, halfMalPrice, malPrice, unitWeightGrams, halfMalWeightGrams, malWeightGrams, originItems, imageUrl, detailImages, description, status, displayOrder } };
 }
 
 function writeProductAudit(req, action, product, previousValue = null) {
@@ -107,11 +113,13 @@ function rowToProduct(row) {
     price: row.price,
     halfMalPrice: row.purchase_type === "direct" ? (row.half_mal_price ?? Math.round(Number(row.price || 0) * 16)) : null,
     malPrice: row.purchase_type === "direct" ? (row.mal_price ?? Math.round(Number(row.price || 0) * 32)) : null,
+    halfMalWeightGrams: row.purchase_type === "direct" ? (row.half_mal_weight_grams ?? null) : null,
+    malWeightGrams: row.purchase_type === "direct" ? (row.mal_weight_grams ?? null) : null,
     originItems: storedOriginItems.length ? storedOriginItems : getDefaultOriginItems(row.name),
     imageUrl: row.image_url,
     detailImages: parseDetailImages(row.detail_images_json || "[]") || [],
     description: row.description,
-    unitWeightGrams: row.purchase_type === "direct" ? 250 : null,
+    unitWeightGrams: row.purchase_type === "direct" ? Number(row.unit_weight_grams || 250) : null,
     status: row.status,
     displayOrder: row.display_order,
   };
@@ -134,10 +142,11 @@ router.post("/admin", requireAuth, requirePermission("inventory:write"), (req, r
   db.exec("BEGIN IMMEDIATE");
   try {
     db.prepare(`INSERT INTO products
-      (id,name,category,purchase_type,price,half_mal_price,mal_price,origin_items_json,image_url,detail_images_json,description,status,display_order,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      (id,name,category,purchase_type,price,half_mal_price,mal_price,unit_weight_grams,half_mal_weight_grams,mal_weight_grams,origin_items_json,image_url,detail_images_json,description,status,display_order,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(product.id, product.name, product.category, product.purchaseType, product.price,
-        product.halfMalPrice, product.malPrice, JSON.stringify(product.originItems), product.imageUrl, JSON.stringify(product.detailImages), product.description || null, product.status, product.displayOrder, now, now);
+        product.halfMalPrice, product.malPrice, product.unitWeightGrams, product.halfMalWeightGrams, product.malWeightGrams,
+        JSON.stringify(product.originItems), product.imageUrl, JSON.stringify(product.detailImages), product.description || null, product.status, product.displayOrder, now, now);
     writeProductAudit(req, "product_created", product);
     db.exec("COMMIT");
     return res.status(201).json({ product: rowToProduct(db.prepare("SELECT * FROM products WHERE id=?").get(product.id)) });
@@ -175,10 +184,10 @@ router.put("/admin/:id", requireAuth, requirePermission("inventory:write"), (req
   const now = new Date().toISOString();
   db.exec("BEGIN IMMEDIATE");
   try {
-    const changed = db.prepare(`UPDATE products SET name=?,category=?,purchase_type=?,price=?,half_mal_price=?,mal_price=?,origin_items_json=?,image_url=?,detail_images_json=?,
+    const changed = db.prepare(`UPDATE products SET name=?,category=?,purchase_type=?,price=?,half_mal_price=?,mal_price=?,unit_weight_grams=?,half_mal_weight_grams=?,mal_weight_grams=?,origin_items_json=?,image_url=?,detail_images_json=?,
       description=?,status=?,display_order=?,updated_at=? WHERE id=?`)
       .run(product.name, product.category, product.purchaseType, product.price,
-        product.halfMalPrice, product.malPrice, JSON.stringify(product.originItems), product.imageUrl,
+        product.halfMalPrice, product.malPrice, product.unitWeightGrams, product.halfMalWeightGrams, product.malWeightGrams, JSON.stringify(product.originItems), product.imageUrl,
         JSON.stringify(product.detailImages), product.description || null, product.status, product.displayOrder, now, existing.id);
     if (changed.changes !== 1) throw new Error("CONCURRENT_STATE_CHANGE");
     writeProductAudit(req, "product_updated", product, rowToProduct(existing));

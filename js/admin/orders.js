@@ -188,17 +188,17 @@ function renderAdminOrders() {
       return `
         <tr class="admin-order-row" data-order-id="${escapeHtml(order.id)}" data-status="${escapeHtml(order.status || "접수대기")}" tabindex="0" aria-label="${escapeHtml(order.customer || "고객")} 주문 상세 보기">
           <td class="admin-select-column"><label class="admin-order-select"><input type="checkbox" data-admin-order-select value="${escapeHtml(order.id)}" ${selectedAdminOrderIds.has(order.id) ? "checked" : ""} /><span class="sr-only">${escapeHtml(displayOrderNumber)} 선택</span></label></td>
-          <td><strong>${escapeHtml(displayOrderNumber)}</strong></td>
-          <td><span>${created}</span></td>
-          <td><strong>${escapeHtml(order.customer || "-")}</strong></td>
-          <td><span>${escapeHtml(order.phone || "-")}</span></td>
-          <td><strong>${escapeHtml(order.product || "-")}</strong></td>
-          <td><strong>${Number(order.quantity || 1)}개</strong></td>
-          <td><strong class="admin-order-amount ${order.amountStatus === "pending" ? "is-pending" : ""}">${amountText}</strong></td>
-          <td><strong>${escapeHtml(pickup || "-")}</strong></td>
-          <td><span>${fulfillment}</span></td>
-          <td><div class="admin-combined-status"><span class="admin-order-status-pill ${statusClass}">${escapeHtml(getUnifiedWorkflowStatus(order))}</span>${needsReconciliation ? `<span class="admin-payment-reconcile-badge">결제 확인 필요</span><button class="admin-payment-reconcile-button" type="button" data-admin-payment-reconcile="${escapeHtml(order.id)}">결제 상태 확인</button>` : `<span class="admin-payment-status-label">${escapeHtml(paymentStatus)}</span>`}</div></td>
-          <td><button class="admin-order-detail-open" type="button" aria-label="${escapeHtml(displayOrderNumber)} 상세 보기"><span aria-hidden="true">›</span></button></td>
+          <td class="admin-order-number-cell" data-label="주문번호"><strong>${escapeHtml(displayOrderNumber)}</strong></td>
+          <td class="admin-order-date-cell" data-label="주문일"><span>${created}</span></td>
+          <td class="admin-order-customer-cell" data-label="고객명"><strong>${escapeHtml(order.customer || "-")}</strong></td>
+          <td class="admin-order-phone-cell" data-label="연락처"><span>${escapeHtml(order.phone || "-")}</span></td>
+          <td class="admin-order-product-cell" data-label="상품"><strong>${escapeHtml(order.product || "-")}</strong></td>
+          <td class="admin-order-quantity-cell" data-label="수량"><strong>${Number(order.quantity || 1)}개</strong></td>
+          <td class="admin-order-amount-cell" data-label="주문 금액"><strong class="admin-order-amount ${order.amountStatus === "pending" ? "is-pending" : ""}">${amountText}</strong></td>
+          <td class="admin-order-pickup-cell" data-label="수령 일정"><strong>${escapeHtml(pickup || "-")}</strong></td>
+          <td class="admin-order-fulfillment-cell" data-label="수령 방법"><span>${fulfillment}</span></td>
+          <td class="admin-order-status-cell" data-label="진행 상태"><div class="admin-combined-status"><span class="admin-order-status-pill ${statusClass}">${escapeHtml(getUnifiedWorkflowStatus(order))}</span>${needsReconciliation ? `<span class="admin-payment-reconcile-badge">결제 확인 필요</span><button class="admin-payment-reconcile-button" type="button" data-admin-payment-reconcile="${escapeHtml(order.id)}">결제 상태 확인</button>` : `<span class="admin-payment-status-label">${escapeHtml(paymentStatus)}</span>`}</div></td>
+          <td class="admin-order-detail-cell"><button class="admin-order-detail-open" type="button" aria-label="${escapeHtml(displayOrderNumber)} 상세 보기"><span aria-hidden="true">›</span></button></td>
         </tr>
       `;
     })
