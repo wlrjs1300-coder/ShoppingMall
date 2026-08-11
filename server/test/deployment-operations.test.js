@@ -565,6 +565,11 @@ test("Render staging Blueprint는 분리된 service와 provider-disabled 계약�
   assert.doesNotMatch(blueprint, /(?:CLIENT_SECRET|SECRET_KEY|API_SECRET):\s+\S/);
 });
 
+test("운영 웹 서버는 Render가 탐지할 수 있는 모든 네트워크 인터페이스에 바인딩한다", () => {
+  const serverSource = fs.readFileSync(path.join(root, "server", "index.js"), "utf8");
+  assert.match(serverSource, /app\.listen\(PORT, "0\.0\.0\.0",/);
+});
+
 test("네이버 커머스 sync 비활성은 credential 없이 허용하고 활성 설정은 안전하게 검증한다", () => {
   assert.deepEqual(naverCommerceConfigErrors({ NODE_ENV: "production", NAVER_COMMERCE_SYNC_ENABLED: "false" }), []);
   const base = {

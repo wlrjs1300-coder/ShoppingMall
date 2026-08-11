@@ -1,7 +1,7 @@
 // 포트폴리오 시연용 예시 정보이며 실제 매장 상세 주소가 아닙니다.
 const siteInfo = {
   phone: "031-000-0000",
-  hours: "09:00 - 19:00",
+  hours: "06:00 - 19:00",
   address: "경기도 화성시 소재",
   parking: "건물 내 주차 공간 이용 가능",
   storeUrl: "https://smartstore.naver.com/",

@@ -43,7 +43,7 @@ services:
       - key: STORE_PHONE
         sync: false
       - key: STORE_HOURS
-        value: 09:00 - 19:00
+        value: 06:00 - 19:00
       - key: STORE_ADDRESS
         sync: false
       - key: STORE_PARKING

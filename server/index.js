@@ -141,7 +141,7 @@ app.get("/api/site-config", (req, res) => {
   res.json({
     name: process.env.STORE_NAME || "따뜻한 떡집",
     phone: process.env.STORE_PHONE || "031-000-0000",
-    hours: process.env.STORE_HOURS || "09:00 - 19:00",
+    hours: process.env.STORE_HOURS || "06:00 - 19:00",
     address: process.env.STORE_ADDRESS || "경기도 화성시 소재",
     parking: process.env.STORE_PARKING || "건물 내 주차 공간 이용 가능",
     storeUrl: process.env.STORE_URL || "https://smartstore.naver.com/",
@@ -190,7 +190,7 @@ function schedulePickupReminders() {
 
 if (require.main === module) {
   const naverOrderPoller = createNaverOrderPollScheduler({ db });
-  const server = app.listen(PORT, () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`따뜻한 떡집 서버 실행 중 → http://localhost:${PORT}`);
     if ((process.env.NOTIFICATION_MODE || "none") !== "none") {
       schedulePickupReminders();
