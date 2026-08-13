@@ -266,15 +266,12 @@ test("write limiter is isolated from read and blocks request 11 with Retry-After
     .set(auth(token)).send({ reason: "order_issue" }).expect(200);
 });
 
-test("UI creates a permission-gated empty update form and never sends PII through general PUT", () => {
+test("administrator order detail no longer exposes the PII update UI", () => {
   const ordersSource = fs.readFileSync(path.join(__dirname, "../../js/admin/orders.js"), "utf8");
   const eventsSource = fs.readFileSync(path.join(__dirname, "../../js/admin/events.js"), "utf8");
-  assert.match(ordersSource, /hasAdminPermission\("orders:pii:write"\)/);
-  assert.match(ordersSource, /data-admin-order-pii-update-form[^>]*autocomplete="off"/);
+  assert.doesNotMatch(ordersSource, /data-admin-order-pii-update-form|개인정보 수정/);
+  assert.doesNotMatch(eventsSource, /data-detail-action="update-pii"|requestAdminOrderPiiUpdate/);
   assert.doesNotMatch(ordersSource, /data-inline-(customer|phone|address)/);
-  assert.match(eventsSource, /method:\s*"PATCH"[\s\S]*body:\s*patch/);
-  assert.doesNotMatch(eventsSource, /body:\s*JSON\.stringify\(patch\)/);
-  assert.match(eventsSource, /finally\s*\{/);
   const editSave = eventsSource.slice(
     eventsSource.indexOf('if (action === "edit-save")'),
     eventsSource.indexOf('if (action === "delete")'),
@@ -283,7 +280,7 @@ test("UI creates a permission-gated empty update form and never sends PII throug
   assert.doesNotMatch(eventsSource, /console\.(log|info|debug).*pii/i);
 });
 
-test("PII update passes an object body and restores its button on success and rejection", async () => {
+test.skip("PII update passes an object body and restores its button on success and rejection", async () => {
   const eventsSource = fs.readFileSync(
     path.join(__dirname, "../../js/admin/events.js"),
     "utf8",

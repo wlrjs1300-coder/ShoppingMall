@@ -205,7 +205,7 @@ function renderPurchaseOrders() {
           <td>
             ${order.status === "보류" || order.status === "입고완료"
               ? `<span class="admin-purchase-state-pill ${order.status === "보류" ? "is-hold" : "is-complete"}">${order.status}</span>`
-              : `<select class="admin-purchase-status"><option value="발주완료" selected>발주 완료</option><option value="입고완료">입고 완료</option></select>`}
+              : `<select class="admin-purchase-status" aria-label="${escapeHtml(order.name)} 발주 상태"><option value="발주완료" selected>발주 완료</option><option value="입고완료">입고 완료</option></select>`}
           </td>
           <td><div class="admin-purchase-row-actions"><button class="admin-purchase-request admin-purchase-repeat" type="button" data-purchase-item-id="${escapeHtml(order.inventoryId)}" data-purchase-amount="${Number(order.amount || 0)}">발주하기</button><button class="admin-purchase-edit" type="button">수정</button><button class="admin-purchase-hold" type="button">보류</button><button class="admin-purchase-delete" type="button">삭제</button></div></td>
         </tr>

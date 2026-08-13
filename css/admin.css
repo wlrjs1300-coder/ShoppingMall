@@ -3416,16 +3416,32 @@ body.admin-page .admin-main {
 }
 
 .admin-purchase-status {
-  min-width: 110px;
-  min-height: 34px;
-  padding: 0 10px;
-  color: var(--ink);
-  background: #fffdfa;
-  border: 1px solid rgba(241, 215, 220, 0.95);
-  border-radius: 6px;
+  width: 94px;
+  min-width: 94px;
+  min-height: 32px;
+  padding: 0 18px;
+  color: #765f65;
+  background-color: #fffafb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='m1 1 4 4 4-4' fill='none' stroke='%23927a80' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  border: 1px solid #ead5da;
+  border-radius: 9px;
   font: inherit;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 850;
+  text-align: center;
+  text-align-last: center;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.admin-purchase-status:hover { border-color: #dcbfc6; }
+.admin-purchase-status:focus {
+  border-color: #d99bad;
+  box-shadow: 0 0 0 3px rgba(217, 155, 173, .12);
 }
 
 .admin-purchase-supplier,

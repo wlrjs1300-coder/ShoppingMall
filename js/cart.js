@@ -3,9 +3,18 @@ const CART_STORAGE_KEY = "tteokShoppingCart";
 const GUEST_CHECKOUT_KEY = "tteokGuestCheckout";
 const GUEST_CUSTOMER_KEY = "tteokGuestCustomer";
 const cartUtils = window.CartUtils;
-const formatCartUnitPrices = (item) => item.quantityUnit === "pack"
-  ? `팩 ${Number(item.price || 0).toLocaleString("ko-KR")}원${item.unitWeightGrams ? ` · ${Number(item.unitWeightGrams).toLocaleString("ko-KR")}g` : ""}`
-  : `반말 ${Number(item.halfMalPrice || 0).toLocaleString("ko-KR")}원${item.halfMalWeightGrams ? ` · ${Number(item.halfMalWeightGrams).toLocaleString("ko-KR")}g` : ""} · 한말 ${Number(item.malPrice || item.price || 0).toLocaleString("ko-KR")}원${item.malWeightGrams ? ` · ${Number(item.malWeightGrams).toLocaleString("ko-KR")}g` : ""}`;
+const formatCartUnitPrices = (item) => {
+  if (item.quantityUnit === "pack") {
+    return `팩 ${Number(item.price || 0).toLocaleString("ko-KR")}원${item.unitWeightGrams ? ` · ${Number(item.unitWeightGrams).toLocaleString("ko-KR")}g` : ""}`;
+  }
+
+  const quantity = Number(item.quantity || 0);
+  const halfMal = `반말 ${Number(item.halfMalPrice || 0).toLocaleString("ko-KR")}원${item.halfMalWeightGrams ? ` · ${Number(item.halfMalWeightGrams).toLocaleString("ko-KR")}g` : ""}`;
+  const fullMal = `한말 ${Number(item.malPrice || item.price || 0).toLocaleString("ko-KR")}원${item.malWeightGrams ? ` · ${Number(item.malWeightGrams).toLocaleString("ko-KR")}g` : ""}`;
+  if (quantity === 0.5) return halfMal;
+  if (Number.isInteger(quantity)) return fullMal;
+  return `${fullMal} · ${halfMal}`;
+};
 
 function currentPurchaseReturnUrl() {
   const page = window.location.pathname.split("/").pop() || "index.html";

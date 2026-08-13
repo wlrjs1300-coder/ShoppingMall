@@ -10,11 +10,31 @@
     <meta property="og:title" content="따뜻한 떡집 | 동탄 수제 떡집" />
     <meta property="og:description" content="동탄 따뜻한 떡집. 송편 예약, 답례떡, 단체주문, 기본 떡 메뉴를 정성껏 준비합니다." />
     <meta property="og:image" content="assets/tteok-hero.png" />
+    <script data-pwa-mode-bootstrap>
+      (() => {
+        const root = document.documentElement;
+        const displayModes = ["standalone", "fullscreen", "minimal-ui", "window-controls-overlay"];
+        const mediaQueries = [
+          window.matchMedia("(max-width: 820px)"),
+          ...displayModes.map((mode) => window.matchMedia(`(display-mode: ${mode})`)),
+        ];
+        const params = new URLSearchParams(window.location.search);
+        const explicitMode = ["1", "true"].includes(params.get("pwa")) || params.get("mobile") === "1";
+        const applyMode = () => {
+          const enabled = explicitMode || navigator.standalone === true || mediaQueries.some((query) => query.matches);
+          root.classList.toggle("is-pwa", enabled);
+          root.classList.toggle("hide-scrollbars-mobile", enabled);
+        };
+
+        applyMode();
+        mediaQueries.forEach((query) => query.addEventListener?.("change", applyMode));
+      })();
+    </script>
     <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/logo.svg" />
     <link rel="preload" as="image" href="assets/tteok-hero.png" />
     <link rel="stylesheet" href="styles.css?v=17" />
-    <link rel="stylesheet" href="css/pwa-home-refresh.css?v=1" />
+    <link rel="stylesheet" href="css/pwa-home-refresh.css?v=3" />
     <link rel="manifest" href="manifest.json" />
   </head>
   <body class="home-page">
@@ -196,7 +216,7 @@
     <footer class="site-footer" data-shared-footer></footer>
 
     <script src="cart-utils.js"></script>
-    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/pwa-home-refresh.js?v=1"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js?v=12"></script><script src="js/auth.js"></script>
+    <script src="js/ui.js"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/state.js"></script><script src="js/utils.js"></script><script src="js/components.js"></script><script src="js/home.js"></script><script src="js/pwa-home-refresh.js?v=3"></script><script src="js/search.js"></script><script src="js/cart.js"></script><script src="js/menu-order.js?v=12"></script><script src="js/auth.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");

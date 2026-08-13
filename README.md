@@ -9,7 +9,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-node%3Asqlite-003B57?logo=sqlite&logoColor=white)
 ![Vanilla JavaScript](https://img.shields.io/badge/Frontend-Vanilla_JavaScript-F7DF1E?logo=javascript&logoColor=111)
 ![node:test](https://img.shields.io/badge/Test-node%3Atest-5FA04E?logo=nodedotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-548_passing-2EA44F)
+![Tests](https://img.shields.io/badge/Tests-552_passing-2EA44F)
 
 **현재 상태:** 기능과 자동 검증은 **Implemented**, production 전환 절차는 **Operationally Prepared**, 실제 운영 데이터와 provider를 사용하는 활성화는 **Not Yet Activated in Production**입니다.
 
@@ -24,7 +24,7 @@
 - DB 관리자 계정과 `super_admin`, `operations`, `finance`, `viewer` 역할로 최소 권한을 적용합니다.
 - 주문 PII를 AES-256-GCM으로 암호화하고 열람·수정 사유와 결과를 감사 로그에 남깁니다.
 - 백업 검증, legacy PII backfill, payment PII purge와 production activation 절차를 코드와 runbook으로 분리합니다.
-- **548개 자동 테스트**로 API, DB 제약, 보안 정책, 운영 도구와 UI contract를 회귀 검증합니다.
+- **552개 자동 테스트**로 API, DB 제약, 보안 정책, 운영 도구와 UI contract를 회귀 검증합니다.
 
 ### 기여 범위와 개발 방식
 
@@ -346,8 +346,8 @@ npm run users:portfolio
 2026-08-11 기준 `npm test`를 다시 실행한 결과입니다.
 
 ```text
-tests   548
-passed  548
+tests   552
+passed  552
 failed  0
 skipped 0
 ```

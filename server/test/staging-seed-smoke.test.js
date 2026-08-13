@@ -187,7 +187,7 @@ test("staging smoke validates health, auth, RBAC, masked PII and zero provider-t
     });
     assert.equal(result.failed, 0);
     assert.equal(result.passed, result.checksTotal);
-    assert.equal(result.schemaVersion, 28);
+    assert.equal(result.schemaVersion, 29);
     assert.equal(result.providerTriggeringRequests, 0);
     assert.ok(result.stagingRequests > result.checksTotal);
     const report = JSON.stringify(result);

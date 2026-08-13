@@ -753,6 +753,26 @@ const migrations = [
       }
     },
   },
+  {
+    version: 29,
+    name: "seeded_product_detail_images_backfill",
+    up(db) {
+      const seededProducts = require("./data/products");
+      const updateEmptyDetails = db.prepare(`UPDATE products
+        SET detail_images_json = ?, updated_at = ?
+        WHERE id = ?
+          AND (detail_images_json IS NULL OR TRIM(detail_images_json) = '' OR TRIM(detail_images_json) = '[]')`);
+      const updatedAt = new Date().toISOString();
+
+      for (const product of seededProducts) {
+        const detailImages = Array.isArray(product.detailImages)
+          ? product.detailImages.filter((image) => typeof image === "string" && image.trim())
+          : [];
+        if (!detailImages.length) continue;
+        updateEmptyDetails.run(JSON.stringify(detailImages), updatedAt, product.id);
+      }
+    },
+  },
 ];
 
 function runMigrations(db) {
