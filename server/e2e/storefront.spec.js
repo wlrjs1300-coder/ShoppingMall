@@ -25,6 +25,8 @@ test("반말 장바구니 금액이 주문서까지 동일하게 유지된다", 
 
   await page.goto("/cart.html");
   await expect(page.locator("[data-cart-total-price]")).toHaveText("56,000원");
+  await expect(page.locator(".cart-item-copy p")).toContainText("반말 56,000원");
+  await expect(page.locator(".cart-item-copy p")).not.toContainText("한말 112,000원");
   await expect(page.locator("[data-cart-order-button]")).toHaveText("상품 주문하기");
   await page.locator("[data-cart-order-button]").click();
   await expect(page).toHaveURL(/checkout\.html/);

@@ -96,7 +96,7 @@ test.beforeEach(() => {
 });
 
 test("migration 16 adds constrained nullable audit columns and the access index", () => {
-  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 28);
+  assert.equal(db.prepare("SELECT MAX(version) version FROM schema_migrations").get().version, 29);
   const columns = new Map(db.prepare("PRAGMA table_info(activity_logs)").all().map((column) => [column.name, column]));
   for (const name of ["reason", "outcome", "failure_code", "actor_role", "request_ip"]) {
     assert.ok(columns.has(name));
@@ -275,24 +275,21 @@ test("customer writes require orders:write and return only a masked record", asy
   assert.match(created.body.phone, /\*/);
 });
 
-test("administrator UI keeps revealed PII in dialog-local memory and out of caches and exports", () => {
+test("administrator order detail no longer exposes the PII access UI", () => {
   const root = path.resolve(__dirname, "../..");
   const orders = fs.readFileSync(path.join(root, "js/admin/orders.js"), "utf8");
   const events = fs.readFileSync(path.join(root, "js/admin/events.js"), "utf8");
   const api = fs.readFileSync(path.join(root, "js/api.js"), "utf8");
-  assert.match(orders, /hasAdminPermission\("orders:pii:read"\)/);
-  assert.match(orders, /activeAdminOrderPii/);
-  assert.match(orders, /ADMIN_ORDER_PII_TIMEOUT_MS = 3 \* 60 \* 1000/);
-  assert.match(events, /\/pii-access/);
-  assert.match(events, /body: \{ reason \}/);
-  assert.match(events, /clearActiveAdminOrderPii\(\)/);
+  assert.doesNotMatch(orders, /data-admin-order-pii-access|개인정보 접근|activeAdminOrderPii/);
+  assert.doesNotMatch(events, /data-detail-action="access-pii"|requestAdminOrderPii/);
+  assert.doesNotMatch(`${orders}\n${events}`, /clearActiveAdminOrderPii|setActiveAdminOrderPii/);
   assert.doesNotMatch(`${orders}\n${events}`, /localStorage\.(?:setItem|getItem)[^\n]*activeAdminOrderPii/);
   assert.doesNotMatch(`${orders}\n${events}`, /sessionStorage\.(?:setItem|getItem)[^\n]*activeAdminOrderPii/);
   assert.doesNotMatch(api, /pii-access/);
   assert.doesNotMatch(`${orders}\n${events}`, /console\.(?:log|error)[^\n]*pii/i);
 });
 
-test("PII access UI always restores its button and stores only a successful response", async () => {
+test.skip("PII access UI always restores its button and stores only a successful response", async () => {
   const root = path.resolve(__dirname, "../..");
   const events = fs.readFileSync(path.join(root, "js/admin/events.js"), "utf8");
   const helperStart = events.indexOf("async function requestAdminOrderPii");

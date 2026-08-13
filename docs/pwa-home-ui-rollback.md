@@ -5,13 +5,13 @@
 원복하려면 `index.html`의 아래 한 줄을 삭제하거나 주석 처리하면 됩니다.
 
 ```html
-<link rel="stylesheet" href="css/pwa-home-refresh.css?v=1" />
+<link rel="stylesheet" href="css/pwa-home-refresh.css?v=2" />
 ```
 
 배너 스와이프까지 완전히 원복하려면 아래 스크립트 링크도 삭제합니다.
 
 ```html
-<script src="js/pwa-home-refresh.js?v=1"></script>
+<script src="js/pwa-home-refresh.js?v=2"></script>
 ```
 
 다시 적용하려면 스타일 링크는 `styles.css` 바로 다음에, 스크립트 링크는 `js/home.js` 바로 다음에 복원합니다.

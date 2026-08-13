@@ -19,3 +19,18 @@ test("서비스 워커는 캐시에 없는 자산의 네트워크 실패에도 R
   assert.match(worker, /cached \|\| Response\.error\(\)/);
   assert.doesNotMatch(worker, /\.catch\(\(\) => cached\);/);
 });
+
+test("최종 PWA 화면은 갱신된 자산 URL과 서비스 워커 캐시를 사용한다", () => {
+  const home = read("index.html");
+  const admin = read("admin.html");
+  const product = read("product.html");
+  const worker = read("sw.js");
+
+  assert.match(home, /data-pwa-mode-bootstrap/);
+  assert.match(home, /matchMedia\("\(max-width: 820px\)"\)/);
+  assert.match(home, /pwa-home-refresh\.css\?v=3/);
+  assert.match(home, /pwa-home-refresh\.js\?v=3/);
+  assert.match(admin, /pwa-admin-refresh\.css\?v=3/);
+  assert.match(product, /pwa-product-refresh\.css\?v=4/);
+  assert.match(worker, /CACHE_NAME = "tteokjip-v71"/);
+});

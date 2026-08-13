@@ -1,31 +1,3 @@
-async function requestAdminOrderPii(actionButton, orderId, reason) {
-  actionButton.disabled = true;
-  try {
-    return await apiFetch(`/orders/${encodeURIComponent(orderId)}/pii-access`, {
-      method: "POST",
-      body: { reason },
-    });
-  } finally {
-    actionButton.disabled = false;
-  }
-}
-
-async function requestAdminOrderPiiUpdate(actionButton, orderId, patch) {
-  actionButton.disabled = true;
-  actionButton.setAttribute("aria-busy", "true");
-  try {
-    return await apiFetch(`/orders/${encodeURIComponent(orderId)}/pii`, {
-      method: "PATCH",
-      body: patch,
-    });
-  } finally {
-    if (actionButton.isConnected) {
-      actionButton.disabled = false;
-      actionButton.removeAttribute("aria-busy");
-    }
-  }
-}
-
 document.querySelector(".admin-order-list")?.addEventListener("change", (event) => {
   const row = event.target.closest("tr[data-order-id]");
   if (!row) return;
@@ -158,51 +130,6 @@ document.querySelector("[data-admin-order-detail-dialog]")?.addEventListener("cl
   if (!order) return;
 
   const action = actionButton.dataset.detailAction;
-  if (action === "access-pii") {
-    const reason = dialog.querySelector("[data-admin-order-pii-reason]")?.value || "";
-    if (!reason) return AppUI.alert("개인정보 접근 목적을 선택해 주세요.");
-    const pii = await requestAdminOrderPii(actionButton, orderId, reason);
-    if (!pii || pii.orderId !== orderId) return;
-    setActiveAdminOrderPii(pii);
-    openAdminOrderDetail(orderId, { preservePii: true });
-    return;
-  }
-  if (action === "hide-pii") {
-    clearActiveAdminOrderPii();
-    openAdminOrderDetail(orderId);
-    return;
-  }
-  if (action === "cancel-pii-update") {
-    dialog.querySelector("[data-admin-order-pii-update-form]")?.reset();
-    return;
-  }
-  if (action === "update-pii") {
-    const form = dialog.querySelector("[data-admin-order-pii-update-form]");
-    const reason = form?.querySelector("[data-admin-order-pii-update-reason]")?.value || "";
-    const customer = form?.querySelector("[data-admin-order-pii-update-customer]")?.value.trim() || "";
-    const phone = form?.querySelector("[data-admin-order-pii-update-phone]")?.value.trim() || "";
-    const deliveryAddress = form?.querySelector("[data-admin-order-pii-update-address]")?.value.trim() || "";
-    if (!reason) return AppUI.alert("개인정보 수정 사유를 선택해 주세요.");
-    const patch = {
-      reason,
-      ...(customer ? { customer } : {}),
-      ...(phone ? { phone } : {}),
-      ...(deliveryAddress ? { deliveryAddress } : {}),
-      ...(order.updatedAt ? { expectedUpdatedAt: order.updatedAt } : {}),
-    };
-    if (!customer && !phone && !deliveryAddress) {
-      return AppUI.alert("변경할 개인정보를 한 항목 이상 입력해 주세요.");
-    }
-    const result = await requestAdminOrderPiiUpdate(actionButton, orderId, patch);
-    if (!result || result.orderId !== orderId) throw new Error("ORDER_PII_UPDATE_RESPONSE_INVALID");
-    clearActiveAdminOrderPii();
-    form?.reset();
-    await loadFromApi();
-    renderAdminDashboard();
-    openAdminOrderDetail(orderId);
-    AppUI.toast("주문 개인정보를 수정했습니다.", "success");
-    return;
-  }
   if (action === "reconcile-payment") {
     await reconcileAdminPayment(orderId, actionButton);
     return;
@@ -956,20 +883,16 @@ document.querySelector(".admin-recipe-list")?.addEventListener("click", async (e
 document.querySelector(".admin-sidebar-nav")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-tab]");
   if (!button) return;
-  clearActiveAdminOrderPii();
   setAdminTab(button.dataset.adminTab);
 });
 
 document.querySelector(".admin-sidebar-alerts")?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-admin-flow-tab]");
   if (!button) return;
-  clearActiveAdminOrderPii();
   setAdminTab(button.dataset.adminFlowTab);
   if (button.dataset.alertType === "purchases") setAdminSubtab("inventory", "purchases");
   if (button.dataset.alertType === "inventory") setAdminSubtab("inventory", "stock");
 });
-
-window.addEventListener("pagehide", () => clearActiveAdminOrderPii());
 
 document.querySelector(".admin-main")?.addEventListener("click", (event) => {
   const formOpen = event.target.closest("[data-admin-form-open]");
